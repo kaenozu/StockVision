@@ -34,6 +34,23 @@ describe('ThemeContext', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+    
+    // Reset matchMedia mock to default light mode
+    const matchMediaSpy = vi.fn().mockImplementation(query => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+    
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: matchMediaSpy,
+    })
   })
 
   it('should provide default theme values', () => {
@@ -96,13 +113,25 @@ describe('ThemeContext', () => {
 
     const toggleButton = screen.getByTestId('toggle-theme')
     
-    // Cycle through: light -> dark -> system -> light
+    // Check initial state
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('light')
+    
+    // First click: light -> dark
     act(() => {
-      fireEvent.click(toggleButton) // dark
-      fireEvent.click(toggleButton) // system
-      fireEvent.click(toggleButton) // light
+      fireEvent.click(toggleButton)
     })
-
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('dark')
+    
+    // Second click: dark -> system
+    act(() => {
+      fireEvent.click(toggleButton)
+    })
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('system')
+    
+    // Third click: system -> light
+    act(() => {
+      fireEvent.click(toggleButton)
+    })
     expect(screen.getByTestId('current-theme')).toHaveTextContent('light')
     expect(screen.getByTestId('is-dark')).toHaveTextContent('false')
   })
@@ -126,7 +155,20 @@ describe('ThemeContext', () => {
   })
 
   it('should load theme from localStorage on initialization', () => {
-    localStorage.setItem('theme', 'dark')
+    // Clean setup - set localStorage before component initialization 
+    localStorage.clear()
+    vi.clearAllMocks()
+    
+    // Directly set localStorage with the value we want to test
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: vi.fn(() => 'dark'),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
+      },
+      writable: true
+    })
     
     render(
       <ThemeProvider>
@@ -166,7 +208,7 @@ describe('ThemeContext', () => {
   })
 
   it('should update isDark based on system preference when theme is system', () => {
-    // Mock dark mode system preference
+    // Mock dark mode system preference BEFORE rendering
     const matchMediaSpy = vi.fn().mockImplementation(query => ({
       matches: query === '(prefers-color-scheme: dark)',
       media: query,
@@ -191,14 +233,17 @@ describe('ThemeContext', () => {
 
     const toggleButton = screen.getByTestId('toggle-theme')
     
-    // Switch to system theme
+    // Verify system preference detection
+    expect(screen.getByTestId('system-preference')).toHaveTextContent('dark')
+    
+    // Navigate directly to system theme by clicking twice
     act(() => {
-      fireEvent.click(toggleButton) // dark
-      fireEvent.click(toggleButton) // system
+      fireEvent.click(toggleButton) // light -> dark
+      fireEvent.click(toggleButton) // dark -> system
     })
-
+    
     expect(screen.getByTestId('current-theme')).toHaveTextContent('system')
-    expect(screen.getByTestId('is-dark')).toHaveTextContent('true') // Should use system preference
+    expect(screen.getByTestId('is-dark')).toHaveTextContent('true') // Should use dark system preference
   })
 
   it('should throw error when used outside ThemeProvider', () => {
