@@ -9,6 +9,7 @@ import React from 'react'
 import { Outlet } from 'react-router-dom'
 import Header from './Header'
 import Footer from './Footer'
+import { MobileNav } from './MobileNav'
 import { PageLoadingOverlay } from '../ui/LoadingSpinner'
 
 interface LayoutProps {
@@ -22,8 +23,8 @@ export function Layout({ loading = false, onSearch }: LayoutProps) {
       {/* Header */}
       <Header onSearch={onSearch} />
       
-      {/* Main Content */}
-      <main className="flex-1">
+      {/* Main Content with mobile nav padding */}
+      <main className="flex-1 pb-16 md:pb-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Outlet />
         </div>
@@ -31,6 +32,9 @@ export function Layout({ loading = false, onSearch }: LayoutProps) {
       
       {/* Footer */}
       <Footer />
+      
+      {/* Mobile Navigation */}
+      <MobileNav />
       
       {/* Global Loading Overlay */}
       <PageLoadingOverlay isVisible={loading} />

@@ -12,6 +12,8 @@ import { CompactStockCard } from '../components/stock/StockCard'
 import { MiniPriceChart } from '../components/stock/PriceChart'
 import { useStockData, useCurrentPrice, usePriceHistory } from '../hooks/useStock'
 import { useWatchlist } from '../hooks/useWatchlist'
+import { WatchListWidget } from '../components/watchlist/WatchListWidget'
+import { RecentlyViewed } from '../components/stock/RecentlyViewed'
 import Button from '../components/ui/Button'
 import LoadingSpinner, { LoadingSkeleton } from '../components/ui/LoadingSpinner'
 import { EmptyStateMessage } from '../components/ui/ErrorMessage'
@@ -85,28 +87,37 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* Featured Stocks */}
-      <section className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">注目銘柄</h2>
-          <Button
-            variant="outline"
-            onClick={() => navigate('/markets')}
-          >
-            市場情報を見る
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featuredStocks.map((stockCode) => (
-            <FeaturedStockCard 
-              key={stockCode} 
-              stockCode={stockCode}
-              onClick={() => navigate(`/stock/${stockCode}`)}
-            />
-          ))}
-        </div>
-      </section>
+      {/* Two Column Layout for Featured Stocks and Watchlist */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Featured Stocks - Takes 2 columns */}
+        <section className="lg:col-span-2 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">注目銘柄</h2>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/markets')}
+            >
+              市場情報を見る
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {featuredStocks.map((stockCode) => (
+              <FeaturedStockCard 
+                key={stockCode} 
+                stockCode={stockCode}
+                onClick={() => navigate(`/stock/${stockCode}`)}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Widgets - Takes 1 column */}
+        <section className="space-y-6">
+          <WatchListWidget />
+          <RecentlyViewed />
+        </section>
+      </div>
 
       {/* Watchlist Preview */}
       {watchlist.items.length > 0 && (

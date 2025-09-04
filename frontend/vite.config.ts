@@ -23,15 +23,26 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false, // 本番環境ではソースマップを無効化
+    target: 'es2020',
+    minify: 'terser',
     rollupOptions: {
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
           'chart-vendor': ['chart.js', 'react-chartjs-2'],
-          'router-vendor': ['react-router-dom']
-        }
+          'router-vendor': ['react-router-dom'],
+          'utils': ['axios']
+        },
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
       }
-    }
+    },
+    chunkSizeWarningLimit: 1000,
+    assetsInlineLimit: 4096
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'chart.js', 'react-chartjs-2', 'react-router-dom', 'axios']
   }
 })
