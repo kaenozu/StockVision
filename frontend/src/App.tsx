@@ -12,6 +12,7 @@ import { LoadingLayout, ErrorBoundaryLayout } from './components/layout/Layout'
 import HomePage from './pages/HomePage'
 import StockDetailPage from './pages/StockDetailPage'
 import WatchlistPage from './pages/WatchlistPage'
+import DemoPage from './pages/DemoPage'
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
@@ -102,6 +103,9 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
+            {/* Demo page - standalone without layout */}
+            <Route path="/demo" element={<DemoPage />} />
+            
             <Route path="/" element={<Layout onSearch={handleGlobalSearch} />}>
               {/* Main Routes */}
               <Route index element={<HomePage />} />

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
+import { isBrowser, isResizeObserverSupported, safeMatchMedia } from '../utils/browser'
 
 export interface ResponsiveContextValue {
   breakpoint: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
@@ -43,24 +44,21 @@ const getDeviceType = (breakpoint: string) => {
 
 export const ResponsiveProvider: React.FC<ResponsiveProviderProps> = ({ children }) => {
   const [width, setWidth] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth
-    }
-    return 1024 // Default fallback for SSR
+    return isBrowser ? window.innerWidth : 1024 // Default fallback for SSR
   })
 
   const breakpoint = getBreakpoint(width)
   const { isMobile, isTablet, isDesktop } = getDeviceType(breakpoint)
 
   const handleResize = useCallback(() => {
-    if (typeof window !== 'undefined') {
+    if (isBrowser) {
       setWidth(window.innerWidth)
     }
   }, [])
 
   // Window resize listener
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (!isBrowser) return
 
     window.addEventListener('resize', handleResize)
     
@@ -74,7 +72,7 @@ export const ResponsiveProvider: React.FC<ResponsiveProviderProps> = ({ children
 
   // ResizeObserver for more accurate detection when available
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.ResizeObserver) return
+    if (!isResizeObserverSupported) return
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -135,16 +133,14 @@ export const useBreakpointValue = <T,>(values: Partial<Record<ResponsiveContextV
 // Custom hook for media query-like usage
 export const useMediaQuery = (query: string): boolean => {
   const [matches, setMatches] = useState(() => {
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia(query).matches
-    }
-    return false
+    const mediaQuery = safeMatchMedia(query)
+    return mediaQuery?.matches ?? false
   })
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mediaQuery = safeMatchMedia(query)
+    if (!mediaQuery) return
 
-    const mediaQuery = window.matchMedia(query)
     const handleChange = (e: MediaQueryListEvent) => {
       setMatches(e.matches)
     }
