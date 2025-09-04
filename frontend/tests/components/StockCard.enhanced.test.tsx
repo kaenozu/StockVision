@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { axe, toHaveNoViolations } from 'jest-axe'
 
 // Import enhanced StockCard that doesn't exist yet - this MUST fail
-import { StockCard } from '../../src/components/StockCard'
+import { StockCard } from '../../src/components/stock/StockCard'
 
 expect.extend(toHaveNoViolations)
 

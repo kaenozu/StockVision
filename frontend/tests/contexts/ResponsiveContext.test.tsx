@@ -82,7 +82,7 @@ describe('ResponsiveContext', () => {
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
-      value: 480,
+      value: 640,
     })
 
     render(

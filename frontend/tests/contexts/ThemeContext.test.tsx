@@ -99,7 +99,11 @@ describe('ThemeContext', () => {
     // Cycle through: light -> dark -> system -> light
     act(() => {
       fireEvent.click(toggleButton) // dark
+    })
+    act(() => {
       fireEvent.click(toggleButton) // system
+    })
+    act(() => {
       fireEvent.click(toggleButton) // light
     })
 
@@ -126,7 +130,8 @@ describe('ThemeContext', () => {
   })
 
   it('should load theme from localStorage on initialization', () => {
-    localStorage.setItem('theme', 'dark')
+    // Mock localStorage.getItem to return 'dark'
+    vi.mocked(localStorage.getItem).mockReturnValue('dark')
     
     render(
       <ThemeProvider>
@@ -194,6 +199,8 @@ describe('ThemeContext', () => {
     // Switch to system theme
     act(() => {
       fireEvent.click(toggleButton) // dark
+    })
+    act(() => {
       fireEvent.click(toggleButton) // system
     })
 

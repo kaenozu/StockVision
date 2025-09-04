@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 // Mock stock API service (will fail until implemented)
 const mockStockApi = {
-  getStockInfo: vi.fn()
+  getStockData: vi.fn()
 }
 
 describe('Contract: GET /stocks/{code}', () => {
@@ -34,11 +34,11 @@ describe('Contract: GET /stocks/{code}', () => {
       }
 
       // Mock successful API response
-      mockStockApi.getStockInfo.mockResolvedValue(expectedStockData)
+      mockStockApi.getStockData.mockResolvedValue(expectedStockData)
 
       // This will FAIL until stockApi service is implemented (T014)
       const { stockApi } = await import('../../src/services/stockApi')
-      const result = await stockApi.getStockInfo('7203')
+      const result = await stockApi.getStockData('7203')
 
       // Validate response structure matches contract
       expect(result).toEqual(expect.objectContaining({
@@ -66,13 +66,13 @@ describe('Contract: GET /stocks/{code}', () => {
         price_change_pct: 1.18
       }
 
-      mockStockApi.getStockInfo.mockResolvedValue(mockData)
+      mockStockApi.getStockData.mockResolvedValue(mockData)
 
       // This will FAIL until implementation
       const { stockApi } = await import('../../src/services/stockApi')
-      const result = await stockApi.getStockInfo('7203', true)
+      const result = await stockApi.getStockData('7203', true)
 
-      expect(mockStockApi.getStockInfo).toHaveBeenCalledWith('7203', true)
+      expect(mockStockApi.getStockData).toHaveBeenCalledWith('7203', true)
       expect(result).toMatchObject(mockData)
     })
   })
@@ -82,13 +82,13 @@ describe('Contract: GET /stocks/{code}', () => {
       // This will FAIL until validation is implemented (T015)
       const { stockApi } = await import('../../src/services/stockApi')
 
-      await expect(stockApi.getStockInfo('123')).rejects.toThrow('Invalid stock code format')
-      await expect(stockApi.getStockInfo('12345')).rejects.toThrow('Invalid stock code format')
-      await expect(stockApi.getStockInfo('abcd')).rejects.toThrow('Invalid stock code format')
+      await expect(stockApi.getStockData('123')).rejects.toThrow('Invalid stock code format')
+      await expect(stockApi.getStockData('12345')).rejects.toThrow('Invalid stock code format')
+      await expect(stockApi.getStockData('abcd')).rejects.toThrow('Invalid stock code format')
     })
 
     it('should handle non-existent stock code (404)', async () => {
-      mockStockApi.getStockInfo.mockRejectedValue({
+      mockStockApi.getStockData.mockRejectedValue({
         status: 404,
         message: 'Stock code 0000 not found'
       })
@@ -96,7 +96,7 @@ describe('Contract: GET /stocks/{code}', () => {
       // This will FAIL until error handling is implemented (T015)
       const { stockApi } = await import('../../src/services/stockApi')
 
-      await expect(stockApi.getStockInfo('0000')).rejects.toMatchObject({
+      await expect(stockApi.getStockData('0000')).rejects.toMatchObject({
         status: 404,
         message: expect.stringContaining('not found')
       })
@@ -105,16 +105,16 @@ describe('Contract: GET /stocks/{code}', () => {
 
   describe('Error Handling', () => {
     it('should handle network errors gracefully', async () => {
-      mockStockApi.getStockInfo.mockRejectedValue(new Error('Network Error'))
+      mockStockApi.getStockData.mockRejectedValue(new Error('Network Error'))
 
       // This will FAIL until error handling is implemented (T015)
       const { stockApi } = await import('../../src/services/stockApi')
 
-      await expect(stockApi.getStockInfo('7203')).rejects.toThrow('Network Error')
+      await expect(stockApi.getStockData('7203')).rejects.toThrow('Network Error')
     })
 
     it('should handle server errors (500)', async () => {
-      mockStockApi.getStockInfo.mockRejectedValue({
+      mockStockApi.getStockData.mockRejectedValue({
         status: 500,
         message: 'Internal server error'
       })
@@ -122,19 +122,19 @@ describe('Contract: GET /stocks/{code}', () => {
       // This will FAIL until error handling is implemented (T015)
       const { stockApi } = await import('../../src/services/stockApi')
 
-      await expect(stockApi.getStockInfo('7203')).rejects.toMatchObject({
+      await expect(stockApi.getStockData('7203')).rejects.toMatchObject({
         status: 500,
         message: expect.stringContaining('server error')
       })
     })
 
     it('should handle timeout errors', async () => {
-      mockStockApi.getStockInfo.mockRejectedValue(new Error('Timeout'))
+      mockStockApi.getStockData.mockRejectedValue(new Error('Timeout'))
 
       // This will FAIL until timeout handling is implemented (T014)
       const { stockApi } = await import('../../src/services/stockApi')
 
-      await expect(stockApi.getStockInfo('7203')).rejects.toThrow('Timeout')
+      await expect(stockApi.getStockData('7203')).rejects.toThrow('Timeout')
     })
   })
 
@@ -149,12 +149,12 @@ describe('Contract: GET /stocks/{code}', () => {
         price_change_pct: 1.18
       }
 
-      mockStockApi.getStockInfo.mockResolvedValue(invalidData)
+      mockStockApi.getStockData.mockResolvedValue(invalidData)
 
       // This will FAIL until type validation is implemented (T013)
       const { stockApi } = await import('../../src/services/stockApi')
 
-      await expect(stockApi.getStockInfo('7203')).rejects.toThrow('Invalid data type')
+      await expect(stockApi.getStockData('7203')).rejects.toThrow('Invalid data type')
     })
 
     it('should validate required fields are present', async () => {
@@ -164,12 +164,12 @@ describe('Contract: GET /stocks/{code}', () => {
         // Missing required fields
       }
 
-      mockStockApi.getStockInfo.mockResolvedValue(incompleteData)
+      mockStockApi.getStockData.mockResolvedValue(incompleteData)
 
       // This will FAIL until validation is implemented (T013)
       const { stockApi } = await import('../../src/services/stockApi')
 
-      await expect(stockApi.getStockInfo('7203')).rejects.toThrow('Missing required fields')
+      await expect(stockApi.getStockData('7203')).rejects.toThrow('Missing required fields')
     })
   })
 })

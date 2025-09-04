@@ -45,7 +45,7 @@ interface StockApiConfig {
  * Default configuration for the API client
  */
 const DEFAULT_CONFIG: StockApiConfig = {
-  baseURL: process.env.NODE_ENV === 'test' ? 'http://localhost:8000' : '/api',
+  baseURL: process.env.NODE_ENV === 'test' ? 'http://localhost:8001' : '/api',
   timeout: 10000, // 10 seconds
   retries: 3,
   retryDelay: 1000 // 1 second
