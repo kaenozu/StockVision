@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(scripts/create-new-feature.sh:*)",
+      "Read(/C:\\gemini-desktop\\spectest\\templates/**)",
+      "Read(/C:\\gemini-desktop\\spectest\\specs\\002-test-feature-for/**)",
+      "Read(/C:\\gemini-desktop\\spectest\\specs\\002-test-feature-for/**)",
+      "Bash(scripts/setup-plan.sh:*)",
+      "Read(/C:\\gemini-desktop\\spectest\\specs\\002-test-feature-for/**)",
+      "Read(/C:\\gemini-desktop\\spectest\\memory/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

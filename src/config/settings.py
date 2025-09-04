@@ -1,0 +1,124 @@
+"""
+Application configuration settings.
+
+This module provides configuration management for the stock API application,
+including environment variables and Yahoo Finance API settings.
+"""
+import os
+from typing import Optional
+from pydantic import BaseModel, Field
+from functools import lru_cache
+
+
+class YahooFinanceConfig(BaseModel):
+    """Yahoo Finance API configuration."""
+    
+    enabled: bool = Field(default=False, description="Enable real Yahoo Finance API calls")
+    max_requests: int = Field(default=10, description="Maximum requests per time window")
+    time_window: int = Field(default=60, description="Rate limit time window in seconds")
+    max_concurrent: int = Field(default=5, description="Maximum concurrent requests")
+    timeout: int = Field(default=30, description="Request timeout in seconds")
+    retry_attempts: int = Field(default=3, description="Number of retry attempts")
+    retry_delay: float = Field(default=1.0, description="Delay between retries")
+    cache_ttl: int = Field(default=300, description="Cache TTL for API responses in seconds")
+
+
+class CacheConfig(BaseModel):
+    """Cache configuration."""
+    
+    stock_info_ttl: float = Field(default=300.0, description="Stock info cache TTL in seconds")
+    current_price_ttl: float = Field(default=60.0, description="Current price cache TTL in seconds") 
+    price_history_ttl: float = Field(default=600.0, description="Price history cache TTL in seconds")
+
+
+class DatabaseConfig(BaseModel):
+    """Database configuration."""
+    
+    url: str = Field(default="sqlite:///./stocks.db", description="Database URL")
+    echo: bool = Field(default=False, description="Enable SQL query logging")
+    pool_size: int = Field(default=5, description="Database connection pool size")
+    max_overflow: int = Field(default=10, description="Maximum overflow connections")
+
+
+class AppConfig(BaseModel):
+    """Main application configuration."""
+    
+    debug: bool = Field(default=False, description="Enable debug mode")
+    log_level: str = Field(default="INFO", description="Logging level")
+    yahoo_finance: YahooFinanceConfig = Field(default_factory=YahooFinanceConfig)
+    cache: CacheConfig = Field(default_factory=CacheConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    
+    @classmethod
+    def from_env(cls) -> "AppConfig":
+        """Create configuration from environment variables."""
+        return cls(
+            debug=os.getenv("DEBUG", "false").lower() == "true",
+            log_level=os.getenv("LOG_LEVEL", "INFO"),
+            yahoo_finance=YahooFinanceConfig(
+                enabled=os.getenv("USE_REAL_YAHOO_API", "false").lower() == "true",
+                max_requests=int(os.getenv("YAHOO_MAX_REQUESTS", "10")),
+                time_window=int(os.getenv("YAHOO_TIME_WINDOW", "60")),
+                max_concurrent=int(os.getenv("YAHOO_MAX_CONCURRENT", "5")),
+                timeout=int(os.getenv("YAHOO_TIMEOUT", "30")),
+                retry_attempts=int(os.getenv("YAHOO_RETRY_ATTEMPTS", "3")),
+                retry_delay=float(os.getenv("YAHOO_RETRY_DELAY", "1.0")),
+                cache_ttl=int(os.getenv("YAHOO_CACHE_TTL", "300"))
+            ),
+            cache=CacheConfig(
+                stock_info_ttl=float(os.getenv("CACHE_STOCK_INFO_TTL", "300.0")),
+                current_price_ttl=float(os.getenv("CACHE_CURRENT_PRICE_TTL", "60.0")),
+                price_history_ttl=float(os.getenv("CACHE_PRICE_HISTORY_TTL", "600.0"))
+            ),
+            database=DatabaseConfig(
+                url=os.getenv("DATABASE_URL", "sqlite:///./stocks.db"),
+                echo=os.getenv("DATABASE_ECHO", "false").lower() == "true",
+                pool_size=int(os.getenv("DATABASE_POOL_SIZE", "5")),
+                max_overflow=int(os.getenv("DATABASE_MAX_OVERFLOW", "10"))
+            )
+        )
+
+
+@lru_cache()
+def get_settings() -> AppConfig:
+    """Get cached application settings."""
+    return AppConfig.from_env()
+
+
+# Convenience functions for specific configurations
+def get_yahoo_finance_config() -> YahooFinanceConfig:
+    """Get Yahoo Finance configuration."""
+    return get_settings().yahoo_finance
+
+
+def get_cache_config() -> CacheConfig:
+    """Get cache configuration."""
+    return get_settings().cache
+
+
+def get_database_config() -> DatabaseConfig:
+    """Get database configuration."""
+    return get_settings().database
+
+
+def is_yahoo_finance_enabled() -> bool:
+    """Check if Yahoo Finance API is enabled."""
+    return get_settings().yahoo_finance.enabled
+
+
+def should_use_real_data(use_real_data_param: Optional[bool] = None) -> bool:
+    """
+    Determine whether to use real Yahoo Finance data.
+    
+    Args:
+        use_real_data_param: Query parameter override from API request
+        
+    Returns:
+        bool: True if real data should be used, False for mock data
+    """
+    # Query parameter takes precedence over environment variable
+    if use_real_data_param is not None:
+        return use_real_data_param
+    
+    # Fall back to environment variable setting
+    return is_yahoo_finance_enabled()

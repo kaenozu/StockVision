@@ -1,0 +1,302 @@
+openapi: 3.0.3
+info:
+  title: Stock Test API
+  version: 1.0.0
+  description: 株価テスト機能API仕様
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+
+paths:
+  /stocks/{stock_code}:
+    get:
+      summary: 銘柄情報取得
+      parameters:
+        - name: stock_code
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{4}$'
+          example: "7203"
+      responses:
+        '200':
+          description: 銘柄情報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stock'
+        '404':
+          description: 銘柄が見つからない
+
+  /stocks/{stock_code}/current:
+    get:
+      summary: リアルタイム価格取得
+      parameters:
+        - name: stock_code
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{4}$'
+      responses:
+        '200':
+          description: 現在価格情報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentPrice'
+
+  /stocks/{stock_code}/history:
+    get:
+      summary: 価格履歴取得
+      parameters:
+        - name: stock_code
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: days
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 30
+      responses:
+        '200':
+          description: 価格履歴
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PriceHistory'
+
+  /watchlist:
+    get:
+      summary: ウォッチリスト取得
+      parameters:
+        - name: active
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: ウォッチリスト
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Watchlist'
+    
+    post:
+      summary: ウォッチリストに追加
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchlistCreate'
+      responses:
+        '201':
+          description: 追加成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Watchlist'
+        '400':
+          description: バリデーションエラー
+
+  /watchlist/{id}:
+    delete:
+      summary: ウォッチリストから削除
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: 削除成功
+        '404':
+          description: アイテムが見つからない
+
+components:
+  schemas:
+    Stock:
+      type: object
+      required:
+        - stock_code
+        - company_name
+        - current_price
+        - previous_close
+      properties:
+        stock_code:
+          type: string
+          pattern: '^[0-9]{4}$'
+          example: "7203"
+        company_name:
+          type: string
+          maxLength: 100
+          example: "トヨタ自動車"
+        current_price:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 2450.5
+        previous_close:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 2430.0
+        price_change:
+          type: number
+          format: decimal
+          example: 20.5
+        price_change_pct:
+          type: number
+          format: decimal
+          minimum: -100
+          maximum: 100
+          example: 0.84
+        volume:
+          type: integer
+          minimum: 0
+          example: 1234567
+        market_cap:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 29500000000000
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CurrentPrice:
+      type: object
+      required:
+        - stock_code
+        - price
+        - change
+        - change_pct
+      properties:
+        stock_code:
+          type: string
+          example: "7203"
+        price:
+          type: number
+          format: decimal
+          example: 2450.5
+        change:
+          type: number
+          format: decimal
+          example: 20.5
+        change_pct:
+          type: number
+          format: decimal
+          example: 0.84
+        timestamp:
+          type: string
+          format: date-time
+
+    PriceHistory:
+      type: object
+      required:
+        - date
+        - open_price
+        - high_price
+        - low_price
+        - close_price
+        - volume
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2025-09-04"
+        open_price:
+          type: number
+          format: decimal
+          example: 2430.0
+        high_price:
+          type: number
+          format: decimal
+          example: 2460.0
+        low_price:
+          type: number
+          format: decimal
+          example: 2420.0
+        close_price:
+          type: number
+          format: decimal
+          example: 2450.5
+        volume:
+          type: integer
+          minimum: 0
+          example: 1234567
+        adj_close:
+          type: number
+          format: decimal
+          example: 2450.5
+
+    Watchlist:
+      type: object
+      required:
+        - id
+        - stock_code
+        - added_at
+        - is_active
+      properties:
+        id:
+          type: integer
+          example: 1
+        stock_code:
+          type: string
+          example: "7203"
+        added_at:
+          type: string
+          format: date-time
+        notes:
+          type: string
+          maxLength: 500
+          example: "長期保有候補"
+        alert_price_high:
+          type: number
+          format: decimal
+          example: 2500.0
+        alert_price_low:
+          type: number
+          format: decimal
+          example: 2300.0
+        is_active:
+          type: boolean
+          example: true
+
+    WatchlistCreate:
+      type: object
+      required:
+        - stock_code
+      properties:
+        stock_code:
+          type: string
+          pattern: '^[0-9]{4}$'
+          example: "7203"
+        notes:
+          type: string
+          maxLength: 500
+          example: "長期保有候補"
+        alert_price_high:
+          type: number
+          format: decimal
+          example: 2500.0
+        alert_price_low:
+          type: number
+          format: decimal
+          example: 2300.0
