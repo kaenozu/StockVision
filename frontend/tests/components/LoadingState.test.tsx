@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { axe, toHaveNoViolations } from 'jest-axe'
 
 // Import the component that doesn't exist yet - this MUST fail
-import { LoadingState } from '../../src/components/enhanced/LoadingState'
+import { LoadingState } from '../../src/components/UI/LoadingState'
 
 expect.extend(toHaveNoViolations)
 

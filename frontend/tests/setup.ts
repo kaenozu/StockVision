@@ -1,3 +1,4 @@
+import { vi } from 'vitest'
 import '@testing-library/jest-dom'
 import 'jest-axe/extend-expect'
 import { vi } from 'vitest'

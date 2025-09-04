@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
+import { safeLocalStorage, safeMatchMedia } from '../utils/browser'
 
 export interface ThemeContextValue {
   theme: 'light' | 'dark' | 'system'
@@ -15,15 +16,13 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
-    const saved = localStorage.getItem('theme')
+    const saved = safeLocalStorage.getItem('theme')
     return (saved as 'light' | 'dark' | 'system') || 'light'
   })
 
   const [systemPreference, setSystemPreference] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-    return 'light'
+    const mediaQuery = safeMatchMedia('(prefers-color-scheme: dark)')
+    return mediaQuery?.matches ? 'dark' : 'light'
   })
 
   const isDark = theme === 'dark' || (theme === 'system' && systemPreference === 'dark')
@@ -31,14 +30,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const toggleTheme = useCallback(() => {
     const nextTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
     setTheme(nextTheme)
-    localStorage.setItem('theme', nextTheme)
+    safeLocalStorage.setItem('theme', nextTheme)
   }, [theme])
 
   // System preference detection
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return
-    
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const mediaQuery = safeMatchMedia('(prefers-color-scheme: dark)')
+    if (!mediaQuery) return
     
     const handleChange = (e: MediaQueryListEvent) => {
       setSystemPreference(e.matches ? 'dark' : 'light')
