@@ -1,5 +1,5 @@
 
-import { useTheme } '../../contexts/ThemeContext'
+import { useTheme } from '../../contexts/ThemeContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Toast } from '../../types/ui'
 import { useEffect } from 'react'
