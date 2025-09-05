@@ -17,6 +17,7 @@ from ..stock_api.yahoo_client import YahooFinanceClient, YahooFinanceError, Stoc
 from ..stock_api.data_models import StockData, CurrentPrice, PriceHistoryData, PriceHistoryItem
 from ..models.stock import Stock
 from ..models.price_history import PriceHistory
+from ..utils.cache_key_generator import generate_stock_cache_key
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +30,9 @@ class CacheManager:
         self._lock = asyncio.Lock()
     
     def _get_cache_key(self, operation: str, stock_code: str, **kwargs) -> str:
-        """Generate cache key for operation."""
-        params = "_".join(f"{k}={v}" for k, v in sorted(kwargs.items()) if v is not None)
-        return f"{operation}_{stock_code}_{params}" if params else f"{operation}_{stock_code}"
+        """Generate robust cache key for operation using improved key generation."""
+        # Use the new robust cache key generator
+        return generate_stock_cache_key(operation, stock_code, **kwargs)
     
     async def get(self, operation: str, stock_code: str, ttl: int = 300, **kwargs) -> Optional[Any]:
         """Get cached data if available and not expired."""

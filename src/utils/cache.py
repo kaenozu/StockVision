@@ -8,6 +8,8 @@ import logging
 import time
 from functools import wraps
 from typing import Any, Optional, Callable, Dict, Tuple
+
+from .cache_key_generator import generate_stock_cache_key
 from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
@@ -117,9 +119,9 @@ def cache_stock_data(cache_key_func: Optional[Callable] = None, ttl: float = 300
             if cache_key_func:
                 cache_key = cache_key_func(*args, **kwargs)
             else:
-                # Default key generation
+                # Use improved key generation
                 stock_code = kwargs.get('stock_code') or (args[0] if args else 'unknown')
-                cache_key = f"{func.__name__}:{stock_code}"
+                cache_key = generate_stock_cache_key(func.__name__, stock_code, **kwargs)
             
             # Try to get from cache
             cached_result = _stock_cache.get(cache_key)
@@ -146,9 +148,9 @@ def cache_price_history(cache_key_func: Optional[Callable] = None):
             if cache_key_func:
                 cache_key = cache_key_func(*args, **kwargs)
             else:
+                # Use improved key generation for price history
                 stock_code = kwargs.get('stock_code') or (args[0] if args else 'unknown')
-                days = kwargs.get('days', 30)
-                cache_key = f"price_history:{stock_code}:{days}"
+                cache_key = generate_stock_cache_key("price_history", stock_code, **kwargs)
             
             # Try to get from cache
             cached_result = _price_history_cache.get(cache_key)
@@ -175,8 +177,9 @@ def cache_current_price(cache_key_func: Optional[Callable] = None):
             if cache_key_func:
                 cache_key = cache_key_func(*args, **kwargs)
             else:
+                # Use improved key generation for current price
                 stock_code = kwargs.get('stock_code') or (args[0] if args else 'unknown')
-                cache_key = f"current_price:{stock_code}"
+                cache_key = generate_stock_cache_key("current_price", stock_code, **kwargs)
             
             # Try to get from cache
             cached_result = _current_price_cache.get(cache_key)
