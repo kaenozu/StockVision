@@ -31,6 +31,7 @@ import {
 } from '../types/stock'
 import { stockDataCache, priceHistoryCache, recommendationCache } from './cacheService'
 import { errorLogger, ErrorCategory, ErrorSeverity, logNetworkError, logValidationError, logCacheError } from './errorLogger'
+import { generateCacheKey } from '../utils/cache'
 
 /**
  * Stock API Configuration

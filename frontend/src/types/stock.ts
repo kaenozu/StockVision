@@ -329,3 +329,22 @@ export function isWatchlistItemAPI(obj: unknown): obj is WatchlistItemAPI {
     (typedObj.notes === null || typeof typedObj.notes === 'string')
   )
 }
+
+export function isApiError(obj: unknown): obj is { error: APIError } {
+  if (obj === null || typeof obj !== 'object') {
+    return false;
+  }
+  if (!('error' in obj)) {
+    return false;
+  }
+  const error = (obj as any).error;
+  if (error === null || typeof error !== 'object') {
+    return false;
+  }
+  return (
+    'code' in error &&
+    'message' in error &&
+    typeof error.code === 'number' &&
+    typeof error.message === 'string'
+  );
+}
