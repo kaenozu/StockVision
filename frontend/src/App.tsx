@@ -8,7 +8,8 @@
 import React, { Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/layout/Layout'
-import { LoadingLayout, ErrorBoundaryLayout } from './components/layout/Layout'
+import { LoadingLayout } from './components/layout/Layout'
+import ErrorBoundary from './components/ErrorBoundary'
 import HomePage from './pages/HomePage'
 import SimplifiedHomePage from './pages/SimplifiedHomePage'
 import StockDetailPage from './pages/StockDetailPage'
@@ -19,38 +20,6 @@ import DemoPage from './pages/DemoPage'
 import RecommendedStocksPage from './pages/RecommendedStocksPage'
 import TradingRecommendationsPage from './pages/TradingRecommendationsPage'
 import TestPage from './pages/TestPage'
-
-// Error Boundary Component
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props)
-    this.state = { hasError: false, error: null }
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error }
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('React Error Boundary caught an error:', error, errorInfo)
-  }
-
-  render() {
-    if (this.state.hasError && this.state.error) {
-      return (
-        <ErrorBoundaryLayout
-          error={this.state.error}
-          onRetry={() => this.setState({ hasError: false, error: null })}
-        />
-      )
-    }
-
-    return this.props.children
-  }
-}
 
 // Lazy load components for code splitting
 const AboutPage = React.lazy(() => 
