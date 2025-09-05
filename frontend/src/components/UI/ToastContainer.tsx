@@ -1,7 +1,8 @@
 
-import { useTheme } from '../../contexts/ThemeContext'
+import { useTheme } '../../contexts/ThemeContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Toast } from '../../types/ui'
+import { useEffect } from 'react'
 
 export function ToastContainer() {
   const { toasts, removeToast } = useToast()
@@ -23,6 +24,15 @@ export function ToastContainer() {
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const { theme } = useTheme()
+
+  useEffect(() => {
+    if (toast.duration && toast.duration > 0) {
+      const timer = setTimeout(() => {
+        onClose()
+      }, toast.duration)
+      return () => clearTimeout(timer)
+    }
+  }, [toast.duration, onClose])
 
   const typeStyles = {
     success: `${
