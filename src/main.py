@@ -3,7 +3,7 @@ FastAPI application entry point for stock tracking application.
 """
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -76,24 +76,20 @@ setup_error_handlers(app)
 from .api.stocks import router as stocks_router
 from .api.watchlist import router as watchlist_router
 
-app.include_router(stocks_router)
-app.include_router(watchlist_router)
-
-
-@app.get("/", tags=["Root"])
-async def root():
-    """Root endpoint."""
-    return {"message": "Stock Test API is running", "version": "1.0.0"}
-
+api_router = APIRouter(prefix="/api")
 
 def get_db():
     """Database dependency function."""
     with get_session_scope() as session:
         yield session
 
+@api_router.get("/health", tags=["Health"])
+async def health_check():
+    """Simple health check endpoint."""
+    return {"status": "ok"}
 
-@app.get("/health", tags=["Health"])
-async def health_check(db: Session = Depends(get_db)):
+@api_router.get("/status", tags=["Health"])
+async def status_check(db: Session = Depends(get_db)):
     """Health check endpoint with database connectivity."""
     try:
         # データベース接続テスト
@@ -146,6 +142,17 @@ async def health_check(db: Session = Depends(get_db)):
         },
         "version": "1.0.0"
     }
+
+api_router.include_router(stocks_router)
+api_router.include_router(watchlist_router)
+
+app.include_router(api_router)
+
+
+@app.get("/", tags=["Root"])
+async def root():
+    """Root endpoint."""
+    return {"message": "Stock Test API is running", "version": "1.0.0"}
 
 
 if __name__ == "__main__":

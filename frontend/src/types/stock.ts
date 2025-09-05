@@ -80,10 +80,13 @@ export type ChartType = 'line' | 'candlestick'
 
 // API error interface
 export interface APIError {
-  status: number
-  message: string
-  error_type?: string
-  detail?: string
+  code: number;
+  message: string;
+  type?: string;
+  request_id?: string;
+  timestamp?: string;
+  path?: string;
+  details?: any;
 }
 
 // Generic API response wrapper
@@ -325,4 +328,23 @@ export function isWatchlistItemAPI(obj: unknown): obj is WatchlistItemAPI {
     (typedObj.alert_price === null || (typeof typedObj.alert_price === 'number' && typedObj.alert_price > 0)) &&
     (typedObj.notes === null || typeof typedObj.notes === 'string')
   )
+}
+
+export function isApiError(obj: unknown): obj is { error: APIError } {
+  if (obj === null || typeof obj !== 'object') {
+    return false;
+  }
+  if (!('error' in obj)) {
+    return false;
+  }
+  const error = (obj as any).error;
+  if (error === null || typeof error !== 'object') {
+    return false;
+  }
+  return (
+    'code' in error &&
+    'message' in error &&
+    typeof error.code === 'number' &&
+    typeof error.message === 'string'
+  );
 }
