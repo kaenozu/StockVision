@@ -24,6 +24,7 @@ import {
   isStockData,
   isCurrentPriceResponse,
   isPriceHistoryItem,
+  isApiError,
   isWatchlistItemAPI,
   DEFAULT_DAYS_HISTORY,
   MAX_DAYS_HISTORY,
@@ -31,6 +32,7 @@ import {
 } from '../types/stock'
 import { stockDataCache, priceHistoryCache, recommendationCache } from './cacheService'
 import { errorLogger, ErrorCategory, ErrorSeverity, logNetworkError, logValidationError, logCacheError } from './errorLogger'
+import { generateCacheKey } from '../utils/cache''
 
 /**
  * Stock API Configuration
@@ -201,14 +203,16 @@ export class StockApiClient {
       if (error.response) {
         // Server responded with error status
         const { status, data } = error.response
-        const apiError = (data as any)?.error as APIError;
-        
-        return new StockApiError(
-          status,
-          apiError?.message || `HTTP ${status} Error`,
-          apiError?.type,
-          apiError?.details
-        )
+        if (isApiError(data)) {
+          const apiError = data.error;
+          return new StockApiError(
+            status,
+            apiError.message || `HTTP ${status} Error`,
+            apiError.type,
+            apiError.details
+          )
+        }
+        return new StockApiError(status, `HTTP ${status} Error`)
       } else if (error.request) {
         // Request was made but no response received
         return new StockApiError(0, 'Network Error', 'network', 'No response from server')
@@ -269,7 +273,7 @@ export class StockApiClient {
     this.validateStockCode(stockCode)
 
     // Check cache first
-    const cacheKey = `stock_${stockCode}_${useRealData}`
+    const cacheKey = generateCacheKey('stock', { stockCode, useRealData });
     try {
       const cached = stockDataCache.get<StockData>(cacheKey)
       if (cached) {
@@ -359,7 +363,7 @@ export class StockApiClient {
     this.validateDays(days)
 
     // Check cache first
-    const cacheKey = `history_${stockCode}_${days}_${useRealData}`
+    const cacheKey = generateCacheKey('history', { stockCode, days, useRealData });
     const cached = priceHistoryCache.get<PriceHistoryItem[]>(cacheKey)
     if (cached) {
       console.log(`[StockAPI] Using cached price history for ${stockCode}`)
@@ -506,7 +510,7 @@ export class StockApiClient {
    */
   async getRecommendedStocks(limit = 10, useRealData = true): Promise<any[]> {
     // Check cache first for 24h offline support
-    const cacheKey = `recommended_stocks_${limit}_${useRealData}`
+    const cacheKey = generateCacheKey('recommended-stocks', { limit, useRealData });
     try {
       const cached = recommendationCache.get<any[]>(cacheKey)
       if (cached) {
@@ -586,7 +590,7 @@ export class StockApiClient {
    */
   async getTradingRecommendations(useRealData = true): Promise<any[]> {
     // Check cache first
-    const cacheKey = `trading_recommendations_${useRealData}`
+    const cacheKey = generateCacheKey('trading-recommendations', { useRealData });
     const cached = recommendationCache.get<any[]>(cacheKey)
     if (cached) {
       console.log('[StockAPI] Using cached trading recommendations')
