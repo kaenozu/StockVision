@@ -212,14 +212,21 @@ export function isValidStockCode(code: string): code is string {
 
 export function isStockData(obj: unknown): obj is StockData {
   return (
-    obj &&
-    typeof obj.stock_code === 'string' &&
-    isValidStockCode(obj.stock_code) &&
-    typeof obj.company_name === 'string' &&
-    typeof obj.current_price === 'number' &&
-    typeof obj.previous_close === 'number' &&
-    typeof obj.price_change === 'number' &&
-    typeof obj.price_change_pct === 'number'
+    obj !== null &&
+    typeof obj === 'object' &&
+    'stock_code' in obj &&
+    'company_name' in obj &&
+    'current_price' in obj &&
+    'previous_close' in obj &&
+    'price_change' in obj &&
+    'price_change_pct' in obj &&
+    typeof (obj as any).stock_code === 'string' &&
+    isValidStockCode((obj as any).stock_code) &&
+    typeof (obj as any).company_name === 'string' &&
+    typeof (obj as any).current_price === 'number' &&
+    typeof (obj as any).previous_close === 'number' &&
+    typeof (obj as any).price_change === 'number' &&
+    typeof (obj as any).price_change_pct === 'number'
   )
 }
 
@@ -227,48 +234,41 @@ export function isCurrentPriceResponse(obj: unknown): obj is CurrentPriceRespons
   // Debug logging
   console.log('Validating CurrentPriceResponse:', obj);
   
-  if (!obj) {
-    console.log('Validation failed: obj is falsy');
+  if (obj === null || typeof obj !== 'object') {
+    return false;
+  }
+
+  const typedObj = obj as any;
+  
+  if (typeof typedObj.stock_code !== 'string') {
     return false;
   }
   
-  if (typeof obj.stock_code !== 'string') {
-    console.log('Validation failed: stock_code is not string, got:', typeof obj.stock_code);
+  if (!isValidStockCode(typedObj.stock_code)) {
     return false;
   }
   
-  if (!isValidStockCode(obj.stock_code)) {
-    console.log('Validation failed: invalid stock code format:', obj.stock_code);
+  if (typeof typedObj.current_price !== 'number') {
     return false;
   }
   
-  if (typeof obj.current_price !== 'number') {
-    console.log('Validation failed: current_price is not number, got:', typeof obj.current_price);
+  if (typeof typedObj.previous_close !== 'number') {
     return false;
   }
   
-  if (typeof obj.previous_close !== 'number') {
-    console.log('Validation failed: previous_close is not number, got:', typeof obj.previous_close);
+  if (typeof typedObj.price_change !== 'number') {
     return false;
   }
   
-  if (typeof obj.price_change !== 'number') {
-    console.log('Validation failed: price_change is not number, got:', typeof obj.price_change);
+  if (typeof typedObj.price_change_pct !== 'number') {
     return false;
   }
   
-  if (typeof obj.price_change_pct !== 'number') {
-    console.log('Validation failed: price_change_pct is not number, got:', typeof obj.price_change_pct);
+  if (typeof typedObj.timestamp !== 'string') {
     return false;
   }
   
-  if (typeof obj.timestamp !== 'string') {
-    console.log('Validation failed: timestamp is not string, got:', typeof obj.timestamp);
-    return false;
-  }
-  
-  if (!['open', 'closed', 'pre_market', 'after_hours'].includes(obj.market_status)) {
-    console.log('Validation failed: invalid market_status:', obj.market_status);
+  if (typedObj.market_status && !['open', 'closed', 'pre_market', 'after_hours'].includes(typedObj.market_status)) {
     return false;
   }
   
@@ -277,32 +277,52 @@ export function isCurrentPriceResponse(obj: unknown): obj is CurrentPriceRespons
 }
 
 export function isPriceHistoryItem(obj: unknown): obj is PriceHistoryItem {
+  if (obj === null || typeof obj !== 'object') {
+    return false;
+  }
+
+  const typedObj = obj as any;
+
   return (
-    obj &&
-    typeof obj.date === 'string' &&
-    /^\d{4}-\d{2}-\d{2}$/.test(obj.date) &&
-    typeof obj.open === 'number' &&
-    typeof obj.high === 'number' &&
-    typeof obj.low === 'number' &&
-    typeof obj.close === 'number' &&
-    typeof obj.volume === 'number' &&
-    typeof obj.stock_code === 'string' &&
-    isValidStockCode(obj.stock_code) &&
-    obj.high >= Math.max(obj.open, obj.close) &&
-    obj.low <= Math.min(obj.open, obj.close) &&
-    obj.volume >= 0
+    'date' in obj &&
+    'open' in obj &&
+    'high' in obj &&
+    'low' in obj &&
+    'close' in obj &&
+    'volume' in obj &&
+    'stock_code' in obj &&
+    typeof typedObj.date === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(typedObj.date) &&
+    typeof typedObj.open === 'number' &&
+    typeof typedObj.high === 'number' &&
+    typeof typedObj.low === 'number' &&
+    typeof typedObj.close === 'number' &&
+    typeof typedObj.volume === 'number' &&
+    typeof typedObj.stock_code === 'string' &&
+    isValidStockCode(typedObj.stock_code) &&
+    typedObj.high >= Math.max(typedObj.open, typedObj.close) &&
+    typedObj.low <= Math.min(typedObj.open, typedObj.close) &&
+    typedObj.volume >= 0
   )
 }
 
 export function isWatchlistItemAPI(obj: unknown): obj is WatchlistItemAPI {
+  if (obj === null || typeof obj !== 'object') {
+    return false;
+  }
+
+  const typedObj = obj as any;
+
   return (
-    obj &&
-    typeof obj.stock_code === 'string' &&
-    isValidStockCode(obj.stock_code) &&
-    typeof obj.company_name === 'string' &&
-    typeof obj.added_date === 'string' &&
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(obj.added_date) &&
-    (obj.alert_price === null || (typeof obj.alert_price === 'number' && obj.alert_price > 0)) &&
-    (obj.notes === null || typeof obj.notes === 'string')
+    'stock_code' in obj &&
+    'company_name' in obj &&
+    'added_date' in obj &&
+    typeof typedObj.stock_code === 'string' &&
+    isValidStockCode(typedObj.stock_code) &&
+    typeof typedObj.company_name === 'string' &&
+    typeof typedObj.added_date === 'string' &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(typedObj.added_date) &&
+    (typedObj.alert_price === null || (typeof typedObj.alert_price === 'number' && typedObj.alert_price > 0)) &&
+    (typedObj.notes === null || typeof typedObj.notes === 'string')
   )
 }

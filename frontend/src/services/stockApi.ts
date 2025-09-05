@@ -135,7 +135,7 @@ export class StockApiClient {
         url: error.config?.url,
         baseURL: error.config?.baseURL,
         method: error.config?.method,
-        fullURL: error.config?.baseURL + error.config?.url
+        fullURL: `${error.config?.baseURL || ''}${error.config?.url || ''}`
       },
       request: error.request ? 'Request was made' : 'Request was not made',
       response: error.response ? {
