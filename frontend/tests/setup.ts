@@ -1,7 +1,6 @@
-import { vi } from 'vitest'
+import { vi, beforeEach } from 'vitest'
 import '@testing-library/jest-dom'
 import 'jest-axe/extend-expect'
-import { vi } from 'vitest'
 
 // Mock fetch for tests
 global.fetch = vi.fn()

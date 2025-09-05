@@ -10,7 +10,7 @@ import { Outlet } from 'react-router-dom'
 import Header from './Header'
 import Footer from './Footer'
 import { MobileNav } from './MobileNav'
-import { PageLoadingOverlay } from '../ui/LoadingSpinner'
+import { PageLoadingOverlay } from '../UI/LoadingSpinner'
 
 interface LayoutProps {
   loading?: boolean

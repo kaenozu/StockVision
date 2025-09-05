@@ -99,8 +99,6 @@ const NotFoundPage = React.lazy(() =>
  */
 function App() {
   const handleGlobalSearch = (stockCode: string, useRealData: boolean) => {
-    // This function is called from header search
-    // Navigation is handled by the header component itself
     console.log('Global search:', stockCode, useRealData)
   }
 

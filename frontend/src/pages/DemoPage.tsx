@@ -7,7 +7,7 @@ import { AccessibilityProvider, useAccessibility } from '../contexts/Accessibili
 import VisualIndicator, { PriceChangeIndicator, TrendIndicator } from '../components/UI/VisualIndicator'
 import PriceDisplay, { PriceWithChange, CompactPriceDisplay, HighlightedPrice } from '../components/UI/PriceDisplay'
 import LoadingState, { InlineLoader, OverlayLoader, CardSkeleton, ListSkeleton } from '../components/UI/LoadingState'
-import EnhancedStockCard, { CompactEnhancedStockCard, DetailedEnhancedStockCard } from '../components/stock/EnhancedStockCard'
+// import { EnhancedStockCard, CompactEnhancedStockCard, DetailedEnhancedStockCard } from '../components/stock/EnhancedStockCard'
 
 // Demo Controls Component
 const DemoControls: React.FC = () => {
@@ -366,122 +366,22 @@ const LoadingStateDemo: React.FC = () => {
   )
 }
 
-// EnhancedStockCard Demo
+// EnhancedStockCard Demo (Temporarily Disabled)
 const EnhancedStockCardDemo: React.FC = () => {
-  const [stockData, setStockData] = useState({
-    stockCode: '7203',
-    name: 'トヨタ自動車株式会社',
-    price: 2500,
-    previousPrice: 2400,
-    variant: 'default' as 'default' | 'compact' | 'detailed'
-  })
-
   return (
     <DemoSection
       title="📊 EnhancedStockCard - 統合株式カード"
-      description="全UIコンポーネントを統合した次世代株式カード。レスポンシブ・アクセシブル対応。"
+      description="EnhancedStockCardコンポーネントは現在開発中です。SimplifiedHomePageで実装されたPremiumStockCardをご覧ください。"
     >
-      {/* Controls */}
-      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">銘柄コード</label>
-            <input
-              type="text"
-              value={stockData.stockCode}
-              onChange={(e) => setStockData(prev => ({
-                ...prev,
-                stockCode: e.target.value
-              }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">企業名</label>
-            <input
-              type="text"
-              value={stockData.name}
-              onChange={(e) => setStockData(prev => ({
-                ...prev,
-                name: e.target.value
-              }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">現在価格</label>
-            <input
-              type="number"
-              value={stockData.price}
-              onChange={(e) => setStockData(prev => ({
-                ...prev,
-                price: parseFloat(e.target.value) || 0
-              }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">バリアント</label>
-            <select
-              value={stockData.variant}
-              onChange={(e) => setStockData(prev => ({
-                ...prev,
-                variant: e.target.value as 'default' | 'compact' | 'detailed'
-              }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100"
-            >
-              <option value="default">デフォルト</option>
-              <option value="compact">コンパクト</option>
-              <option value="detailed">詳細</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Stock Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        <div>
-          <h4 className="font-medium mb-3">Enhanced StockCard</h4>
-          <EnhancedStockCard
-            stockCode={stockData.stockCode}
-            name={stockData.name}
-            price={stockData.price}
-            previousPrice={stockData.previousPrice}
-            variant={stockData.variant}
-            responsive={true}
-            accessibility={{
-              keyboardNavigation: true,
-              announceChanges: true
-            }}
-            onRefresh={() => console.log('Refresh clicked')}
-            onViewDetails={() => console.log('View details clicked')}
-          />
-        </div>
-
-        <div>
-          <h4 className="font-medium mb-3">Compact Version</h4>
-          <CompactEnhancedStockCard
-            stockCode={stockData.stockCode}
-            name={stockData.name}
-            price={stockData.price}
-            previousPrice={stockData.previousPrice}
-            responsive={true}
-          />
-        </div>
-
-        <div>
-          <h4 className="font-medium mb-3">Detailed Version</h4>
-          <DetailedEnhancedStockCard
-            stockCode={stockData.stockCode}
-            name={stockData.name}
-            price={stockData.price}
-            previousPrice={stockData.previousPrice}
-            responsive={true}
-            accessibility={{
-              keyboardNavigation: true
-            }}
-          />
-        </div>
+      <div className="p-8 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-center">
+        <div className="text-6xl mb-4">🚧</div>
+        <h3 className="text-xl font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+          開発中
+        </h3>
+        <p className="text-yellow-700 dark:text-yellow-300">
+          EnhancedStockCardコンポーネントは現在SimplifiedHomePageで実装中です。
+          実際の動作はホームページでご確認ください。
+        </p>
       </div>
     </DemoSection>
   )
