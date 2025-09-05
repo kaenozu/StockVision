@@ -80,10 +80,13 @@ export type ChartType = 'line' | 'candlestick'
 
 // API error interface
 export interface APIError {
-  status: number
-  message: string
-  error_type?: string
-  detail?: string
+  code: number;
+  message: string;
+  type?: string;
+  request_id?: string;
+  timestamp?: string;
+  path?: string;
+  details?: any;
 }
 
 // Generic API response wrapper

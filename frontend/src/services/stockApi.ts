@@ -46,11 +46,11 @@ interface StockApiConfig {
  * Default configuration for the API client
  */
 const DEFAULT_CONFIG: StockApiConfig = {
-  baseURL: process.env.NODE_ENV === 'production' 
+  baseURL: import.meta.env.VITE_API_BASE_URL || (process.env.NODE_ENV === 'production' 
     ? '/api' 
     : process.env.NODE_ENV === 'test' 
     ? 'http://localhost:8001/api' 
-    : 'http://localhost:8080/api',
+    : 'http://localhost:8080/api'),
   timeout: 10000, // 10 seconds
   retries: 3,
   retryDelay: 1000 // 1 second
@@ -63,8 +63,8 @@ export class StockApiError extends Error {
   constructor(
     public status: number,
     public message: string,
-    public errorType?: string,
-    public detail?: string
+    public type?: string,
+    public details?: any
   ) {
     super(message)
     this.name = 'StockApiError'
@@ -149,13 +149,13 @@ export class StockApiClient {
       if (error.response) {
         // Server responded with error status
         const { status, data } = error.response
-        const apiError = data as APIError
+        const apiError = (data as any)?.error as APIError;
         
         return new StockApiError(
           status,
-          apiError.message || `HTTP ${status} Error`,
-          apiError.error_type,
-          apiError.detail
+          apiError?.message || `HTTP ${status} Error`,
+          apiError?.type,
+          apiError?.details
         )
       } else if (error.request) {
         // Request was made but no response received

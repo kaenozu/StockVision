@@ -129,7 +129,7 @@ function App() {
               <Route path="trading-recommendations" element={<TradingRecommendationsPage />} />
               
               {/* Test Page for debugging */}
-              <Route path="test" element={<TestPage />} />
+              {import.meta.env.DEV && <Route path="test" element={<TestPage />} />}
               
               {/* Lazy Loaded Routes */}
               <Route 
