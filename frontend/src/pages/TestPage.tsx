@@ -10,7 +10,7 @@ const TestPage: React.FC = () => {
   const handleApiTest = async () => {
     console.log('APIテスト開始');
     try {
-      const response = await fetch('http://localhost:8080/health');
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/health`);
       const data = await response.json();
       console.log('APIテスト成功:', data);
       alert('API接続成功: ' + JSON.stringify(data, null, 2));
@@ -23,7 +23,7 @@ const TestPage: React.FC = () => {
   const handleStockApiTest = async () => {
     console.log('株価APIテスト開始 - トヨタ (7203)');
     try {
-      const response = await fetch('http://localhost:8080/stocks/7203');
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/stocks/7203`);
       const data = await response.json();
       console.log('株価APIテスト成功:', data);
       alert('株価API成功: ' + JSON.stringify(data, null, 2));
