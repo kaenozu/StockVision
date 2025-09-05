@@ -16,6 +16,11 @@ from .utils.logging import setup_logging
 from .utils.cache import get_cache_stats
 from .services.stock_service import cleanup_stock_service
 from .config import get_settings
+from .constants import (
+    DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DEV_PORT, FRONTEND_PROD_PORT,
+    CORS_ORIGINS, DOCS_URL, REDOC_URL, OPENAPI_URL,
+    PerformanceThresholds
+)
 
 
 @asynccontextmanager
@@ -50,20 +55,24 @@ app = FastAPI(
     title="Stock Test API",
     version="1.0.0",
     description="株価テスト機能API仕様",
-    servers=[{"url": "http://localhost:8000", "description": "Development server"}],
+    servers=[{"url": f"http://localhost:{DEFAULT_PORT}", "description": "Development server"}],
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    docs_url=DOCS_URL,
+    redoc_url=REDOC_URL,
+    openapi_url=OPENAPI_URL,
 )
 
 # Add GZip middleware for response compression (performance optimization)
-app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=6)
+app.add_middleware(
+    GZipMiddleware, 
+    minimum_size=PerformanceThresholds.COMPRESSION_MIN_SIZE, 
+    compresslevel=PerformanceThresholds.COMPRESSION_LEVEL
+)
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8080"],  # Configure for production
+    allow_origins=CORS_ORIGINS,  # Configure for production
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
     allow_headers=["*"],
@@ -159,8 +168,8 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "src.main:app",
-        host="0.0.0.0",
-        port=8000,
+        host=DEFAULT_HOST,
+        port=DEFAULT_PORT,
         reload=True,
         log_level="info",
     )

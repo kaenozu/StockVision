@@ -14,6 +14,12 @@ import hashlib
 import json
 import re
 
+from ..constants import (
+    API_RECOMMENDED_STOCKS, API_TRADING_RECOMMENDATIONS, API_PRICE_PREDICTIONS,
+    API_STOCKS_CURRENT, API_STOCKS_HISTORY, API_WATCHLIST,
+    CacheTTL, SWRTime, PerformanceThresholds, TimeConstants
+)
+
 
 class CacheControlMiddleware(BaseHTTPMiddleware):
     """
@@ -23,16 +29,16 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
     # Cache configurations for different endpoints
     CACHE_SETTINGS = {
         # Static data - cache longer
-        "/api/recommended-stocks": {"max_age": 3600, "stale_while_revalidate": 1800},  # 1h cache, 30m stale
-        "/api/trading-recommendations": {"max_age": 1800, "stale_while_revalidate": 900},  # 30m cache, 15m stale
-        "/api/price-predictions": {"max_age": 7200, "stale_while_revalidate": 3600},  # 2h cache, 1h stale
+        API_RECOMMENDED_STOCKS: {"max_age": CacheTTL.RECOMMENDED_STOCKS, "stale_while_revalidate": SWRTime.RECOMMENDED_STOCKS},
+        API_TRADING_RECOMMENDATIONS: {"max_age": CacheTTL.TRADING_RECOMMENDATIONS, "stale_while_revalidate": SWRTime.TRADING_RECOMMENDATIONS},
+        API_PRICE_PREDICTIONS: {"max_age": CacheTTL.PRICE_PREDICTIONS, "stale_while_revalidate": SWRTime.PRICE_PREDICTIONS},
         
         # Real-time data - shorter cache
-        "/api/stocks/*/current": {"max_age": 300, "stale_while_revalidate": 150},  # 5m cache, 2.5m stale
-        "/api/stocks/*/history": {"max_age": 1800, "stale_while_revalidate": 900},  # 30m cache, 15m stale
+        API_STOCKS_CURRENT: {"max_age": CacheTTL.STOCK_DATA_SHORT, "stale_while_revalidate": SWRTime.STOCK_DATA_SHORT},
+        API_STOCKS_HISTORY: {"max_age": CacheTTL.STOCK_HISTORY, "stale_while_revalidate": SWRTime.STOCK_HISTORY},
         
         # User-specific data - no cache
-        "/api/watchlist": {"max_age": 0, "no_cache": True}
+        API_WATCHLIST: {"max_age": CacheTTL.NO_CACHE, "no_cache": True}
     }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -139,7 +145,7 @@ class ResponseCompressionMiddleware(BaseHTTPMiddleware):
     }
     
     # Minimum size to compress (bytes)
-    MIN_SIZE = 1024
+    MIN_SIZE = PerformanceThresholds.COMPRESSION_MIN_SIZE
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         response = await call_next(request)
@@ -187,11 +193,11 @@ class PerformanceMetricsMiddleware(BaseHTTPMiddleware):
         process_time = time.time() - start_time
         
         # Add performance headers
-        response.headers["X-Process-Time"] = str(round(process_time * 1000, 2))  # milliseconds
+        response.headers["X-Process-Time"] = str(round(process_time * TimeConstants.MILLISECONDS_PER_SECOND, 2))  # milliseconds
         response.headers["X-Timestamp"] = str(int(time.time()))
         
         # Log slow requests
-        if process_time > 1.0:  # Requests taking over 1 second
+        if process_time > PerformanceThresholds.SLOW_REQUEST_THRESHOLD:
             import logging
             logger = logging.getLogger(__name__)
             logger.warning(
@@ -208,8 +214,8 @@ def setup_performance_middleware(app: FastAPI):
     # Add GZip compression (built-in FastAPI middleware)
     app.add_middleware(
         GZipMiddleware,
-        minimum_size=1024,
-        compresslevel=6  # Balance between compression ratio and CPU usage
+        minimum_size=PerformanceThresholds.COMPRESSION_MIN_SIZE,
+        compresslevel=PerformanceThresholds.COMPRESSION_LEVEL  # Balance between compression ratio and CPU usage
     )
     
     # Add custom performance middleware
@@ -303,7 +309,7 @@ def generate_cache_key(prefix: str, *args, **kwargs) -> str:
     return new_generate_cache_key(prefix, str(primary_key), parameters)
 
 
-def cache_response(key: str, data: dict, ttl: int = 3600):
+def cache_response(key: str, data: dict, ttl: int = CacheTTL.DEFAULT):
     """
     Cache response data with TTL.
     This would integrate with Redis or similar in production.
