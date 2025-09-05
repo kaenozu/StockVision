@@ -6,11 +6,13 @@ Provides response compression, caching headers, and other optimizations.
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Callable
 import time
 import hashlib
 import json
+import re
 
 
 class CacheControlMiddleware(BaseHTTPMiddleware):
@@ -63,14 +65,20 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
                 response.headers["Cache-Control"] = cache_control
                 
                 # Add ETag for better cache validation
-                if hasattr(response, 'body') and response.body:
-                    etag = self._generate_etag(response.body)
-                    response.headers["ETag"] = etag
-                    
-                    # Check if client has matching ETag
-                    if_none_match = request.headers.get("If-None-Match")
-                    if if_none_match == etag:
-                        return Response(status_code=304)
+                # Skip ETag generation for StreamingResponse
+                if not isinstance(response, StreamingResponse):
+                    if hasattr(response, 'body') and response.body:
+                        try:
+                            etag = self._generate_etag(response.body)
+                            response.headers["ETag"] = etag
+                            
+                            # Check if client has matching ETag
+                            if_none_match = request.headers.get("If-None-Match")
+                            if if_none_match == etag:
+                                return Response(status_code=304)
+                        except AttributeError:
+                            # Skip ETag if body is not accessible
+                            pass
 
         # Add performance headers
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -84,21 +92,31 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
         if path in self.CACHE_SETTINGS:
             return self.CACHE_SETTINGS[path]
         
-        # Pattern matching for dynamic paths
+        # Pattern matching for dynamic paths using regex
         for pattern, config in self.CACHE_SETTINGS.items():
             if "*" in pattern:
-                # Simple wildcard matching
-                pattern_parts = pattern.split("*")
-                if len(pattern_parts) == 2:
-                    prefix, suffix = pattern_parts
-                    if path.startswith(prefix) and path.endswith(suffix):
+                # Convert wildcard pattern to regex pattern
+                # Escape special regex characters but keep wildcards
+                regex_pattern = re.escape(pattern).replace(r'\*', r'[^/]*')
+                # Add anchors to match full path
+                regex_pattern = f'^{regex_pattern}$'
+                
+                try:
+                    if re.match(regex_pattern, path):
                         return config
+                except re.error:
+                    # Fallback to simple wildcard matching if regex fails
+                    pattern_parts = pattern.split("*")
+                    if len(pattern_parts) == 2:
+                        prefix, suffix = pattern_parts
+                        if path.startswith(prefix) and path.endswith(suffix):
+                            return config
         
         return {}
     
     def _generate_etag(self, content: bytes) -> str:
-        """Generate ETag from response content."""
-        return f'"{hashlib.md5(content).hexdigest()}"'
+        """Generate ETag from response content using SHA256 for consistency."""
+        return f'"{hashlib.sha256(content).hexdigest()}"'
 
 
 class ResponseCompressionMiddleware(BaseHTTPMiddleware):
