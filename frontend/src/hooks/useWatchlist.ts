@@ -7,13 +7,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  WatchlistItemAPI,
   WatchlistItem,
   AddWatchlistRequest,
-  AsyncState,
-  LoadingState
+  AsyncState
 } from '../types/stock'
-import { stockApi, StockApiError, ValidationError } from '../services/stockApi'
+import { stockApi, ValidationError } from '../services/stockApi'
 import { validateAddWatchlistRequest } from '../utils/validation'
 import { formatErrorMessage } from '../utils/formatters'
 

@@ -1,20 +1,15 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTheme } from '../../contexts/ThemeContext'
 import { usePersistentViewHistory } from '../../hooks/usePersistentState'
 
 export function RecentlyViewed() {
   const { theme } = useTheme()
-  const navigate = useNavigate()
   const { getRecentlyViewed, clearHistory } = usePersistentViewHistory()
 
   const recentStocks = getRecentlyViewed(5)
 
   if (recentStocks.length === 0) {
     return null
-  }
-
-  const handleStockClick = (stockCode: string) => {
-    navigate(`/stock/${stockCode}`)
   }
 
   const handleClearHistory = () => {
@@ -43,10 +38,10 @@ export function RecentlyViewed() {
 
       <div className="space-y-2">
         {recentStocks.map((stock) => (
-          <button
+          <Link
             key={stock.stock_code}
-            onClick={() => handleStockClick(stock.stock_code)}
-            className={`w-full p-3 rounded-md cursor-pointer transition-colors text-left ${
+            to={`/stock/${stock.stock_code}`}
+            className={`w-full p-3 rounded-md cursor-pointer transition-colors text-left block ${
               theme === 'dark' 
                 ? 'hover:bg-gray-700' 
                 : 'hover:bg-gray-50'
@@ -71,7 +66,7 @@ export function RecentlyViewed() {
                 </div>
               </div>
             </div>
-          </button>
+          </Link>
         ))}
       </div>
     </div>

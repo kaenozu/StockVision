@@ -1,9 +1,8 @@
 import React from 'react'
 import { StockData, CurrentPriceResponse } from '../../types/stock'
-import { useTheme } from '../../contexts/ThemeContext'
 import { useAccessibility, useFocusManagement } from '../../contexts/AccessibilityContext'
 import { useResponsive } from '../../contexts/ResponsiveContext'
-import { formatPrice, formatPriceChange, formatPercentageChange, formatMarketStatus } from '../../utils/formatters'
+import { formatPrice } from '../../utils/formatters'
 import { useWatchlistItem } from '../../hooks/useWatchlist'
 
 // Import our new UI components
@@ -76,10 +75,9 @@ export const EnhancedStockCard: React.FC<EnhancedStockCardProps> = ({
   'data-testid': testId,
   ...props
 }) => {
-  const { isDark } = useTheme()
   const { announce, reducedMotion } = useAccessibility()
-  const { breakpoint, isMobile, isTablet, isDesktop } = useResponsive()
-  const { focusElement, keyboardNavigation } = useFocusManagement()
+  const { breakpoint, isMobile } = useResponsive()
+  const { keyboardNavigation } = useFocusManagement()
 
   // Data resolution - prefer props over legacy data
   const displayData = React.useMemo(() => {

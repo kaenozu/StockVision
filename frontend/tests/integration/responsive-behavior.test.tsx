@@ -4,7 +4,7 @@ import { axe, toHaveNoViolations } from 'jest-axe'
 
 // Import contexts that don't exist yet - this MUST fail
 import { ResponsiveProvider } from '../../src/contexts/ResponsiveContext'
-import { StockCard } from '../../src/components/StockCard'
+import { EnhancedStockCard as StockCard } from '../../src/components/stock/EnhancedStockCard'
 
 expect.extend(toHaveNoViolations)
 
@@ -204,7 +204,7 @@ describe('Responsive Behavior Integration', () => {
     const mockObserve = vi.fn()
     const mockDisconnect = vi.fn()
     
-    global.ResizeObserver = vi.fn().mockImplementation((callback) => ({
+    global.ResizeObserver = vi.fn().mockImplementation(() => ({
       observe: mockObserve,
       unobserve: vi.fn(),
       disconnect: mockDisconnect,

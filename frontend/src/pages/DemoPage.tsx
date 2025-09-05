@@ -12,7 +12,7 @@ import EnhancedStockCard, { CompactEnhancedStockCard, DetailedEnhancedStockCard 
 // Demo Controls Component
 const DemoControls: React.FC = () => {
   const { theme, toggleTheme, isDark } = useTheme()
-  const { breakpoint, width, isMobile, isTablet, isDesktop } = useResponsive()
+  const { breakpoint, width, isMobile, isTablet } = useResponsive()
   const { reducedMotion, highContrast, keyboardNavigation, announce } = useAccessibility()
 
   return (

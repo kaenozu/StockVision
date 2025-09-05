@@ -1,5 +1,3 @@
-import React from 'react'
-import { useTheme } from '../../contexts/ThemeContext'
 import { useAccessibility } from '../../contexts/AccessibilityContext'
 import { useResponsive } from '../../contexts/ResponsiveContext'
 
@@ -39,7 +37,6 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
   'data-testid': testId,
   ...props
 }) => {
-  const { isDark } = useTheme()
   const { reducedMotion, highContrast, announce } = useAccessibility()
   const { isMobile } = useResponsive()
 
@@ -98,7 +95,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
   }
 
   // Format price with currency
-  const formatPrice = (value: number) => {
+  const formatPrice = React.useCallback((value: number) => {
     const config = currencyConfig[currency]
     
     try {
@@ -114,7 +111,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
       const formattedValue = value.toFixed(config.maximumFractionDigits)
       return showCurrency ? `${config.symbol}${formattedValue}` : formattedValue
     }
-  }
+  }, [currency, showCurrency]) // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // Calculate price change
   const priceChange = React.useMemo(() => {
@@ -158,7 +155,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
   const highContrastClasses = highContrast ? 'font-bold' : ''
 
   // Generate accessibility label
-  const getAccessibilityLabel = () => {
+  const getAccessibilityLabel = React.useCallback(() => {
     if (ariaLabel) return ariaLabel
 
     const formattedPrice = formatPrice(price)
@@ -175,7 +172,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
     }
 
     return label
-  }
+  }, [ariaLabel, price, priceChange, showChange, showChangePercent, formatPrice])
 
   // Announce price changes
   React.useEffect(() => {
@@ -183,7 +180,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
       const changeText = priceChange.isPositive ? '上昇' : priceChange.isNegative ? '下落' : '変化なし'
       announce(`価格が${changeText}しました: ${formatPrice(price)}`, 'polite')
     }
-  }, [price, priceChange, showChange, showChangePercent, announce])
+  }, [price, priceChange, showChange, showChangePercent, announce, formatPrice])
 
   const containerClasses = [
     'inline-flex items-center gap-1',

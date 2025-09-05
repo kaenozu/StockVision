@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../../contexts/ThemeContext'
 
 interface NavItem {
@@ -8,7 +8,6 @@ interface NavItem {
 }
 
 export function MobileNav() {
-  const navigate = useNavigate()
   const location = useLocation()
   const { theme } = useTheme()
 
@@ -32,9 +31,9 @@ export function MobileNav() {
     } border-t`}>
       <div className="grid grid-cols-4 h-16">
         {navItems.map((item) => (
-          <button
+          <Link
             key={item.path}
-            onClick={() => navigate(item.path)}
+            to={item.path}
             className={`flex flex-col items-center justify-center space-y-1 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               isActive(item.path)
                 ? theme === 'dark' 
@@ -49,7 +48,7 @@ export function MobileNav() {
           >
             <span className="text-xl" role="img" aria-hidden="true">{item.icon}</span>
             <span className="text-xs">{item.label}</span>
-          </button>
+          </Link>
         ))}
       </div>
     </nav>

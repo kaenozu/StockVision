@@ -1,5 +1,4 @@
 import React from 'react'
-import { useTheme } from '../../contexts/ThemeContext'
 import { useAccessibility } from '../../contexts/AccessibilityContext'
 import { useResponsive } from '../../contexts/ResponsiveContext'
 
@@ -39,7 +38,6 @@ export const VisualIndicator: React.FC<VisualIndicatorProps> = ({
   'data-testid': testId,
   ...props
 }) => {
-  const { isDark } = useTheme()
   const { reducedMotion, highContrast, announce } = useAccessibility()
   const { isMobile } = useResponsive()
 

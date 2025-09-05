@@ -59,22 +59,7 @@ const chartTypeOptions: { value: ChartType; label: string }[] = [
   { value: 'candlestick', label: 'ローソク足' }
 ]
 
-// Helper function to calculate moving average
-function calculateMovingAverage(data: number[], period: number): (number | null)[] {
-  const result: (number | null)[] = []
-  
-  for (let i = 0; i < data.length; i++) {
-    if (i < period - 1) {
-      result.push(null)
-    } else {
-      const slice = data.slice(i - period + 1, i + 1)
-      const sum = slice.reduce((acc, val) => acc + val, 0)
-      result.push(sum / period)
-    }
-  }
-  
-  return result
-}
+import { calculateMovingAverage } from '../../utils/chartHelpers'
 
 export function PriceChart({
   data,
@@ -122,7 +107,7 @@ export function PriceChart({
     const labels = sortedData.map(item => formatDateShort(item.date))
     const closePrices = sortedData.map(item => item.close)
     
-    const datasets: any[] = []
+    const datasets: ChartDataset[] = []
     
     if (chartConfig.chart_type === 'line') {
       // Main price line
@@ -209,7 +194,7 @@ export function PriceChart({
         ]
       }
     }
-  }, [data, chartConfig.chart_type])
+  }, [data, chartConfig.chart_type, isDark, showMA5, showMA20]) // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // Chart options
   const chartOptions = useMemo(() => ({
@@ -300,7 +285,7 @@ export function PriceChart({
             family: 'Noto Sans JP, sans-serif'
           },
           color: isDark ? 'rgb(156, 163, 175)' : 'rgb(75, 85, 99)',
-          callback: function(value: any) {
+          callback: function(value: number) {
             return formatPrice(value)
           }
         },

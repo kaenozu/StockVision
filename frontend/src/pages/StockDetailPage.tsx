@@ -18,11 +18,13 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import ErrorMessage from '../components/ui/ErrorMessage'
 import { ChartConfig, ChartTimeframe } from '../types/stock'
 import { formatPrice, formatTimestamp } from '../utils/formatters'
+import { useTheme } from '../contexts/ThemeContext'
 
 export function StockDetailPage() {
   const { stockCode } = useParams<{ stockCode: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { theme } = useTheme()
   
   const useRealData = searchParams.get('real') === 'true'
   const [chartConfig, setChartConfig] = useState<ChartConfig>({
@@ -316,7 +318,9 @@ export function StockDetailPage() {
                   className={`px-4 py-2 text-sm rounded-md transition-colors ${
                     chartType === 'basic'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : theme === 'dark'
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
                   基本チャート
@@ -326,7 +330,9 @@ export function StockDetailPage() {
                   className={`px-4 py-2 text-sm rounded-md transition-colors ${
                     chartType === 'technical'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : theme === 'dark'
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
                   テクニカル分析

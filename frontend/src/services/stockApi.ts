@@ -12,7 +12,7 @@
  * - Support for both mock and real data modes
  */
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios'
+import axios, { AxiosInstance, AxiosError } from 'axios'
 import {
   StockData,
   CurrentPriceResponse,
@@ -20,7 +20,6 @@ import {
   WatchlistItemAPI,
   AddWatchlistRequest,
   APIError,
-  APIResponse,
   isValidStockCode,
   isStockData,
   isCurrentPriceResponse,
@@ -166,7 +165,7 @@ export class StockApiClient {
   async getStockData(stockCode: string, useRealData = false): Promise<StockData> {
     this.validateStockCode(stockCode)
 
-    const params: Record<string, any> = {}
+    const params: Record<string, unknown> = {}
     if (useRealData) {
       params.use_real_data = true
     }
@@ -192,7 +191,7 @@ export class StockApiClient {
   async getCurrentPrice(stockCode: string, useRealData = false): Promise<CurrentPriceResponse> {
     this.validateStockCode(stockCode)
 
-    const params: Record<string, any> = {}
+    const params: Record<string, unknown> = {}
     if (useRealData) {
       params.use_real_data = true
     }
@@ -223,7 +222,7 @@ export class StockApiClient {
     this.validateStockCode(stockCode)
     this.validateDays(days)
 
-    const params: Record<string, any> = { days }
+    const params: Record<string, unknown> = { days }
     if (useRealData) {
       params.use_real_data = true
     }
@@ -364,14 +363,14 @@ export function createStockApiClient(config: Partial<StockApiConfig>): StockApiC
 /**
  * Utility function to check if an error is a StockApiError
  */
-export function isStockApiError(error: any): error is StockApiError {
+export function isStockApiError(error: unknown): error is StockApiError {
   return error instanceof StockApiError
 }
 
 /**
  * Utility function to check if an error is a ValidationError
  */
-export function isValidationError(error: any): error is ValidationError {
+export function isValidationError(error: unknown): error is ValidationError {
   return error instanceof ValidationError
 }
 

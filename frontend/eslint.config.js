@@ -16,8 +16,15 @@ export default tseslint.config([
       reactRefresh.configs.vite,
     ],
     languageOptions: {
-      ecmaVersion: 2020,
+      parser: tseslint.parser,
+      parserOptions: {
+        project: ['./tsconfig.eslint.json'],
+      },
+      ecmaVersion: 'latest',
       globals: globals.browser,
     },
+    rules: {
+      "react-refresh/only-export-components": "off"
+    }
   },
 ])

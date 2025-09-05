@@ -5,10 +5,10 @@
  * and quick access to key features.
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import StockSearch from '../components/stock/StockSearch'
-import { CompactStockCard } from '../components/stock/StockCard'
+
 import { MiniPriceChart } from '../components/stock/PriceChart'
 import { useStockData, useCurrentPrice, usePriceHistory } from '../hooks/useStock'
 import { useWatchlist } from '../hooks/useWatchlist'
@@ -16,7 +16,7 @@ import { WatchListWidget } from '../components/watchlist/WatchListWidget'
 import { RecentlyViewed } from '../components/stock/RecentlyViewed'
 import Button from '../components/ui/Button'
 import LoadingSpinner, { LoadingSkeleton } from '../components/ui/LoadingSpinner'
-import { EmptyStateMessage } from '../components/ui/ErrorMessage'
+
 
 export function HomePage() {
   const navigate = useNavigate()
