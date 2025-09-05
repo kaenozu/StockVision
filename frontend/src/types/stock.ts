@@ -341,16 +341,25 @@ export function isApiError(obj: unknown): obj is { error: APIError } {
   if (error === null || typeof error !== 'object') {
     return false;
   }
-  // APIError の各プロパティをチェック
-  return (
+
+  // 必須プロパティのチェック
+  const hasRequiredProperties = (
     'code' in error &&
     typeof error.code === 'number' &&
     'message' in error &&
-    typeof error.message === 'string' &&
-    (error.type === undefined || typeof error.type === 'string') &&
-    (error.request_id === undefined || typeof error.request_id === 'string') &&
-    (error.timestamp === undefined || typeof error.timestamp === 'string') &&
-    (error.path === undefined || typeof error.path === 'string')
-    // details は any 型なので、型チェックは省略
+    typeof error.message === 'string'
   );
+
+  if (!hasRequiredProperties) {
+    return false;
+  }
+
+  // オプションプロパティのチェックを配列と every を使って行う
+  const optionalProperties: (keyof APIError)[] = ['type', 'request_id', 'timestamp', 'path'];
+  const areOptionalPropertiesValid = optionalProperties.every(prop => {
+    return error[prop] === undefined || typeof error[prop] === 'string';
+  });
+
+  return areOptionalPropertiesValid;
+  // details は any 型なので、型チェックは省略
 }
