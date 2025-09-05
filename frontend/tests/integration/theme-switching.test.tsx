@@ -1,45 +1,206 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
-import { axe, toHaveNoViolations } from 'jest-axe'
+/**
+ * Theme Switching Integration Test Suite - TDD Phase
+ * 
+ * This test MUST FAIL initially (RED phase) before implementation
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act } from '@testing-library/react'
 
-// Import contexts that don't exist yet - this MUST fail
+// Import components that DON'T EXIST yet (will cause test failures)
 import { ThemeProvider } from '../../src/contexts/ThemeContext'
 import { AccessibilityProvider } from '../../src/contexts/AccessibilityContext'
+import { StockCard } from '../../src/components/StockCard'
+import { PriceDisplay } from '../../src/components/enhanced/PriceDisplay'
 
-expect.extend(toHaveNoViolations)
-
-// Test component that uses theme switching
-const ThemeSwitchingApp = () => {
-  return (
-    <ThemeProvider>
-      <AccessibilityProvider>
-        <div data-testid="app-container" className="min-h-screen transition-colors">
-          <header data-testid="header" className="bg-white dark:bg-gray-900">
-            <button data-testid="theme-toggle" className="theme-toggle">
-              テーマ切り替え
-            </button>
-          </header>
-          <main data-testid="main-content" className="p-4">
-            <div data-testid="stock-card" className="bg-gray-50 dark:bg-gray-800">
-              株式カード
-            </div>
-          </main>
-        </div>
-      </AccessibilityProvider>
-    </ThemeProvider>
-  )
+const mockStock = {
+  stock_code: '7203',
+  company_name: 'トヨタ自動車',
+  current_price: 2500,
+  previous_close: 2450,
+  price_change: 50,
+  percentage_change: 2.04,
+  volume: 15000000,
+  updated_at: '2025-01-15T09:30:00Z'
 }
+
+// Test wrapper component that includes all providers
+const TestApp = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider>
+    <AccessibilityProvider>
+      {children}
+    </AccessibilityProvider>
+  </ThemeProvider>
+)
 
 describe('Theme Switching Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    document.documentElement.className = ''
     
-    // Reset system theme
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: vi.fn().mockImplementation(query => ({
-        matches: query === '(prefers-color-scheme: light)',
+    // Mock matchMedia for system preference detection
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query === '(prefers-color-scheme: dark)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  describe('Basic Theme Switching', () => {
+    it('should start with light theme by default', () => {
+      render(
+        <TestApp>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
+
+      const card = screen.getByTestId('stock-card')
+      expect(card).toHaveClass('bg-white')
+      expect(card).toHaveClass('text-secondary-900')
+      expect(document.documentElement).not.toHaveClass('dark')
+    })
+
+    it('should switch to dark theme when toggle is clicked', async () => {
+      render(
+        <TestApp>
+          <button data-testid="theme-toggle" onClick={() => {
+            const themeContext = require('../../src/contexts/ThemeContext')
+            themeContext.toggleTheme()
+          }}>
+            Toggle Theme
+          </button>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
+
+      const toggleButton = screen.getByTestId('theme-toggle')
+      
+      await act(async () => {
+        fireEvent.click(toggleButton)
+      })
+
+      await waitFor(() => {
+        expect(document.documentElement).toHaveClass('dark')
+      })
+
+      const card = screen.getByTestId('stock-card')
+      expect(card).toHaveClass('dark:bg-secondary-800')
+      expect(card).toHaveClass('dark:text-white')
+    })
+
+    it('should switch back to light theme on second toggle', async () => {
+      render(
+        <TestApp>
+          <button data-testid="theme-toggle" onClick={() => {
+            const themeContext = require('../../src/contexts/ThemeContext')
+            themeContext.toggleTheme()
+          }}>
+            Toggle Theme
+          </button>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
+
+      const toggleButton = screen.getByTestId('theme-toggle')
+      
+      // First toggle to dark
+      await act(async () => {
+        fireEvent.click(toggleButton)
+      })
+
+      // Second toggle back to light
+      await act(async () => {
+        fireEvent.click(toggleButton)
+      })
+
+      await waitFor(() => {
+        expect(document.documentElement).not.toHaveClass('dark')
+      })
+
+      const card = screen.getByTestId('stock-card')
+      expect(card).toHaveClass('bg-white')
+      expect(card).toHaveClass('text-secondary-900')
+    })
+  })
+
+  describe('Theme Persistence', () => {
+    it('should persist theme to localStorage', async () => {
+      const setItemSpy = vi.spyOn(localStorage, 'setItem')
+
+      render(
+        <TestApp>
+          <button data-testid="theme-toggle" onClick={() => {
+            const themeContext = require('../../src/contexts/ThemeContext')
+            themeContext.toggleTheme()
+          }}>
+            Toggle Theme
+          </button>
+        </TestApp>
+      )
+
+      const toggleButton = screen.getByTestId('theme-toggle')
+      
+      await act(async () => {
+        fireEvent.click(toggleButton)
+      })
+
+      expect(setItemSpy).toHaveBeenCalledWith('theme', 'dark')
+    })
+
+    it('should load saved theme from localStorage on mount', () => {
+      localStorage.setItem('theme', 'dark')
+
+      render(
+        <TestApp>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
+
+      expect(document.documentElement).toHaveClass('dark')
+      
+      const card = screen.getByTestId('stock-card')
+      expect(card).toHaveClass('dark:bg-secondary-800')
+    })
+
+    it('should clear localStorage when reset to default', async () => {
+      const removeItemSpy = vi.spyOn(localStorage, 'removeItem')
+      localStorage.setItem('theme', 'dark')
+
+      render(
+        <TestApp>
+          <button data-testid="reset-theme" onClick={() => {
+            const themeContext = require('../../src/contexts/ThemeContext')
+            themeContext.resetTheme()
+          }}>
+            Reset Theme
+          </button>
+        </TestApp>
+      )
+
+      const resetButton = screen.getByTestId('reset-theme')
+      
+      await act(async () => {
+        fireEvent.click(resetButton)
+      })
+
+      expect(removeItemSpy).toHaveBeenCalledWith('theme')
+    })
+  })
+
+  describe('System Preference Detection', () => {
+    it('should detect system dark mode preference', () => {
+      window.matchMedia = vi.fn().mockImplementation(query => ({
+        matches: query === '(prefers-color-scheme: dark)' ? true : false,
         media: query,
         onchange: null,
         addListener: vi.fn(),
@@ -47,62 +208,55 @@ describe('Theme Switching Integration', () => {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
-      })),
-    })
-  })
+      }))
 
-  it('should switch from light to dark theme', async () => {
-    render(<ThemeSwitchingApp />)
+      render(
+        <TestApp>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
 
-    const container = screen.getByTestId('app-container')
-    const themeToggle = screen.getByTestId('theme-toggle')
-
-    // Initially light theme
-    expect(container).toHaveClass('light')
-    expect(container).not.toHaveClass('dark')
-
-    // Switch to dark theme
-    act(() => {
-      fireEvent.click(themeToggle)
+      expect(document.documentElement).toHaveClass('dark')
     })
 
-    expect(container).toHaveClass('dark')
-    expect(container).not.toHaveClass('light')
-  })
+    it('should respond to system preference changes', async () => {
+      let mediaQueryCallback: ((e: MediaQueryListEvent) => void) | null = null
+      
+      window.matchMedia = vi.fn().mockImplementation(query => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn((cb) => { mediaQueryCallback = cb }),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn((event, cb) => { 
+          if (event === 'change') mediaQueryCallback = cb 
+        }),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }))
 
-  it('should persist theme preference to localStorage', async () => {
-    render(<ThemeSwitchingApp />)
+      render(
+        <TestApp>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
 
-    const themeToggle = screen.getByTestId('theme-toggle')
+      // Simulate system theme change to dark
+      await act(async () => {
+        if (mediaQueryCallback) {
+          const mockEvent = { matches: true } as MediaQueryListEvent
+          mediaQueryCallback(mockEvent)
+        }
+      })
 
-    act(() => {
-      fireEvent.click(themeToggle) // Switch to dark
+      await waitFor(() => {
+        expect(document.documentElement).toHaveClass('dark')
+      })
     })
 
-    expect(localStorage.setItem).toHaveBeenCalledWith('theme', 'dark')
-  })
-
-  it('should apply theme classes to all components', async () => {
-    render(<ThemeSwitchingApp />)
-
-    const header = screen.getByTestId('header')
-    const stockCard = screen.getByTestId('stock-card')
-    const themeToggle = screen.getByTestId('theme-toggle')
-
-    // Switch to dark theme
-    act(() => {
-      fireEvent.click(themeToggle)
-    })
-
-    expect(header).toHaveClass('dark:bg-gray-900')
-    expect(stockCard).toHaveClass('dark:bg-gray-800')
-  })
-
-  it('should respect system preference on initial load', async () => {
-    // Mock dark system preference
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: vi.fn().mockImplementation(query => ({
+    it('should override system preference with user setting', async () => {
+      // System prefers dark
+      window.matchMedia = vi.fn().mockImplementation(query => ({
         matches: query === '(prefers-color-scheme: dark)',
         media: query,
         onchange: null,
@@ -111,152 +265,252 @@ describe('Theme Switching Integration', () => {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
-      })),
-    })
+      }))
 
-    render(<ThemeSwitchingApp />)
+      render(
+        <TestApp>
+          <button data-testid="theme-toggle" onClick={() => {
+            const themeContext = require('../../src/contexts/ThemeContext')
+            themeContext.setTheme('light')
+          }}>
+            Force Light
+          </button>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
 
-    const container = screen.getByTestId('app-container')
-    expect(container).toHaveClass('dark')
-  })
+      // Should start with system preference (dark)
+      expect(document.documentElement).toHaveClass('dark')
 
-  it('should cycle through light → dark → system → light', async () => {
-    render(<ThemeSwitchingApp />)
-
-    const container = screen.getByTestId('app-container')
-    const themeToggle = screen.getByTestId('theme-toggle')
-
-    // Initial: light
-    expect(container).toHaveClass('light')
-
-    // First click: dark
-    act(() => {
-      fireEvent.click(themeToggle)
-    })
-    expect(container).toHaveClass('dark')
-
-    // Second click: system
-    act(() => {
-      fireEvent.click(themeToggle)
-    })
-    expect(container).toHaveAttribute('data-theme', 'system')
-
-    // Third click: back to light
-    act(() => {
-      fireEvent.click(themeToggle)
-    })
-    expect(container).toHaveClass('light')
-  })
-
-  it('should handle system theme changes when in system mode', async () => {
-    let matchMediaCallback: ((e: MediaQueryListEvent) => void) | null = null
-    
-    const mockAddEventListener = vi.fn((event, callback: (e: MediaQueryListEvent) => void) => {
-      if (event === 'change') {
-        matchMediaCallback = callback
-      }
-    })
-
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: vi.fn().mockImplementation(query => ({
-        matches: query === '(prefers-color-scheme: light)',
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: mockAddEventListener,
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      })),
-    })
-
-    render(<ThemeSwitchingApp />)
-
-    const container = screen.getByTestId('app-container')
-    const themeToggle = screen.getByTestId('theme-toggle')
-
-    // Switch to system mode (two clicks: light → dark → system)
-    act(() => {
-      fireEvent.click(themeToggle)
-      fireEvent.click(themeToggle)
-    })
-
-    expect(container).toHaveAttribute('data-theme', 'system')
-
-    // Simulate system preference change to dark
-    if (matchMediaCallback) {
-      act(() => {
-        matchMediaCallback({ matches: true })
+      // User overrides to light
+      const toggleButton = screen.getByTestId('theme-toggle')
+      
+      await act(async () => {
+        fireEvent.click(toggleButton)
       })
-    }
 
-    expect(container).toHaveClass('dark')
+      await waitFor(() => {
+        expect(document.documentElement).not.toHaveClass('dark')
+      })
+    })
   })
 
-  it('should maintain accessibility during theme transitions', async () => {
-    const { container } = render(<ThemeSwitchingApp />)
+  describe('Cross-Component Theme Integration', () => {
+    it('should apply theme to all UI components consistently', () => {
+      localStorage.setItem('theme', 'dark')
 
-    // Test initial accessibility
-    const results1 = await axe(container)
-    expect(results1).toHaveNoViolations()
+      render(
+        <TestApp>
+          <div data-testid="app-container">
+            <StockCard stock={mockStock} />
+            <PriceDisplay 
+              currentPrice={mockStock.current_price}
+              previousPrice={mockStock.previous_close}
+              currency="JPY"
+            />
+          </div>
+        </TestApp>
+      )
 
-    const themeToggle = screen.getByTestId('theme-toggle')
+      // Check StockCard theming
+      const card = screen.getByTestId('stock-card')
+      expect(card).toHaveClass('dark:bg-secondary-800')
+      expect(card).toHaveClass('dark:text-white')
 
-    // Switch theme and test again
-    act(() => {
-      fireEvent.click(themeToggle)
+      // Check PriceDisplay theming
+      const priceContainer = screen.getByTestId('price-display-container')
+      expect(priceContainer).toHaveClass('dark:text-white')
     })
 
-    const results2 = await axe(container)
-    expect(results2).toHaveNoViolations()
+    it('should handle theme transitions smoothly', async () => {
+      render(
+        <TestApp>
+          <button data-testid="theme-toggle" onClick={() => {
+            const themeContext = require('../../src/contexts/ThemeContext')
+            themeContext.toggleTheme()
+          }}>
+            Toggle Theme
+          </button>
+          <StockCard stock={mockStock} />
+          <PriceDisplay 
+            currentPrice={mockStock.current_price}
+            currency="JPY"
+          />
+        </TestApp>
+      )
+
+      const toggleButton = screen.getByTestId('theme-toggle')
+      const card = screen.getByTestId('stock-card')
+      const priceContainer = screen.getByTestId('price-display-container')
+
+      // Check transition classes are applied
+      expect(card).toHaveClass('transition-colors')
+      expect(priceContainer).toHaveClass('transition-colors')
+
+      await act(async () => {
+        fireEvent.click(toggleButton)
+      })
+
+      await waitFor(() => {
+        expect(document.documentElement).toHaveClass('dark')
+        expect(card).toHaveClass('dark:bg-secondary-800')
+        expect(priceContainer).toHaveClass('dark:text-white')
+      })
+    })
   })
 
-  it('should work with keyboard navigation', async () => {
-    render(<ThemeSwitchingApp />)
+  describe('Theme with Accessibility Integration', () => {
+    it('should work with high contrast mode', () => {
+      localStorage.setItem('theme', 'dark')
+      localStorage.setItem('accessibility-high-contrast', 'true')
 
-    const themeToggle = screen.getByTestId('theme-toggle')
-    const container = screen.getByTestId('app-container')
+      render(
+        <TestApp>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
 
-    // Focus on theme toggle
-    act(() => {
-      themeToggle.focus()
+      const card = screen.getByTestId('stock-card')
+      expect(card).toHaveClass('high-contrast')
+      expect(card).toHaveClass('dark:bg-secondary-800')
     })
 
-    expect(themeToggle).toHaveFocus()
+    it('should respect reduced motion in theme transitions', async () => {
+      localStorage.setItem('accessibility-reduced-motion', 'true')
 
-    // Activate with Enter
-    act(() => {
-      fireEvent.keyDown(themeToggle, { key: 'Enter' })
+      render(
+        <TestApp>
+          <button data-testid="theme-toggle" onClick={() => {
+            const themeContext = require('../../src/contexts/ThemeContext')
+            themeContext.toggleTheme()
+          }}>
+            Toggle Theme
+          </button>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
+
+      const toggleButton = screen.getByTestId('theme-toggle')
+      const card = screen.getByTestId('stock-card')
+
+      expect(card).toHaveClass('motion-reduce:transition-none')
+
+      await act(async () => {
+        fireEvent.click(toggleButton)
+      })
+
+      // Theme should still switch, but without animations
+      await waitFor(() => {
+        expect(document.documentElement).toHaveClass('dark')
+      })
     })
-
-    expect(container).toHaveClass('dark')
   })
 
-  it('should provide proper ARIA attributes', async () => {
-    render(<ThemeSwitchingApp />)
+  describe('Theme Keyboard Shortcuts', () => {
+    it('should toggle theme with Ctrl+Shift+T', async () => {
+      render(
+        <TestApp>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
 
-    const themeToggle = screen.getByTestId('theme-toggle')
+      await act(async () => {
+        fireEvent.keyDown(document, { 
+          key: 'T', 
+          ctrlKey: true, 
+          shiftKey: true,
+          code: 'KeyT'
+        })
+      })
 
-    expect(themeToggle).toHaveAttribute('aria-label', expect.stringContaining('テーマ'))
-    expect(themeToggle).toHaveAttribute('role', 'switch')
-  })
-
-  it('should handle reduced motion during theme transitions', async () => {
-    // Mock reduced motion preference
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: vi.fn().mockImplementation(query => {
-        if (query === '(prefers-reduced-motion: reduce)') {
-          return { matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() }
-        }
-        return { matches: false, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() }
-      }),
+      await waitFor(() => {
+        expect(document.documentElement).toHaveClass('dark')
+      })
     })
 
-    render(<ThemeSwitchingApp />)
+    it('should handle keyboard shortcuts consistently', async () => {
+      render(
+        <TestApp>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
 
-    const container = screen.getByTestId('app-container')
-    expect(container).toHaveClass('motion-reduce:transition-none')
+      // First shortcut press
+      await act(async () => {
+        fireEvent.keyDown(document, { 
+          key: 'T', 
+          ctrlKey: true, 
+          shiftKey: true 
+        })
+      })
+
+      await waitFor(() => {
+        expect(document.documentElement).toHaveClass('dark')
+      })
+
+      // Second shortcut press
+      await act(async () => {
+        fireEvent.keyDown(document, { 
+          key: 'T', 
+          ctrlKey: true, 
+          shiftKey: true 
+        })
+      })
+
+      await waitFor(() => {
+        expect(document.documentElement).not.toHaveClass('dark')
+      })
+    })
+  })
+
+  describe('Theme Error Handling', () => {
+    it('should handle corrupted localStorage theme data', () => {
+      localStorage.setItem('theme', 'invalid-theme')
+
+      render(
+        <TestApp>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
+
+      // Should fallback to system preference or light theme
+      expect(document.documentElement).not.toHaveClass('dark')
+    })
+
+    it('should handle missing localStorage gracefully', () => {
+      const originalLocalStorage = window.localStorage
+      Object.defineProperty(window, 'localStorage', {
+        value: null,
+        writable: true
+      })
+
+      render(
+        <TestApp>
+          <StockCard stock={mockStock} />
+        </TestApp>
+      )
+
+      // Should work without localStorage
+      const card = screen.getByTestId('stock-card')
+      expect(card).toBeInTheDocument()
+
+      // Restore localStorage
+      Object.defineProperty(window, 'localStorage', {
+        value: originalLocalStorage,
+        writable: true
+      })
+    })
+
+    it('should handle theme context errors gracefully', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      // Component outside ThemeProvider should handle gracefully
+      render(<StockCard stock={mockStock} />)
+
+      const card = screen.getByTestId('stock-card')
+      expect(card).toBeInTheDocument()
+
+      consoleSpy.mockRestore()
+    })
   })
 })
