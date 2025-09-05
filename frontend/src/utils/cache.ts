@@ -4,7 +4,8 @@
  * @returns A new object with sorted keys.
  */
 function sortObjectKeys(obj: any): any {
-  if (obj === null || typeof obj !== 'object') {
+  // Date オブジェクトなどの特殊なオブジェクトをそのまま返す
+  if (obj === null || typeof obj !== 'object' || Object.prototype.toString.call(obj) !== '[object Object]') {
     return obj;
   }
 
