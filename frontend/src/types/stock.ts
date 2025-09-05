@@ -356,8 +356,9 @@ export function isApiError(obj: unknown): obj is { error: APIError } {
 
   // オプションプロパティのチェックを配列と every を使って行う
   const optionalProperties: (keyof APIError)[] = ['type', 'request_id', 'timestamp', 'path'];
-  const areOptionalPropertiesValid = optionalProperties.every(prop => {
-    return error[prop] === undefined || typeof error[prop] === 'string';
+  const areOptionalPropertiesValid = optionalProperties.every((prop): boolean => {
+    const value = error[prop];
+    return value === undefined || typeof value === 'string';
   });
 
   return areOptionalPropertiesValid;
