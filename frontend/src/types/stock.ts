@@ -341,10 +341,16 @@ export function isApiError(obj: unknown): obj is { error: APIError } {
   if (error === null || typeof error !== 'object') {
     return false;
   }
+  // APIError の各プロパティをチェック
   return (
     'code' in error &&
-    'message' in error &&
     typeof error.code === 'number' &&
-    typeof error.message === 'string'
+    'message' in error &&
+    typeof error.message === 'string' &&
+    (error.type === undefined || typeof error.type === 'string') &&
+    (error.request_id === undefined || typeof error.request_id === 'string') &&
+    (error.timestamp === undefined || typeof error.timestamp === 'string') &&
+    (error.path === undefined || typeof error.path === 'string')
+    // details は any 型なので、型チェックは省略
   );
 }
