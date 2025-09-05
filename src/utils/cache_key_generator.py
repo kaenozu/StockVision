@@ -7,6 +7,7 @@ and ensure consistent cache key generation across the application.
 
 import hashlib
 import json
+import urllib.parse
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
 from datetime import datetime
@@ -192,7 +193,9 @@ class CacheKeyGenerator:
         elif isinstance(value, float):
             return f"float:{value}"
         elif isinstance(value, str):
-            return f"str:{value}"
+            # URL encode the string to escape delimiters and special characters
+            encoded_value = urllib.parse.quote(value, safe='')
+            return f"str:{encoded_value}"
         elif isinstance(value, (list, tuple)):
             # Sort lists for deterministic output (if possible)
             try:
