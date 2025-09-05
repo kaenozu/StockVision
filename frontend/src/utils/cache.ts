@@ -11,7 +11,7 @@
 export function generateCacheKey(prefix: string, params: Record<string, any>): string {
   const sortedKeys = Object.keys(params).sort();
   const paramString = sortedKeys
-    .map(key => `${key}=${String(params[key])}`)
+    .map(key => `${key}=${JSON.stringify(params[key])}`)
     .join('&');
   return `${prefix}:${paramString}`;
 }
