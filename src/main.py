@@ -84,7 +84,12 @@ def get_db():
         yield session
 
 @api_router.get("/health", tags=["Health"])
-async def health_check(db: Session = Depends(get_db)):
+async def health_check():
+    """Simple health check endpoint."""
+    return {"status": "ok"}
+
+@api_router.get("/status", tags=["Health"])
+async def status_check(db: Session = Depends(get_db)):
     """Health check endpoint with database connectivity."""
     try:
         # データベース接続テスト
