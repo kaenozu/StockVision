@@ -11,10 +11,9 @@ import {
   CurrentPriceResponse,
   PriceHistoryItem,
   AsyncState,
-  LoadingState,
   DEFAULT_DAYS_HISTORY
 } from '../types/stock'
-import { stockApi, StockApiError, ValidationError } from '../services/stockApi'
+import { stockApi, ValidationError } from '../services/stockApi'
 import { validateStockDataResponse } from '../utils/validation'
 import { formatErrorMessage } from '../utils/formatters'
 
@@ -281,7 +280,7 @@ export function useStockCache() {
     ttl: number
   }>>(new Map())
 
-  const getCachedData = useCallback((stockCode: string, ttlMinutes: number = 5): StockData | null => {
+  const getCachedData = useCallback((stockCode: string): StockData | null => {
     const cached = cache.get(stockCode)
     if (!cached) return null
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '../test-utils'
 import { axe, toHaveNoViolations } from 'jest-axe'
 
 // Import the context that doesn't exist yet - this MUST fail

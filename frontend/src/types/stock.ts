@@ -210,7 +210,7 @@ export function isValidStockCode(code: string): code is string {
   return STOCK_CODE_PATTERN.test(code)
 }
 
-export function isStockData(obj: any): obj is StockData {
+export function isStockData(obj: unknown): obj is StockData {
   return (
     obj &&
     typeof obj.stock_code === 'string' &&
@@ -223,7 +223,7 @@ export function isStockData(obj: any): obj is StockData {
   )
 }
 
-export function isCurrentPriceResponse(obj: any): obj is CurrentPriceResponse {
+export function isCurrentPriceResponse(obj: unknown): obj is CurrentPriceResponse {
   // Debug logging
   console.log('Validating CurrentPriceResponse:', obj);
   
@@ -276,7 +276,7 @@ export function isCurrentPriceResponse(obj: any): obj is CurrentPriceResponse {
   return true;
 }
 
-export function isPriceHistoryItem(obj: any): obj is PriceHistoryItem {
+export function isPriceHistoryItem(obj: unknown): obj is PriceHistoryItem {
   return (
     obj &&
     typeof obj.date === 'string' &&
@@ -294,7 +294,7 @@ export function isPriceHistoryItem(obj: any): obj is PriceHistoryItem {
   )
 }
 
-export function isWatchlistItemAPI(obj: any): obj is WatchlistItemAPI {
+export function isWatchlistItemAPI(obj: unknown): obj is WatchlistItemAPI {
   return (
     obj &&
     typeof obj.stock_code === 'string' &&

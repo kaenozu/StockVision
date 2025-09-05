@@ -3,8 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { axe, toHaveNoViolations } from 'jest-axe'
 
 // Import the component that doesn't exist yet - this MUST fail
-import { VisualIndicator } from '../../src/components/enhanced/VisualIndicator'
-import { VisualIndicatorProps } from '../../src/contexts/ResponsiveContext'
+import { VisualIndicator } from '../../src/components/UI/VisualIndicator'
 
 expect.extend(toHaveNoViolations)
 

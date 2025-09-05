@@ -12,6 +12,8 @@ import { LoadingLayout, ErrorBoundaryLayout } from './components/layout/Layout'
 import HomePage from './pages/HomePage'
 import StockDetailPage from './pages/StockDetailPage'
 import WatchlistPage from './pages/WatchlistPage'
+import SearchPage from './pages/SearchPage'
+import SettingsPage from './pages/SettingsPage'
 import DemoPage from './pages/DemoPage'
 
 // Error Boundary Component
@@ -111,6 +113,8 @@ function App() {
               <Route index element={<HomePage />} />
               <Route path="stock/:stockCode" element={<StockDetailPage />} />
               <Route path="watchlist" element={<WatchlistPage />} />
+              <Route path="search" element={<SearchPage />} />
+              <Route path="settings" element={<SettingsPage />} />
               
               {/* Lazy Loaded Routes */}
               <Route 

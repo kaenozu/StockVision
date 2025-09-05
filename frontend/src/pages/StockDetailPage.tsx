@@ -9,18 +9,22 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useStockInfo } from '../hooks/useStock'
 import { useWatchlistItem } from '../hooks/useWatchlist'
+import { usePersistentViewHistory } from '../hooks/usePersistentState'
 import StockCard from '../components/stock/StockCard'
 import PriceChart from '../components/stock/PriceChart'
+import { TechnicalChart } from '../components/stock/TechnicalChart'
 import Button, { IconButton } from '../components/ui/Button'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import ErrorMessage from '../components/ui/ErrorMessage'
 import { ChartConfig, ChartTimeframe } from '../types/stock'
 import { formatPrice, formatTimestamp } from '../utils/formatters'
+import { useTheme } from '../contexts/ThemeContext'
 
 export function StockDetailPage() {
   const { stockCode } = useParams<{ stockCode: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { theme } = useTheme()
   
   const useRealData = searchParams.get('real') === 'true'
   const [chartConfig, setChartConfig] = useState<ChartConfig>({
@@ -29,6 +33,7 @@ export function StockDetailPage() {
     show_volume: false,
     theme: 'light'
   })
+  const [chartType, setChartType] = useState<'basic' | 'technical'>('basic')
 
   // Get days from timeframe
   const getDaysFromTimeframe = (timeframe: ChartTimeframe): number => {
@@ -52,6 +57,14 @@ export function StockDetailPage() {
   )
 
   const watchlistItem = useWatchlistItem(stockCode || '')
+  const { addToHistory } = usePersistentViewHistory()
+
+  // 履歴に追加
+  useEffect(() => {
+    if (stockCode && stockInfo.stockData) {
+      addToHistory(stockCode, stockInfo.stockData.company_name)
+    }
+  }, [stockCode, stockInfo.stockData, addToHistory])
 
   // Handle chart configuration changes
   const handleChartConfigChange = (newConfig: ChartConfig) => {
@@ -295,18 +308,59 @@ export function StockDetailPage() {
             </div>
           </div>
 
-          {/* Price Chart */}
-          <div className="lg:col-span-2">
-            <PriceChart
-              data={stockInfo.priceHistory || []}
-              loading={stockInfo.individual.priceHistory.isLoading}
-              error={stockInfo.individual.priceHistory.error}
-              config={chartConfig}
-              onConfigChange={handleChartConfigChange}
-              onRefresh={stockInfo.individual.priceHistory.refresh}
-              stockCode={stockCode}
-              height={500}
-            />
+          {/* Chart Section */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Chart Type Toggle */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setChartType('basic')}
+                  className={`px-4 py-2 text-sm rounded-md transition-colors ${
+                    chartType === 'basic'
+                      ? 'bg-blue-600 text-white'
+                      : theme === 'dark'
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  基本チャート
+                </button>
+                <button
+                  onClick={() => setChartType('technical')}
+                  className={`px-4 py-2 text-sm rounded-md transition-colors ${
+                    chartType === 'technical'
+                      ? 'bg-blue-600 text-white'
+                      : theme === 'dark'
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  テクニカル分析
+                </button>
+              </div>
+            </div>
+
+            {/* Price Chart */}
+            {chartType === 'basic' ? (
+              <PriceChart
+                data={stockInfo.priceHistory || []}
+                loading={stockInfo.individual.priceHistory.isLoading}
+                error={stockInfo.individual.priceHistory.error}
+                config={chartConfig}
+                onConfigChange={handleChartConfigChange}
+                onRefresh={stockInfo.individual.priceHistory.refresh}
+                stockCode={stockCode}
+                height={500}
+              />
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <h3 className="text-lg font-semibold mb-4">テクニカル分析チャート</h3>
+                <TechnicalChart
+                  data={stockInfo.priceHistory || []}
+                  height={500}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

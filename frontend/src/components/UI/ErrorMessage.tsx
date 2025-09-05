@@ -195,12 +195,10 @@ export function InlineErrorMessage({
 export function NetworkErrorMessage({
   error,
   onRetry,
-  showDetails = false,
   className = ''
 }: {
   error: string | Error | null
   onRetry?: () => void
-  showDetails?: boolean
   className?: string
 }) {
   const errorMessage = getErrorMessage(error)

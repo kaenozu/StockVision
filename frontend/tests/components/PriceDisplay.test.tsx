@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { axe, toHaveNoViolations } from 'jest-axe'
 
 // Import the component that doesn't exist yet - this MUST fail
-import { PriceDisplay } from '../../src/components/enhanced/PriceDisplay'
+import { PriceDisplay } from '../../src/components/UI/PriceDisplay'
 
 expect.extend(toHaveNoViolations)
 

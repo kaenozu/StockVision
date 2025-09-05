@@ -1,5 +1,4 @@
 import React from 'react'
-import { useTheme } from '../../contexts/ThemeContext'
 import { useAccessibility } from '../../contexts/AccessibilityContext'
 import { useResponsive } from '../../contexts/ResponsiveContext'
 
@@ -275,9 +274,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   'data-testid': testId,
   ...props
 }) => {
-  const { isDark } = useTheme()
   const { announce } = useAccessibility()
-  const { isMobile } = useResponsive()
   
   // Announce loading state changes
   React.useEffect(() => {

@@ -5,7 +5,7 @@ import { axe, toHaveNoViolations } from 'jest-axe'
 // Import contexts that don't exist yet - this MUST fail
 import { AccessibilityProvider } from '../../src/contexts/AccessibilityContext'
 import { ThemeProvider } from '../../src/contexts/ThemeContext'
-import { StockCard } from '../../src/components/StockCard'
+import { EnhancedStockCard as StockCard } from '../../src/components/stock/EnhancedStockCard'
 
 expect.extend(toHaveNoViolations)
 

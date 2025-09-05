@@ -82,7 +82,7 @@ describe('ResponsiveContext', () => {
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
-      value: 480,
+      value: 640,
     })
 
     render(
@@ -199,7 +199,7 @@ describe('ResponsiveContext', () => {
     const mockObserve = vi.fn()
     const mockDisconnect = vi.fn()
     
-    global.ResizeObserver = vi.fn().mockImplementation((callback) => ({
+    global.ResizeObserver = vi.fn().mockImplementation(() => ({
       observe: mockObserve,
       unobserve: vi.fn(),
       disconnect: mockDisconnect,

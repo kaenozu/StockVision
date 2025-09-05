@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { axe, toHaveNoViolations } from 'jest-axe'
 
 // Import enhanced StockCard that doesn't exist yet - this MUST fail
-import { StockCard } from '../../src/components/StockCard'
+import { EnhancedStockCard as StockCard } from '../../src/components/stock/EnhancedStockCard'
 
 expect.extend(toHaveNoViolations)
 
@@ -41,8 +41,13 @@ vi.mock('../../src/contexts/ResponsiveContext', () => ({
   useResponsive: () => mockResponsiveContext
 }))
 
-vi.mock('../../src/contexts/AccessibilityContext', () => ({
-  useAccessibility: () => mockAccessibilityContext
+vi.mock('../../src/hooks/useFocusManagement', () => ({
+  useFocusManagement: () => ({
+    focusElement: vi.fn(),
+    trapFocus: vi.fn(),
+    focusVisible: false,
+    keyboardNavigation: mockAccessibilityContext.keyboardNavigation,
+  }),
 }))
 
 describe('StockCard Enhanced', () => {

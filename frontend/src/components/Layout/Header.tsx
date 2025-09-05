@@ -8,7 +8,7 @@
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { CompactStockSearch } from '../stock/StockSearch'
-import Button, { IconButton } from '../ui/Button'
+import { IconButton } from '../ui/Button'
 
 interface HeaderProps {
   onSearch?: (stockCode: string, useRealData: boolean) => void
