@@ -47,7 +47,11 @@ interface StockApiConfig {
  * Default configuration for the API client
  */
 const DEFAULT_CONFIG: StockApiConfig = {
-  baseURL: process.env.NODE_ENV === 'test' ? 'http://localhost:8001' : 'http://localhost:8080',
+  baseURL: process.env.NODE_ENV === 'production' 
+    ? '/api' 
+    : process.env.NODE_ENV === 'test' 
+    ? 'http://localhost:8001/api' 
+    : 'http://localhost:8080/api',
   timeout: 10000, // 10 seconds
   retries: 3,
   retryDelay: 1000 // 1 second
@@ -211,40 +215,33 @@ export class StockApiClient {
    * GET /stocks/{code} - Get basic stock information
    */
   async getStockData(stockCode: string, useRealData = true): Promise<StockData> {
-    console.log(`[StockAPI DEBUG] getStockData called with stockCode=${stockCode}, useRealData=${useRealData}`)
-    console.log(`[StockAPI DEBUG] baseURL=${this.client.defaults.baseURL}`)
-    
     this.validateStockCode(stockCode)
 
-    // TEMPORARILY DISABLE CACHE FOR DEBUGGING
-    // const cacheKey = `stock_${stockCode}_${useRealData}`
-    // try {
-    //   const cached = stockDataCache.get<StockData>(cacheKey)
-    //   if (cached) {
-    //     console.log(`[StockAPI] Using cached data for ${stockCode}`)
-    //     return cached
-    //   }
-    // } catch (error) {
-    //   logCacheError(error as Error, {
-    //     operation: 'get',
-    //     key: cacheKey,
-    //     function: 'getStockData'
-    //   })
-    // }
+    // Check cache first
+    const cacheKey = `stock_${stockCode}_${useRealData}`
+    try {
+      const cached = stockDataCache.get<StockData>(cacheKey)
+      if (cached) {
+        console.log(`[StockAPI] Using cached data for ${stockCode}`)
+        return cached
+      }
+    } catch (error) {
+      logCacheError(error as Error, {
+        operation: 'get',
+        key: cacheKey,
+        function: 'getStockData'
+      })
+    }
 
     const params: Record<string, any> = {}
     if (useRealData) {
       params.use_real_data = true
     }
 
-    console.log(`[StockAPI DEBUG] Making request to /stocks/${stockCode} with params:`, params)
-
     const response = await this.client.get<StockData>(
       `/stocks/${stockCode}`,
       { params }
     )
-    
-    console.log(`[StockAPI DEBUG] Response received:`, response.data)
 
     const stockData = this.adjustPriceToRealistic(response.data)
 
@@ -253,16 +250,16 @@ export class StockApiClient {
       throw new ValidationError('Invalid data type in StockData response')
     }
 
-    // TEMPORARILY DISABLE CACHE FOR DEBUGGING
-    // try {
-    //   stockDataCache.set(cacheKey, stockData)
-    // } catch (error) {
-    //   logCacheError(error as Error, {
-    //     operation: 'set',
-    //     key: cacheKey,
-    //     function: 'getStockData'
-    //   })
-    // }
+    // Cache the result
+    try {
+      stockDataCache.set(cacheKey, stockData)
+    } catch (error) {
+      logCacheError(error as Error, {
+        operation: 'set',
+        key: cacheKey,
+        function: 'getStockData'
+      })
+    }
 
     return stockData
   }
@@ -473,7 +470,7 @@ export class StockApiClient {
         params.use_real_data = useRealData
       }
 
-      const response = await this.client.get<any>('/api/recommended-stocks', { params })
+      const response = await this.client.get<any>('/recommended-stocks', { params })
       const responseData = response.data
 
       // Handle different response formats
@@ -544,7 +541,7 @@ export class StockApiClient {
       params.use_real_data = useRealData
     }
 
-    const response = await this.client.get<any[]>('/api/trading-recommendations', { params })
+    const response = await this.client.get<any[]>('/trading-recommendations', { params })
     const recommendations = response.data
 
     // Validate response is array
@@ -562,7 +559,6 @@ export class StockApiClient {
    * Adjust current price data to realistic values
    */
   private adjustCurrentPriceToRealistic(currentPriceData: CurrentPriceResponse): CurrentPriceResponse {
-    console.log(`[DEBUG] CURRENT PRICE ADJUSTMENT START - Original:`, currentPriceData)
     const stockCode = currentPriceData.stock_code
     let realisticBasePrice: number
     
@@ -603,7 +599,6 @@ export class StockApiClient {
       price_change_pct: Math.round(priceChangePct * 100) / 100,
     }
     
-    console.log(`[DEBUG] CURRENT PRICE ADJUSTMENT END - Adjusted:`, adjustedCurrentPrice)
     return adjustedCurrentPrice
   }
 
@@ -611,7 +606,6 @@ export class StockApiClient {
    * Adjust mock price data to realistic values based on stock code
    */
   private adjustPriceToRealistic(stockData: StockData): StockData {
-    console.log(`[DEBUG] PRICE ADJUSTMENT START - Original data:`, stockData)
     const stockCode = stockData.stock_code
     let realisticBasePrice: number
     let companyName: string
@@ -665,7 +659,6 @@ export class StockApiClient {
       market_cap: currentPrice * 1000000000 // Simplified market cap
     }
     
-    console.log(`[DEBUG] PRICE ADJUSTMENT END - Adjusted data:`, adjustedData)
     return adjustedData
   }
 
