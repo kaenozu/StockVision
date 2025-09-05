@@ -101,14 +101,13 @@ export class StockApiClient {
       }
     })
 
-    // Setup request interceptor
+    // Setup request interceptor for logging in development
     this.client.interceptors.request.use(
       (config) => {
-        const fullUrl = config.baseURL + config.url
-        console.log(`[StockAPI] ${config.method?.toUpperCase()} ${fullUrl}`)
-        console.log(`[StockAPI] Base URL: ${config.baseURL}`)
-        console.log(`[StockAPI] Request URL: ${config.url}`)
-        console.log(`[StockAPI] Params:`, config.params)
+        if (process.env.NODE_ENV === 'development') {
+          const fullUrl = `${config.baseURL}${config.url}`
+          console.log(`[StockAPI] ${config.method?.toUpperCase()} ${fullUrl}`)
+        }
         return config
       },
       (error) => Promise.reject(error)
@@ -117,7 +116,9 @@ export class StockApiClient {
     // Setup response interceptor
     this.client.interceptors.response.use(
       (response) => {
-        console.log(`[StockAPI] Response ${response.status} for ${response.config.url}`)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[StockAPI] Response ${response.status} for ${response.config.url}`)
+        }
         return response
       },
       (error) => this.handleHttpError(error)
@@ -125,25 +126,76 @@ export class StockApiClient {
   }
 
   /**
+   * Retry mechanism with exponential backoff
+   */
+  private async retryRequest<T>(
+    requestFn: () => Promise<T>,
+    maxRetries: number = this.config.retries,
+    baseDelay: number = this.config.retryDelay
+  ): Promise<T> {
+    let lastError: any
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await requestFn()
+      } catch (error) {
+        lastError = error
+        
+        // Don't retry on client errors (4xx) or if max retries reached
+        if (attempt >= maxRetries || this.isClientError(error)) {
+          break
+        }
+
+        // Exponential backoff with jitter
+        const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000
+        await this.sleep(delay)
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[StockAPI] Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`)
+        }
+      }
+    }
+
+    throw lastError
+  }
+
+  /**
+   * Check if error is a client error (4xx) that shouldn't be retried
+   */
+  private isClientError(error: any): boolean {
+    return error instanceof StockApiError && error.status >= 400 && error.status < 500
+  }
+
+  /**
+   * Sleep utility for retry delays
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  }
+
+  /**
    * Handle HTTP errors and transform them to StockApiError
    */
   private handleHttpError(error: AxiosError): Promise<never> {
-    console.error('[StockAPI] HTTP Error Details:', {
-      message: error.message,
-      code: error.code,
-      config: {
-        url: error.config?.url,
-        baseURL: error.config?.baseURL,
-        method: error.config?.method,
-        fullURL: `${error.config?.baseURL || ''}${error.config?.url || ''}`
-      },
-      request: error.request ? 'Request was made' : 'Request was not made',
-      response: error.response ? {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data
-      } : 'No response received'
-    })
+    // Log detailed error information in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[StockAPI] HTTP Error Details:', {
+        message: error.message,
+        code: error.code,
+        config: {
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+          method: error.config?.method,
+          fullURL: `${error.config?.baseURL || ''}${error.config?.url || ''}`
+        },
+        request: error.request ? 'Request was made' : 'Request was not made',
+        response: error.response ? {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        } : 'No response received'
+      })
+    }
     
     const stockApiError = (() => {
       if (error.response) {
@@ -237,17 +289,21 @@ export class StockApiClient {
       params.use_real_data = true
     }
 
-    const response = await this.client.get<StockData>(
-      `/stocks/${stockCode}`,
-      { params }
-    )
+    const stockData = await this.retryRequest(async () => {
+      const response = await this.client.get<StockData>(
+        `/stocks/${stockCode}`,
+        { params }
+      )
 
-    const stockData = this.adjustPriceToRealistic(response.data)
+      const adjustedData = this.adjustPriceToRealistic(response.data)
 
-    // Validate response data structure
-    if (!isStockData(stockData)) {
-      throw new ValidationError('Invalid data type in StockData response')
-    }
+      // Validate response data structure
+      if (!isStockData(adjustedData)) {
+        throw new ValidationError('Invalid data type in StockData response')
+      }
+
+      return adjustedData
+    })
 
     // Cache the result
     try {
@@ -274,19 +330,21 @@ export class StockApiClient {
       params.use_real_data = true
     }
 
-    const response = await this.client.get<CurrentPriceResponse>(
-      `/stocks/${stockCode}/current`,
-      { params }
-    )
+    return await this.retryRequest(async () => {
+      const response = await this.client.get<CurrentPriceResponse>(
+        `/stocks/${stockCode}/current`,
+        { params }
+      )
 
-    const currentPrice = this.adjustCurrentPriceToRealistic(response.data)
+      const currentPrice = this.adjustCurrentPriceToRealistic(response.data)
 
-    // Validate response data structure
-    if (!isCurrentPriceResponse(currentPrice)) {
-      throw new ValidationError('Invalid data type in CurrentPriceResponse')
-    }
+      // Validate response data structure
+      if (!isCurrentPriceResponse(currentPrice)) {
+        throw new ValidationError('Invalid data type in CurrentPriceResponse')
+      }
 
-    return currentPrice
+      return currentPrice
+    })
   }
 
   /**
