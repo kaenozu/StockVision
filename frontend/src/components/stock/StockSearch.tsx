@@ -45,7 +45,7 @@ export function StockSearch({
 
   const [touched, setTouched] = useState(false)
 
-  const { searchQuery, setSearchQuery, isSearching } = useStockSearch(300)
+  const { setSearchQuery, isSearching } = useStockSearch(300)
 
   // Validate form on change
   const validateForm = useCallback((data: StockSearchFormData) => {

@@ -22,7 +22,7 @@ export function WatchlistPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [addLoading, setAddLoading] = useState(false)
 
-  const handleAddToWatchlist = async (stockCode: string, useRealData: boolean) => {
+  const handleAddToWatchlist = async (stockCode: string) => {
     setAddLoading(true)
     try {
       await watchlist.addToWatchlist({ stock_code: stockCode })

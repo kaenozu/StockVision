@@ -149,9 +149,9 @@ describe('Theme Switching Integration', () => {
   })
 
   it('should handle system theme changes when in system mode', async () => {
-    let matchMediaCallback: ((e: any) => void) | null = null
+    let matchMediaCallback: ((e: MediaQueryListEvent) => void) | null = null
     
-    const mockAddEventListener = vi.fn((event, callback) => {
+    const mockAddEventListener = vi.fn((event, callback: (e: MediaQueryListEvent) => void) => {
       if (event === 'change') {
         matchMediaCallback = callback
       }

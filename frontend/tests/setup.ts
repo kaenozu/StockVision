@@ -28,23 +28,20 @@ vi.mock('axios', () => {
 // Mock window.matchMedia for responsive context tests
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => {
-    const mockMediaQueryList = {
-      matches: query === '(prefers-color-scheme: dark)' ? false : query.includes('min-width'),
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }
-    return mockMediaQueryList
-  }),
+  value: vi.fn().mockImplementation((query) => ({
+    matches: query === '(prefers-color-scheme: dark)' || query.includes('min-width'),
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
 })
 
 // Mock ResizeObserver for responsive tests
-global.ResizeObserver = vi.fn().mockImplementation((callback) => ({
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
@@ -67,7 +64,7 @@ beforeEach(() => {
   
   // Reset matchMedia mock
   window.matchMedia = vi.fn().mockImplementation(query => ({
-    matches: query === '(prefers-color-scheme: dark)' ? false : query.includes('min-width'),
+    matches: query === '(prefers-color-scheme: dark)' || query.includes('min-width'),
     media: query,
     onchange: null,
     addListener: vi.fn(),
@@ -78,7 +75,7 @@ beforeEach(() => {
   }))
   
   // Reset ResizeObserver mock
-  global.ResizeObserver = vi.fn().mockImplementation((callback) => ({
+  global.ResizeObserver = vi.fn().mockImplementation(() => ({
     observe: vi.fn(),
     unobserve: vi.fn(),
     disconnect: vi.fn(),

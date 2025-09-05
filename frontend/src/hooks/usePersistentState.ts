@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useLocalStorage } from './useLocalStorage'
+import { WatchlistItemAPI } from '../types/stock'
 
 /**
  * usePersistentWatchlist hook
  * Manages watchlist state with local persistence
  */
 export function usePersistentWatchlist() {
-  const [localWatchlist, setLocalWatchlist] = useLocalStorage<any[]>('watchlist', [])
+  const [localWatchlist, setLocalWatchlist] = useLocalStorage<WatchlistItemAPI[]>('watchlist', [])
   const [lastSync, setLastSync] = useLocalStorage<number>('watchlist_last_sync', 0)
 
-  const addToLocalWatchlist = useCallback((item: any) => {
+  const addToLocalWatchlist = useCallback((item: WatchlistItemAPI) => {
     setLocalWatchlist(prev => [...prev, { ...item, added_locally: Date.now() }])
     setLastSync(Date.now())
   }, [setLocalWatchlist, setLastSync])
@@ -19,7 +20,7 @@ export function usePersistentWatchlist() {
     setLastSync(Date.now())
   }, [setLocalWatchlist, setLastSync])
 
-  const syncWithServer = useCallback(async (serverWatchlist: any[]) => {
+  const syncWithServer = useCallback(async (serverWatchlist: WatchlistItemAPI[]) => {
     // Merge local changes with server data
     const merged = [...serverWatchlist]
     localWatchlist.forEach(localItem => {

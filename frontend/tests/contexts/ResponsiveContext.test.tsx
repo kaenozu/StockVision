@@ -199,7 +199,7 @@ describe('ResponsiveContext', () => {
     const mockObserve = vi.fn()
     const mockDisconnect = vi.fn()
     
-    global.ResizeObserver = vi.fn().mockImplementation((callback) => ({
+    global.ResizeObserver = vi.fn().mockImplementation(() => ({
       observe: mockObserve,
       unobserve: vi.fn(),
       disconnect: mockDisconnect,

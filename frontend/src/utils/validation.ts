@@ -7,10 +7,8 @@
  */
 
 import {
-  StockData,
-  CurrentPriceResponse, 
+    StockData,
   PriceHistoryItem,
-  WatchlistItemAPI,
   AddWatchlistRequest,
   StockCodeValidation,
   ValidationResult,

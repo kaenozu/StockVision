@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { Line } from 'react-chartjs-2'
 import { useTheme } from '../../contexts/ThemeContext'
 import { PriceHistoryItem } from '../../types/stock'
-import { calculateAllIndicators, TechnicalIndicatorData } from '../../utils/technicalIndicators'
+import { calculateAllIndicators } from '../../utils/technicalIndicators'
 import { formatPrice, formatDateShort } from '../../utils/formatters'
 import {
   Chart as ChartJS,
@@ -241,7 +241,7 @@ export function TechnicalChart({ data, height = 400 }: TechnicalChartProps) {
           borderColor: isDark ? '#374151' : '#D1D5DB',
           borderWidth: 1,
           callbacks: {
-            label: (context: any) => {
+            label: (context: TooltipItem<'line'>) => {
               const label = context.dataset.label || ''
               const value = context.parsed.y
               if (value === null) return ''
@@ -274,7 +274,7 @@ export function TechnicalChart({ data, height = 400 }: TechnicalChartProps) {
           },
           ticks: {
             color: isDark ? '#9CA3AF' : '#6B7280',
-            callback: function(value: any) {
+            callback: function(value: number) {
               if (selectedIndicator === 'rsi') {
                 return `${value}%`
               }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import StockSearch from '../components/stock/StockSearch'
 import { useTheme } from '../contexts/ThemeContext'
 
@@ -55,10 +55,10 @@ export function SearchPage() {
         <h2 className="text-lg font-semibold">人気銘柄</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {popularStocks.map((stock) => (
-            <button
+            <Link
               key={stock.code}
-              onClick={() => handleSearch(stock.code, false)}
-              className={`p-4 rounded-lg border transition-colors text-left ${
+              to={`/stock/${stock.code}`}
+              className={`p-4 rounded-lg border transition-colors text-left block ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700 hover:bg-gray-700'
                   : 'bg-white border-gray-200 hover:bg-gray-50'
@@ -66,7 +66,7 @@ export function SearchPage() {
             >
               <div className="font-semibold">{stock.code}</div>
               <div className="text-sm text-gray-500">{stock.name}</div>
-            </button>
+            </Link>
           ))}
         </div>
       </div>
