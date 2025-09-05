@@ -142,9 +142,9 @@ const VisualIndicator: React.FC<VisualIndicatorProps> = ({
 
       case 'text':
         const symbols = {
-          gain: '‘',
-          loss: '“',
-          neutral: '’',
+          gain: 'â–²',
+          loss: 'â–¼',
+          neutral: 'â”€',
           unknown: '?'
         }
         return (
