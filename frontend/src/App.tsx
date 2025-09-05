@@ -10,11 +10,15 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Layout from './components/layout/Layout'
 import { LoadingLayout, ErrorBoundaryLayout } from './components/layout/Layout'
 import HomePage from './pages/HomePage'
+import SimplifiedHomePage from './pages/SimplifiedHomePage'
 import StockDetailPage from './pages/StockDetailPage'
 import WatchlistPage from './pages/WatchlistPage'
 import SearchPage from './pages/SearchPage'
 import SettingsPage from './pages/SettingsPage'
 import DemoPage from './pages/DemoPage'
+import RecommendedStocksPage from './pages/RecommendedStocksPage'
+import TradingRecommendationsPage from './pages/TradingRecommendationsPage'
+import TestPage from './pages/TestPage'
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
@@ -110,11 +114,22 @@ function App() {
             
             <Route path="/" element={<Layout onSearch={handleGlobalSearch} />}>
               {/* Main Routes */}
-              <Route index element={<HomePage />} />
+              <Route index element={<SimplifiedHomePage />} />
               <Route path="stock/:stockCode" element={<StockDetailPage />} />
+              <Route path="stocks/:stockId/detail" element={<StockDetailPage />} />
               <Route path="watchlist" element={<WatchlistPage />} />
               <Route path="search" element={<SearchPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              
+              {/* Legacy route for complex home page */}
+              <Route path="home-advanced" element={<HomePage />} />
+              
+              {/* New Feature Routes */}
+              <Route path="recommended-stocks" element={<RecommendedStocksPage />} />
+              <Route path="trading-recommendations" element={<TradingRecommendationsPage />} />
+              
+              {/* Test Page for debugging */}
+              <Route path="test" element={<TestPage />} />
               
               {/* Lazy Loaded Routes */}
               <Route 
