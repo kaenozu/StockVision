@@ -11,6 +11,7 @@ from typing import Any, Optional, Callable, Dict, Tuple
 
 from .cache_key_generator import generate_stock_cache_key
 from collections import OrderedDict
+from ..constants import CacheTTL, CacheSize
 
 logger = logging.getLogger(__name__)
 
@@ -18,12 +19,12 @@ logger = logging.getLogger(__name__)
 class TTLCache:
     """Thread-safe TTL (Time To Live) cache with LRU eviction."""
     
-    def __init__(self, maxsize: int = 1000, ttl: float = 300.0):
+    def __init__(self, maxsize: int = CacheSize.DEFAULT_TTL_CACHE, ttl: float = CacheTTL.STOCK_DATA_SHORT):
         """Initialize TTL cache.
         
         Args:
-            maxsize: Maximum number of items to store (default: 1000)
-            ttl: Time to live in seconds (default: 300 = 5 minutes)
+            maxsize: Maximum number of items to store
+            ttl: Time to live in seconds
         """
         self.maxsize = maxsize
         self.ttl = ttl
@@ -100,12 +101,12 @@ class TTLCache:
 
 
 # Global cache instances
-_stock_cache = TTLCache(maxsize=500, ttl=300.0)  # 5 minutes TTL for stock data
-_price_history_cache = TTLCache(maxsize=200, ttl=600.0)  # 10 minutes TTL for price history
-_current_price_cache = TTLCache(maxsize=1000, ttl=60.0)  # 1 minute TTL for current prices
+_stock_cache = TTLCache(maxsize=CacheSize.STOCK_CACHE, ttl=CacheTTL.STOCK_DATA_SHORT)  # Stock data cache
+_price_history_cache = TTLCache(maxsize=200, ttl=CacheTTL.STOCK_HISTORY)  # Price history cache
+_current_price_cache = TTLCache(maxsize=CacheSize.CURRENT_PRICE_CACHE, ttl=CacheTTL.CURRENT_PRICE)  # Current price cache
 
 
-def cache_stock_data(cache_key_func: Optional[Callable] = None, ttl: float = 300.0):
+def cache_stock_data(cache_key_func: Optional[Callable] = None, ttl: float = CacheTTL.STOCK_DATA_SHORT):
     """Decorator to cache stock data responses.
     
     Args:
