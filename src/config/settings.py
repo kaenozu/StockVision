@@ -46,16 +46,14 @@ class MiddlewareConfig(BaseModel):
     # Cache Control Middleware
     cache_control_enabled: bool = Field(default=True, description="Enable Cache Control Middleware")
     
-    # GZip Compression Middleware
-    gzip_enabled: bool = Field(default=True, description="Enable GZip Compression Middleware")
-    gzip_minimum_size: int = Field(default=1024, description="Minimum response size to compress (bytes)")
-    gzip_compresslevel: int = Field(default=6, description="Compression level (1-9, 9 is highest compression)")
+    # Response Compression Middleware
+    response_compression_enabled: bool = Field(default=True, description="Enable Response Compression Middleware")
+    response_compression_min_size: int = Field(default=1024, description="Minimum response size to compress (bytes)")
+    response_compression_gzip_level: int = Field(default=6, description="GZip compression level (1-9, 9 is highest compression)")
+    response_compression_brotli_quality: int = Field(default=4, description="Brotli compression quality (0-11, 11 is highest compression)")
     
     # Performance Metrics Middleware
     performance_metrics_enabled: bool = Field(default=True, description="Enable Performance Metrics Middleware")
-    
-    # Response Compression Middleware (Legacy, kept for backward compatibility)
-    response_compression_enabled: bool = Field(default=False, description="Enable Response Compression Middleware (Legacy)")
 
 
 class AppConfig(BaseModel):
@@ -113,11 +111,11 @@ class AppConfig(BaseModel):
             ),
             middleware=MiddlewareConfig(
                 cache_control_enabled=os.getenv("MIDDLEWARE_CACHE_CONTROL_ENABLED", "true").lower() == "true",
-                gzip_enabled=os.getenv("MIDDLEWARE_GZIP_ENABLED", "true").lower() == "true",
-                gzip_minimum_size=int(os.getenv("MIDDLEWARE_GZIP_MINIMUM_SIZE", "1024")),
-                gzip_compresslevel=int(os.getenv("MIDDLEWARE_GZIP_COMPRESSLEVEL", "6")),
-                performance_metrics_enabled=os.getenv("MIDDLEWARE_PERFORMANCE_METRICS_ENABLED", "true").lower() == "true",
-                response_compression_enabled=os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_ENABLED", "false").lower() == "true"
+                response_compression_enabled=os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_ENABLED", "true").lower() == "true",
+                response_compression_min_size=int(os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_MIN_SIZE", "1024")),
+                response_compression_gzip_level=int(os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_GZIP_LEVEL", "6")),
+                response_compression_brotli_quality=int(os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_BROTLI_QUALITY", "4")),
+                performance_metrics_enabled=os.getenv("MIDDLEWARE_PERFORMANCE_METRICS_ENABLED", "true").lower() == "true"
             )
         )
 
