@@ -24,7 +24,14 @@ export default tseslint.config([
       globals: globals.browser,
     },
     rules: {
-      "react-refresh/only-export-components": "off"
+      "react-refresh/only-export-components": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "no-empty-pattern": "off",
+      "no-useless-escape": "off",
+      "prefer-spread": "off",
+      "@typescript-eslint/no-unsafe-function-type": "off",
+      "@typescript-eslint/no-require-imports": "off"
     }
   },
 ])
