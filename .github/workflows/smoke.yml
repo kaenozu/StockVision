@@ -30,5 +30,9 @@ jobs:
           # Ensure metrics are disabled by default; tests enable as needed
           ENABLE_METRICS: 'false'
         run: |
-          pytest -q tests/unit/test_metrics.py tests/unit/test_metrics_auth.py tests/unit/test_health_endpoints.py
-
+          pytest -q \
+            tests/unit/test_metrics.py \
+            tests/unit/test_metrics_auth.py \
+            tests/unit/test_metrics_ipfilter.py \
+            tests/unit/test_ready_endpoint.py \
+            tests/unit/test_health_endpoints.py

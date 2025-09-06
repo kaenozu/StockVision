@@ -164,7 +164,15 @@ def setup_metrics(app: FastAPI) -> None:
                 return Response(status_code=403)
 
         content = generate_latest()
-        return Response(content=content, media_type=CONTENT_TYPE_LATEST)
+        return Response(
+            content=content,
+            media_type=CONTENT_TYPE_LATEST,
+            headers={
+                "Cache-Control": "no-store",
+                "Pragma": "no-cache",
+                "Vary": "Authorization, X-Forwarded-For",
+            },
+        )
 
 
 def _is_ip_allowed(request: Request, cidrs_csv: str) -> bool:
