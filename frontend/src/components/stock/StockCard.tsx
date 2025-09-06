@@ -170,11 +170,16 @@ export function StockCard({
         {showWatchlistControls && watchlistItem.isInWatchlist && watchlistItem.item && (
           <div className="pt-2 border-t border-gray-200">
             <div className="text-sm text-gray-600">
-              {watchlistItem.item.alert_price && (
+              {(watchlistItem.item.alert_price_high !== null || watchlistItem.item.alert_price_low !== null) && (
                 <div className="flex justify-between">
                   <span>アラート価格:</span>
                   <span className="font-medium">
-                    {formatPrice(watchlistItem.item.alert_price)}
+                    {watchlistItem.item.alert_price_high !== null && (
+                      <span className="text-green-600">⬆️ {formatPrice(watchlistItem.item.alert_price_high)} </span>
+                    )}
+                    {watchlistItem.item.alert_price_low !== null && (
+                      <span className="text-red-600">⬇️ {formatPrice(watchlistItem.item.alert_price_low)}</span>
+                    )}
                   </span>
                 </div>
               )}

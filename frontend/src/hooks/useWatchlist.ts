@@ -259,12 +259,14 @@ export function useWatchlistItem(stockCode: string) {
   const isInWatchlist = watchlist.isInWatchlist(stockCode)
 
   const addToWatchlist = useCallback(async (
-    alertPrice?: number | null,
+    alertPriceHigh?: number | null,
+    alertPriceLow?: number | null,
     notes?: string | null
   ): Promise<boolean> => {
     const request: AddWatchlistRequest = {
       stock_code: stockCode,
-      alert_price: alertPrice || null,
+      alert_price_high: alertPriceHigh || null,
+      alert_price_low: alertPriceLow || null,
       notes: notes || null
     }
 
@@ -276,13 +278,14 @@ export function useWatchlistItem(stockCode: string) {
   }, [stockCode, watchlist])
 
   const toggleWatchlist = useCallback(async (
-    alertPrice?: number | null,
+    alertPriceHigh?: number | null,
+    alertPriceLow?: number | null,
     notes?: string | null
   ): Promise<boolean> => {
     if (isInWatchlist) {
       return removeFromWatchlist()
     } else {
-      return addToWatchlist(alertPrice, notes)
+      return addToWatchlist(alertPriceHigh, alertPriceLow, notes)
     }
   }, [isInWatchlist, addToWatchlist, removeFromWatchlist])
 
