@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -165,6 +166,19 @@ app.include_router(api_router)
 async def root():
     """Root endpoint."""
     return {"message": "Stock Test API is running", "version": "1.0.0"}
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def get_openapi_json():
+    """OpenAPIスキーマをJSON形式で返すエンドポイント"""
+    return get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        servers=app.servers,
+        tags=app.openapi_tags,
+    )
 
 
 if __name__ == "__main__":
