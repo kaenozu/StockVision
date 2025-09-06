@@ -108,7 +108,23 @@ def setup_metrics(app: FastAPI) -> None:
 
     # Expose /metrics endpoint
     @app.get("/metrics", include_in_schema=False)
-    async def metrics_endpoint() -> Response:
+    async def metrics_endpoint(request: Request) -> Response:
+        # Optional Basic Auth
+        basic_auth = os.getenv("METRICS_BASIC_AUTH", "").strip()
+        if basic_auth:
+            # Expect header: Authorization: Basic base64(user:pass)
+            auth = request.headers.get("authorization", "")
+            if not auth.lower().startswith("basic "):
+                return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="metrics"'})
+            try:
+                import base64
+
+                encoded = auth.split(" ", 1)[1]
+                decoded = base64.b64decode(encoded).decode("utf-8")
+                if decoded != basic_auth:
+                    return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="metrics"'})
+            except Exception:
+                return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="metrics"'})
+
         content = generate_latest()
         return Response(content=content, media_type=CONTENT_TYPE_LATEST)
-

@@ -245,6 +245,9 @@ USE_REAL_YAHOO_API=false
 DATABASE_URL=sqlite:///data/stock_tracking.db
 LOG_LEVEL=INFO
 ENABLE_METRICS=false
+# `/metrics` を保護する場合（Basic認証）
+# 例: METRICS_BASIC_AUTH=user:pass
+# METRICS_BASIC_AUTH=
 ```
 
 #### フロントエンド (.env)
@@ -253,6 +256,11 @@ VITE_API_BASE_URL=http://localhost:8000
 ```
 
 メトリクスを有効化する場合は `ENABLE_METRICS=true` を設定し、`/metrics` エンドポイントから Prometheus 形式で取得できます。
+公開環境などで保護が必要な場合は `METRICS_BASIC_AUTH` を `user:pass` 形式で設定してください（Basic 認証）。
+
+運用向けヘルスチェック:
+- Liveness: `/live`（および `/api/live`）
+- Readiness: `/ready`（および `/api/ready`）
 
 ## 📊 パフォーマンス
 
