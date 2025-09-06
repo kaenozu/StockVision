@@ -231,6 +231,11 @@ class ResponseCompressionMiddleware(BaseHTTPMiddleware):
     
     def _should_compress(self, request: Request, response: Response) -> bool:
         """Determine if response should be compressed."""
+        # Skip streaming responses (they don't have a .body attribute)
+        from starlette.responses import StreamingResponse
+        if isinstance(response, StreamingResponse):
+            return False
+        
         # Check if client accepts any compression
         accept_encoding = request.headers.get("accept-encoding", "")
         if "gzip" not in accept_encoding and "br" not in accept_encoding:
