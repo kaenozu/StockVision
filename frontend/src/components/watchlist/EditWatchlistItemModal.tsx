@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { WatchlistItem, WatchlistItemAPI } from '../../types/stock';
+import { WatchlistItem } from '../../types/stock';
 import Button from '../UI/Button';
 import { InlineErrorMessage } from '../UI/ErrorMessage';
-import { formatPrice } from '../../utils/formatters';
 
 interface EditWatchlistItemModalProps {
   item: WatchlistItem;

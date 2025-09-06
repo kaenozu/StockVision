@@ -10,7 +10,7 @@ interface MetricsSummary {
   request_rate_per_second: number;
   status_code_distribution: Record<string, number>;
   top_slow_endpoints: Array<{ endpoint: string; average_time: number }>;
-  endpoint_stats: Record<string, any>;
+  endpoint_stats: Record<string, EndpointStat>;
   error_rate: number;
   uptime: number;
 }
@@ -39,7 +39,7 @@ const PerformanceDashboard: React.FC = () => {
   const [endpointStats, setEndpointStats] = useState<Record<string, EndpointStat>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [refreshInterval, setRefreshInterval] = useState(30000); // 30秒
+  const [refreshInterval] = useState(30000); // 30秒
 
   const fetchMetrics = async () => {
     try {

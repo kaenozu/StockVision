@@ -240,7 +240,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
         const sizes = ['small', 'medium', 'large', 'extra-large']
         const currentIndex = sizes.indexOf(fontSize)
         if (currentIndex < sizes.length - 1) {
-          setFontSize(sizes[currentIndex + 1] as any)
+          setFontSize(sizes[currentIndex + 1] as 'small' | 'medium' | 'large' | 'extra-large')
         }
       }
       
@@ -249,14 +249,14 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
         const sizes = ['small', 'medium', 'large', 'extra-large']
         const currentIndex = sizes.indexOf(fontSize)
         if (currentIndex > 0) {
-          setFontSize(sizes[currentIndex - 1] as any)
+          setFontSize(sizes[currentIndex - 1] as 'small' | 'medium' | 'large' | 'extra-large')
         }
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [enableKeyboardShortcuts, focusMode, highContrast, reducedMotion, fontSize])
+  }, [enableKeyboardShortcuts, focusMode, highContrast, reducedMotion, fontSize, setFocusMode, setFontSize, setHighContrast, setReducedMotion])
 
   // Persistent storage for settings
   const setFocusMode = useCallback((enabled: boolean) => {

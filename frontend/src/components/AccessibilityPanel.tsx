@@ -21,7 +21,6 @@ const AccessibilityPanel: React.FC<AccessibilityPanelProps> = ({ isOpen, onClose
     setFontSize
   } = useAccessibility()
 
-  const { actualTheme } = useTheme()
 
   if (!isOpen) return null
 
