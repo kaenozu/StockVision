@@ -90,7 +90,21 @@ pip install -r requirements.txt
 # alembic upgrade head
 ```
 
-### 4. アプリケーションの実行
+### 4. 環境変数ファイルの設定
+
+プロジェクトルートの`.env.example`をコピーして`.env`を作成し、必要な値を設定してください。
+
+Windows:
+```
+copy .env.example .env
+```
+
+Linux/macOS:
+```
+cp .env.example .env
+```
+
+### 5. アプリケーションの実行
 
 ```bash
 # 開発サーバーの起動
