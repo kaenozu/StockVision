@@ -101,19 +101,6 @@ app = FastAPI(
     ]
 )
 
-<<<<<<< HEAD
-# Middleware will be configured below after helper functions are defined
-
-=======
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS,  # Configure for production
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
-    allow_headers=["*"],
-)
->>>>>>> origin/main
 
 def _is_valid_origin(origin: str) -> bool:
     """Originのバリデーション（http/https + ホスト必須、ワイルドカード不可）。"""
@@ -191,6 +178,11 @@ async def health_check():
     """Simple health check endpoint."""
     return {"status": "ok"}
 
+@api_router.get("/live", tags=["Health"])
+async def live_check():
+    """Liveness probe endpoint: process is alive."""
+    return {"status": "alive"}
+
 @api_router.get("/status", tags=["Health"])
 async def status_check(db: Session = Depends(get_db)):
     """Health check endpoint with database connectivity."""
@@ -246,6 +238,26 @@ async def status_check(db: Session = Depends(get_db)):
         "version": "1.0.0"
     }
 
+@api_router.get("/ready", tags=["Health"])
+async def readiness_check(db: Session = Depends(get_db)):
+    """Readiness probe: checks DB connectivity and returns quick status."""
+    import time as _t
+    start = _t.perf_counter()
+    try:
+        db.execute(text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        db_ok = False
+    duration_ms = round((_t.perf_counter() - start) * 1000, 2)
+    if not db_ok:
+        raise HTTPException(status_code=503, detail="Not ready")
+    settings = get_settings()
+    return {
+        "status": "ready",
+        "db_ping_ms": duration_ms,
+        "yahoo_finance_enabled": settings.yahoo_finance.enabled,
+    }
+
 api_router.include_router(stocks_router)
 api_router.include_router(watchlist_router)
 api_router.include_router(metrics_router)
@@ -257,6 +269,15 @@ app.include_router(api_router)
 async def root():
     """Root endpoint."""
     return {"message": "Stock Test API is running", "version": "1.0.0"}
+
+# Backward-compatible health endpoints at root
+@app.get("/live", tags=["Health"])
+async def root_live_check():
+    return await live_check()
+
+@app.get("/ready", tags=["Health"])
+async def root_ready_check(db: Session = Depends(get_db)):
+    return await readiness_check(db)
 
 
 # Admin utilities
