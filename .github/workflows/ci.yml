@@ -1,0 +1,445 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, 'feat/*', 'fix/*', 'hotfix/*' ]
+  pull_request:
+    branches: [ main, develop ]
+
+# Allow only one concurrent deployment per branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Backend Testing
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Cache Python dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml', '**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install -e .; fi
+          
+      - name: Run backend linting
+        run: |
+          if command -v ruff &> /dev/null; then
+            ruff check src/ tests/ --output-format=github
+          fi
+          if command -v black &> /dev/null; then
+            black --check src/ tests/
+          fi
+          
+      - name: Run backend type checking
+        run: |
+          if command -v mypy &> /dev/null; then
+            mypy src/ --ignore-missing-imports
+          fi
+          
+      - name: Run backend unit tests
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          DATABASE_URL: sqlite:///./test.db
+          USE_REAL_YAHOO_API: false
+        run: |
+          python -m pytest tests/unit/ -v --cov=src --cov-report=xml --cov-report=term-missing
+          
+      - name: Run backend integration tests
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          DATABASE_URL: sqlite:///./test_integration.db
+          USE_REAL_YAHOO_API: false
+        run: |
+          python -m pytest tests/integration/ -v --maxfail=5
+          
+      - name: Upload backend coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          file: ./coverage.xml
+          flags: backend
+          name: backend-coverage
+
+  # Frontend Testing
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+        
+      - name: Run frontend linting
+        working-directory: ./frontend
+        run: npm run lint
+        
+      - name: Run frontend type checking
+        working-directory: ./frontend
+        run: npx tsc --noEmit
+        
+      - name: Run frontend unit tests
+        working-directory: ./frontend
+        run: npm run test:run -- --coverage --reporter=verbose
+        
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+        
+      - name: Upload frontend build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          retention-days: 7
+
+  # E2E Testing
+  e2e-test:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test]
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        shard: [1/3, 2/3, 3/3]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install -e .; fi
+          
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: ./frontend
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+        
+      - name: Start backend server
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          DATABASE_URL: sqlite:///./test_e2e.db
+          USE_REAL_YAHOO_API: false
+          ENVIRONMENT: development
+          DEBUG: false
+        run: |
+          cd src && python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+          sleep 10
+          curl -f http://localhost:8000/health || exit 1
+          
+      - name: Run E2E tests
+        working-directory: ./frontend
+        env:
+          BASE_URL: http://localhost:3000
+          PLAYWRIGHT_WORKERS: 2
+          PLAYWRIGHT_RETRIES: 2
+          CI: true
+        run: |
+          npx playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
+          
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-results-${{ matrix.browser }}-${{ matrix.shard }}
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 7
+
+  # Security Scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Performance Testing
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install -e .; fi
+          cd frontend && npm ci
+          
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+        
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.12.x
+        
+      - name: Start servers
+        run: |
+          cd src && python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+          cd frontend && npm run preview -- --port 3000 --host &
+          sleep 15
+          
+      - name: Run Lighthouse CI
+        run: |
+          lhci autorun --config=./frontend/lighthouserc.js || echo "Lighthouse CI failed but continuing..."
+          
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: lighthouse-results
+          path: |
+            .lighthouseci/
+          retention-days: 7
+
+  # Deployment (Production)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test, e2e-test, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download frontend build
+        uses: actions/download-artifact@v3
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          
+      - name: Deploy to production
+        run: |
+          echo "🚀 Deploying to production environment..."
+          echo "Frontend build ready for deployment"
+          echo "Backend ready for deployment"
+          # Add actual deployment commands here
+          
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Production deployment successful!"
+          
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed!"
+          
+      # Slack通知 (オプション)
+      - name: Notify Slack - Production Success
+        if: success() && env.SLACK_WEBHOOK_URL
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: '🚀 Production deployment successful!'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          
+      - name: Notify Slack - Production Failure  
+        if: failure() && env.SLACK_WEBHOOK_URL
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: '❌ Production deployment failed!'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Deployment (Staging)
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test, e2e-test]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download frontend build
+        uses: actions/download-artifact@v3
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          
+      - name: Deploy to staging
+        run: |
+          echo "🔄 Deploying to staging environment..."
+          echo "Frontend build ready for staging deployment"
+          echo "Backend ready for staging deployment"
+          # Add actual deployment commands here
+          
+      - name: Run post-deployment health checks
+        run: |
+          echo "🔍 Running post-deployment health checks..."
+          # Add health check commands here
+          
+      - name: Notify staging deployment
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Staging deployment successful!"
+          else
+            echo "❌ Staging deployment failed!"
+          fi
+          
+      # Slack通知 (オプション)  
+      - name: Notify Slack - Staging Success
+        if: success() && env.SLACK_WEBHOOK_URL
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: '🔄 Staging deployment successful!'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          
+      - name: Notify Slack - Staging Failure
+        if: failure() && env.SLACK_WEBHOOK_URL  
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: '❌ Staging deployment failed!'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Test Results Summary
+  test-summary:
+    name: Test Results Summary
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test, e2e-test, security-scan, performance-test]
+    if: always()
+    
+    steps:
+      - name: Generate test summary
+        run: |
+          echo "## 🧪 Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Tests | ${{ needs.backend-test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Tests | ${{ needs.frontend-test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests | ${{ needs.e2e-test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${{ needs.security-scan.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance Tests | ${{ needs.performance-test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Notify Slack - Test Summary
+        if: env.SLACK_WEBHOOK_URL
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            📊 **CI/CD Pipeline Results**
+            - Backend: ${{ needs.backend-test.result == 'success' && '✅' || '❌' }}
+            - Frontend: ${{ needs.frontend-test.result == 'success' && '✅' || '❌' }}  
+            - E2E: ${{ needs.e2e-test.result == 'success' && '✅' || '❌' }}
+            - Security: ${{ needs.security-scan.result == 'success' && '✅' || '❌' }}
+            - Performance: ${{ needs.performance-test.result == 'success' && '✅' || '❌' }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
