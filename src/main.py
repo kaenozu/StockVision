@@ -3,23 +3,23 @@ FastAPI application entry point for stock tracking application.
 """
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends, APIRouter
+from fastapi import FastAPI, HTTPException, Depends, APIRouter, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from .stock_storage.database import init_db, close_database, check_database_health, get_database_stats, get_session_scope
-from .middleware.performance import setup_error_handlers, setup_performance_middleware
+from .middleware.performance import setup_performance_middleware
 from .utils.logging import setup_logging
-from .utils.cache import get_cache_stats
+from .utils.cache import get_cache_stats, set_cache_ttls
 from .services.stock_service import cleanup_stock_service
 from .config import get_settings
 from .constants import (
-    DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DEV_PORT, FRONTEND_PROD_PORT,
-    CORS_ORIGINS, DOCS_URL, REDOC_URL, OPENAPI_URL,
+    DEFAULT_HOST, DEFAULT_PORT, API_HOST, API_PORT, ENVIRONMENT,
+    FRONTEND_DEV_PORT, FRONTEND_PROD_PORT,
+    DOCS_URL, REDOC_URL, OPENAPI_URL,
     PerformanceThresholds
 )
 
@@ -52,11 +52,33 @@ async def lifespan(app: FastAPI):
     logger.info("Stock Test API shutdown complete")
 
 
+import os
+
+# 環境変数からサーバーURLを取得  
+settings = get_settings()
+SERVER_URL = settings.server_url
+
+def get_openapi_servers():
+    """Get OpenAPI server configuration based on environment."""
+    if ENVIRONMENT == "production":
+        # In production, use environment-specific URLs
+        return [
+            {"url": f"http://{API_HOST}:{API_PORT}", "description": "Production server"},
+            {"url": f"https://{API_HOST}", "description": "Production HTTPS server"}
+        ]
+    else:
+        # Development/staging servers
+        return [
+            {"url": f"http://{API_HOST}:{API_PORT}", "description": "Development server"},
+            {"url": f"http://localhost:{DEFAULT_PORT}", "description": "Local development server"},
+            {"url": f"http://127.0.0.1:{DEFAULT_PORT}", "description": "Local loopback server"}
+        ]
+
 app = FastAPI(
     title="Stock Test API",
     version="1.0.0",
     description="株価テスト機能API仕様",
-    servers=[{"url": f"http://localhost:{DEFAULT_PORT}", "description": "Development server"}],
+    servers=[{"url": SERVER_URL, "description": "Configured server"}],
     lifespan=lifespan,
     docs_url=DOCS_URL,
     redoc_url=REDOC_URL,
@@ -69,18 +91,14 @@ app = FastAPI(
     ]
 )
 
-
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,  # Configure for production
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
-    allow_headers=["*"],
+    allow_origins=settings.cors.allow_origins,
+    allow_credentials=settings.cors.allow_credentials,
+    allow_methods=settings.cors.allow_methods,
+    allow_headers=settings.cors.allow_headers,
 )
-
-# Setup error handlers
-setup_error_handlers(app)
 
 # Setup performance middleware
 setup_performance_middleware(app)
@@ -101,6 +119,11 @@ def get_db():
 async def health_check():
     """Simple health check endpoint."""
     return {"status": "ok"}
+
+@api_router.get("/live", tags=["Health"])
+async def live_check():
+    """Liveness probe endpoint: process is alive."""
+    return {"status": "alive"}
 
 @api_router.get("/status", tags=["Health"])
 async def status_check(db: Session = Depends(get_db)):
@@ -157,6 +180,26 @@ async def status_check(db: Session = Depends(get_db)):
         "version": "1.0.0"
     }
 
+@api_router.get("/ready", tags=["Health"])
+async def readiness_check(db: Session = Depends(get_db)):
+    """Readiness probe: checks DB connectivity and returns quick status."""
+    import time as _t
+    start = _t.perf_counter()
+    try:
+        db.execute(text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        db_ok = False
+    duration_ms = round((_t.perf_counter() - start) * 1000, 2)
+    if not db_ok:
+        raise HTTPException(status_code=503, detail="Not ready")
+    settings = get_settings()
+    return {
+        "status": "ready",
+        "db_ping_ms": duration_ms,
+        "yahoo_finance_enabled": settings.yahoo_finance.enabled,
+    }
+
 api_router.include_router(stocks_router)
 api_router.include_router(watchlist_router)
 api_router.include_router(metrics_router)
@@ -169,6 +212,59 @@ async def root():
     """Root endpoint."""
     return {"message": "Stock Test API is running", "version": "1.0.0"}
 
+# Backward-compatible health endpoints at root
+@app.get("/live", tags=["Health"])
+async def root_live_check():
+    return await live_check()
+
+@app.get("/ready", tags=["Health"])
+async def root_ready_check(db: Session = Depends(get_db)):
+    return await readiness_check(db)
+
+
+# Admin utilities
+@app.post("/api/admin/cache/ttl", tags=["Admin"])
+async def update_cache_ttls(
+    payload: dict,
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token")
+):
+    """Update in-memory cache TTLs at runtime (admin only).
+
+    Request JSON fields (optional):
+      - stock_info_ttl: float seconds
+      - current_price_ttl: float seconds
+      - price_history_ttl: float seconds
+
+    Authorization: provide X-Admin-Token header matching ADMIN_TOKEN env (if set).
+    """
+    import os
+
+    required = os.getenv("ADMIN_TOKEN")
+    if required:
+        if not x_admin_token or x_admin_token != required:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+    stock_info_ttl = payload.get("stock_info_ttl")
+    current_price_ttl = payload.get("current_price_ttl")
+    price_history_ttl = payload.get("price_history_ttl")
+
+    try:
+        set_cache_ttls(
+            stock_info_ttl=stock_info_ttl,
+            current_price_ttl=current_price_ttl,
+            price_history_ttl=price_history_ttl,
+        )
+        return {
+            "ok": True,
+            "applied": {
+                "stock_info_ttl": stock_info_ttl,
+                "current_price_ttl": current_price_ttl,
+                "price_history_ttl": price_history_ttl,
+            },
+            "stats": get_cache_stats(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to update TTLs: {e}")
 
 @app.get("/openapi.json", include_in_schema=False)
 async def get_openapi_json():
@@ -178,7 +274,7 @@ async def get_openapi_json():
         version=app.version,
         description=app.description,
         routes=app.routes,
-        servers=app.servers,
+        servers=[{"url": SERVER_URL, "description": "Configured server"}],
         tags=app.openapi_tags,
     )
 

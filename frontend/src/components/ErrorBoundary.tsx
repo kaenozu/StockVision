@@ -1,10 +1,10 @@
-import React from 'react'
-import { ErrorBoundaryLayout } from './layout/Layout'
+import React, { Component, ErrorInfo, ReactNode } from 'react'
+import { ErrorMessage } from './UI/ErrorMessage'
 import { errorLogger, ErrorLevel } from '../services/errorLogger'
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode
-  fallback?: (error: Error, retry: () => void) => React.ReactNode
+  children: ReactNode
+  fallback?: (error: Error, retry: () => void) => ReactNode
 }
 
 interface ErrorBoundaryState {
@@ -13,7 +13,11 @@ interface ErrorBoundaryState {
   errorInfo: React.ErrorInfo | null
 }
 
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+/**
+ * Error Boundary component to catch JavaScript errors anywhere in the child component tree,
+ * log those errors, and display a fallback UI with integrated error logging.
+ */
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props)
     this.state = { hasError: false, error: null, errorInfo: null }
@@ -23,7 +27,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log error using the error logger service
     errorLogger.logError(error, {
       componentStack: errorInfo.componentStack,
@@ -35,13 +39,31 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     this.setState({ errorInfo })
   }
 
-  render() {
-    if (this.state.hasError && this.state.error) {
+  handleRetry = () => {
+    // Reset error state
+    this.setState({ hasError: false, error: null, errorInfo: null })
+    // Reload the page to restore functionality
+    window.location.reload()
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      // If a fallback UI is provided, render it
+      if (this.props.fallback) {
+        return this.props.fallback(this.state.error!, this.handleRetry)
+      }
+
+      // Default error UI
       return (
-        <ErrorBoundaryLayout
-          error={this.state.error}
-          onRetry={() => this.setState({ hasError: false, error: null })}
-        />
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+          <div className="max-w-md w-full">
+            <ErrorMessage
+              error={this.state.error || new Error('An unexpected error occurred')}
+              onRetry={this.handleRetry}
+              retryText="再読み込み"
+            />
+          </div>
+        </div>
       )
     }
 

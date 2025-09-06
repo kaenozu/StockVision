@@ -28,7 +28,10 @@ import {
   isWatchlistItemAPI,
   DEFAULT_DAYS_HISTORY,
   MAX_DAYS_HISTORY,
-  MIN_DAYS_HISTORY
+  MIN_DAYS_HISTORY,
+  MetricsSummary,
+  SlowRequest,
+  EndpointStat
 } from '../types/stock'
 import { stockDataCache, priceHistoryCache, recommendationCache } from './cacheService'
 import { errorLogger } from './errorLogger'
@@ -447,16 +450,22 @@ export class StockApiClient {
     // Validate request data
     this.validateStockCode(request.stock_code)
     
-    if (request.alert_price !== undefined && request.alert_price !== null && request.alert_price <= 0) {
-      throw new ValidationError('Invalid alert price: must be greater than 0', 'alert_price')
+    if (request.alert_price_high !== undefined && request.alert_price_high !== null && request.alert_price_high <= 0) {
+      throw new ValidationError('Invalid alert price: must be greater than 0', 'alert_price_high')
+    }
+    if (request.alert_price_low !== undefined && request.alert_price_low !== null && request.alert_price_low <= 0) {
+      throw new ValidationError('Invalid alert price: must be greater than 0', 'alert_price_low')
     }
 
     // Validate request data types
     if (typeof request.stock_code !== 'string') {
       throw new ValidationError('Invalid request data type: stock_code must be string')
     }
-    if (request.alert_price !== undefined && request.alert_price !== null && typeof request.alert_price !== 'number') {
-      throw new ValidationError('Invalid request data type: alert_price must be number or null')
+    if (request.alert_price_high !== undefined && request.alert_price_high !== null && typeof request.alert_price_high !== 'number') {
+      throw new ValidationError('Invalid request data type: alert_price_high must be number or null')
+    }
+    if (request.alert_price_low !== undefined && request.alert_price_low !== null && typeof request.alert_price_low !== 'number') {
+      throw new ValidationError('Invalid request data type: alert_price_low must be number or null')
     }
 
     const response = await this.client.post<WatchlistItemAPI>(
@@ -680,7 +689,7 @@ export class StockApiClient {
         break
       case '6758': // Sony
         realisticBasePrice = 11000
-        companyName = 'ソニーグループ株式会社'
+        companyName = 'ソニ�Eグループ株式会社'
         break
       case '9984': // SoftBank
         realisticBasePrice = 6000
@@ -688,11 +697,11 @@ export class StockApiClient {
         break
       case '9983': // Fast Retailing
         realisticBasePrice = 85000
-        companyName = '株式会社ファーストリテイリング'
+        companyName = '株式会社ファーストリチE��リング'
         break
       case '8306': // Mitsubishi UFJ
         realisticBasePrice = 1200
-        companyName = '株式会社三菱UFJフィナンシャル・グループ'
+        companyName = '株式会社三菱UFJフィナンシャル・グルーチE
         break
       default:
         realisticBasePrice = 2500 // Default realistic price
@@ -765,7 +774,7 @@ export class StockApiClient {
   /**
    * GET /metrics/summary - Get performance metrics summary
    */
-  async getMetricsSummary(): Promise<any> {
+  async getMetricsSummary(): Promise<MetricsSummary> {
     const response = await this.client.get('/metrics/summary');
     return response.data;
   }
@@ -773,7 +782,7 @@ export class StockApiClient {
   /**
    * GET /metrics/slow-requests - Get recent slow requests
    */
-  async getSlowRequests(limit: number = 50): Promise<any[]> {
+  async getSlowRequests(limit: number = 50): Promise<SlowRequest[]> {
     const response = await this.client.get('/metrics/slow-requests', {
       params: { limit }
     });
@@ -783,7 +792,7 @@ export class StockApiClient {
   /**
    * GET /metrics/endpoints - Get endpoint statistics
    */
-  async getEndpointStats(): Promise<any> {
+  async getEndpointStats(): Promise<Record<string, EndpointStat>> {
     const response = await this.client.get('/metrics/endpoints');
     return response.data;
   }
@@ -801,7 +810,7 @@ export class StockApiClient {
   /**
    * POST /metrics/clear - Clear metrics history
    */
-  async clearMetrics(): Promise<any> {
+  async clearMetrics(): Promise<{ message: string }> {
     const response = await this.client.post('/metrics/clear');
     return response.data;
   }

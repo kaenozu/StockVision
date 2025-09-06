@@ -10,8 +10,8 @@ import { StockSearchFormData, ValidationResult } from '../../types/stock'
 import { useStockSearch } from '../../hooks/useStock'
 import { validateStockSearchForm, sanitizeStockCode } from '../../utils/validation'
 import { formatStockCode } from '../../utils/formatters'
-import Button from '../ui/Button'
-import { InlineErrorMessage } from '../ui/ErrorMessage'
+import Button from '../UI/Button'
+import { InlineErrorMessage } from '../UI/ErrorMessage'
 
 interface StockSearchProps {
   onSearch: (stockCode: string, useRealData: boolean) => void

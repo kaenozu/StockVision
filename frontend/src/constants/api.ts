@@ -5,10 +5,18 @@
 // Development environment detection
 export const IS_DEVELOPMENT = import.meta.env.DEV
 
-// API Base URLs
-export const API_BASE_URL = IS_DEVELOPMENT 
-  ? 'http://localhost:8000/api'  // 正しいポート番号に修正
-  : (import.meta.env.VITE_API_BASE_URL || '/api')  // 環境変数対応
+// API Base URLs - Environment-aware configuration
+export const API_BASE_URL = (() => {
+  // Check for environment variable first (for production deployment)
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL
+  }
+  
+  // Default URLs for development/production
+  return IS_DEVELOPMENT 
+    ? 'http://localhost:8000/api'  // Fixed: was 8001, should be 8000 (matches backend default)
+    : 'http://localhost:8080/api'
+})()
 
 // Cache and refresh intervals (in milliseconds)
 export const CACHE_INTERVALS = {
