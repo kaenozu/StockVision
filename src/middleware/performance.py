@@ -11,7 +11,12 @@ import hashlib
 import json
 import re
 import gzip
-import brotli  # type: ignore
+try:
+    import brotli  # type: ignore
+    HAS_BROTLI = True
+except Exception:  # pragma: no cover
+    brotli = None  # type: ignore
+    HAS_BROTLI = False
 from typing import Callable, Optional, Any, Union
 from dataclasses import dataclass, asdict
 from enum import Enum
@@ -246,7 +251,7 @@ class ResponseCompressionMiddleware(BaseHTTPMiddleware):
     def _choose_compression_algorithm(self, accept_encoding: str) -> CompressionAlgorithm:
         """Choose the best compression algorithm based on client preference."""
         # Prefer Brotli if supported
-        if "br" in accept_encoding:
+        if "br" in accept_encoding and HAS_BROTLI:
             return CompressionAlgorithm.BROTLI
         # Fallback to GZip
         elif "gzip" in accept_encoding:
@@ -268,7 +273,7 @@ class ResponseCompressionMiddleware(BaseHTTPMiddleware):
         try:
             if algorithm == CompressionAlgorithm.GZIP:
                 compressed_body = gzip.compress(body, compresslevel=self.GZIP_COMPRESSLEVEL)
-            elif algorithm == CompressionAlgorithm.BROTLI:
+            elif algorithm == CompressionAlgorithm.BROTLI and HAS_BROTLI and brotli:
                 compressed_body = brotli.compress(body, quality=self.BROTLI_QUALITY)
             else:
                 compressed_body = body
@@ -333,6 +338,10 @@ class PerformanceMetricsMiddleware(BaseHTTPMiddleware):
 def setup_performance_middleware(app: FastAPI):
     """
     Set up all performance optimization middleware.
+    
+    Important: Middleware is applied in reverse order of registration.
+    The last middleware added becomes the first to process requests.
+    Response processing happens in the reverse order.
     """
     middleware_config = get_middleware_config()
     
