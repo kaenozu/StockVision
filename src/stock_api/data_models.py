@@ -602,7 +602,6 @@ class PriceHistoryData(BaseModel):
         """Get the oldest price history item."""
         if not self.history:
             return None
-        from datetime import datetime as _dt\n        def _to_dt(v):\n            if isinstance(v, _dt):\n                return v\n            if isinstance(v, date):\n                return _dt(v.year, v.month, v.day)\n            return _dt.strptime(v, "%Y-%m-%d")\n        return min(self.history, key=lambda x: _to_dt(x.date).date())
         from datetime import datetime as _dt
         def _to_dt(v):
             if isinstance(v, _dt):
