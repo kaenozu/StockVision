@@ -52,11 +52,18 @@ async def lifespan(app: FastAPI):
     logger.info("Stock Test API shutdown complete")
 
 
+import os
+from .config import get_settings
+
+# 環境変数からサーバーURLを取得
+settings = get_settings()
+SERVER_URL = settings.server_url
+
 app = FastAPI(
     title="Stock Test API",
     version="1.0.0",
     description="株価テスト機能API仕様",
-    servers=[{"url": f"http://localhost:{DEFAULT_PORT}", "description": "Development server"}],
+    servers=[{"url": SERVER_URL, "description": "Configured server"}],
     lifespan=lifespan,
     docs_url=DOCS_URL,
     redoc_url=REDOC_URL,
@@ -218,7 +225,7 @@ async def get_openapi_json():
         version=app.version,
         description=app.description,
         routes=app.routes,
-        servers=app.servers,
+        servers=[{"url": SERVER_URL, "description": "Configured server"}],
         tags=app.openapi_tags,
     )
 

@@ -63,6 +63,7 @@ class AppConfig(BaseModel):
     
     debug: bool = Field(default=False, description="Enable debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
+    server_url: str = Field(default="http://localhost:8000", description="Server URL for OpenAPI specification")
     sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
     yahoo_finance: YahooFinanceConfig = Field(default_factory=YahooFinanceConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
@@ -70,12 +71,13 @@ class AppConfig(BaseModel):
     middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
     
     @classmethod
-    def from_env(cls) -> "AppConfig":
-        """Create configuration from environment variables."""
-        return cls(
-            debug=os.getenv("DEBUG", "false").lower() == "true",
-            log_level=os.getenv("LOG_LEVEL", "INFO"),
-            sentry_dsn=os.getenv("SENTRY_DSN"),
+            def from_env(cls) -> "AppConfig":
+                """Create configuration from environment variables."""
+                return cls(
+                    debug=os.getenv("DEBUG", "false").lower() == "true",
+                    log_level=os.getenv("LOG_LEVEL", "INFO"),
+                    server_url=os.getenv("SERVER_URL", "http://localhost:8000"),
+                    sentry_dsn=os.getenv("SENTRY_DSN"),
             yahoo_finance=YahooFinanceConfig(
                 enabled=os.getenv("USE_REAL_YAHOO_API", "false").lower() == "true",
                 max_requests=int(os.getenv("YAHOO_MAX_REQUESTS", "10")),

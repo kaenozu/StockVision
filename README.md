@@ -232,6 +232,7 @@ npm run dev
 USE_REAL_YAHOO_API=false
 DATABASE_URL=sqlite:///data/stock_tracking.db
 LOG_LEVEL=INFO
+SERVER_URL=http://localhost:8000
 ```
 
 #### フロントエンド (.env)
