@@ -31,8 +31,9 @@ import {
   MIN_DAYS_HISTORY
 } from '../types/stock'
 import { stockDataCache, priceHistoryCache, recommendationCache } from './cacheService'
-import { errorLogger, ErrorCategory, ErrorSeverity, logNetworkError, logValidationError, logCacheError } from './errorLogger'
+import { errorLogger } from './errorLogger'
 import { generateCacheKey } from '../utils/cache'
+import { handleApiError, fetchWithErrorHandling, retryWithBackoff, showErrorNotification } from '../utils/errorHandler'
 
 /**
  * Stock API Configuration
