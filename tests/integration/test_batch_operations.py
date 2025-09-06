@@ -12,7 +12,7 @@ from typing import Dict, List
 
 from src.stock_api.yahoo_client import YahooFinanceClient
 from src.stock_cli.cli import StockCLI
-from src.stock_storage.database import Database
+from src.stock_storage.database import DatabaseManager as Database
 from src.models.stock import StockData, WatchlistItem, BatchOperationResult
 
 
