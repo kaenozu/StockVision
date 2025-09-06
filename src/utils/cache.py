@@ -240,3 +240,52 @@ def get_cache_stats() -> Dict[str, Any]:
         'price_history_cache': _price_history_cache.stats(),
         'current_price_cache': _current_price_cache.stats()
     }
+
+
+def set_cache_ttls(
+    *,
+    stock_info_ttl: Optional[float] = None,
+    current_price_ttl: Optional[float] = None,
+    price_history_ttl: Optional[float] = None,
+) -> None:
+    """Update TTLs for the global caches at runtime.
+
+    Args:
+        stock_info_ttl: TTL in seconds for stock info cache
+        current_price_ttl: TTL in seconds for current price cache
+        price_history_ttl: TTL in seconds for price history cache
+    """
+    if stock_info_ttl is not None:
+        _stock_cache.ttl = float(stock_info_ttl)
+    if current_price_ttl is not None:
+        _current_price_cache.ttl = float(current_price_ttl)
+    if price_history_ttl is not None:
+        _price_history_cache.ttl = float(price_history_ttl)
+
+
+def configure_cache_ttls_from_settings() -> None:
+    """Sync cache TTLs from application settings if available.
+
+    Safe to call multiple times; falls back silently if settings import fails.
+    """
+    try:
+        # Local import to avoid circular dependencies at module import time
+        from ..config import get_cache_config  # type: ignore
+
+        cfg = get_cache_config()
+        set_cache_ttls(
+            stock_info_ttl=cfg.stock_info_ttl,
+            current_price_ttl=cfg.current_price_ttl,
+            price_history_ttl=cfg.price_history_ttl,
+        )
+        logger.info(
+            "Configured cache TTLs from settings",
+            extra={
+                "stock_info_ttl": cfg.stock_info_ttl,
+                "current_price_ttl": cfg.current_price_ttl,
+                "price_history_ttl": cfg.price_history_ttl,
+            },
+        )
+    except Exception:
+        # Non-fatal: caching still works with default TTLs
+        logger.debug("Cache TTL configuration skipped (settings unavailable)")
