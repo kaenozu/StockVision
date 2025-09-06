@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { HomePage } from './pages/HomePage';
+import { WatchlistPage } from './pages/WatchlistPage';
 
 test.describe('モバイルデバイス', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-  });
-
   test('ホームページが正しく表示される', async ({ page }) => {
+    const homePage = new HomePage(page);
+    await homePage.goto();
+
     // タイトルの確認
     await expect(page).toHaveTitle(/株価チェッカー/);
 
@@ -13,10 +14,10 @@ test.describe('モバイルデバイス', () => {
     await expect(page.getByText('株価チェッカー')).toBeVisible();
 
     // 検索フォームの確認
-    await expect(page.getByPlaceholder('銘柄コードを入力')).toBeVisible();
+    await expect(homePage.searchInput).toBeVisible();
 
     // 人気銘柄セクションの確認
-    await expect(page.getByText('人気銘柄')).toBeVisible();
+    await expect(homePage.popularStocksSection).toBeVisible();
 
     // フッターの確認
     await expect(page.getByText('© 2023 株価チェッカー')).toBeVisible();
@@ -26,28 +27,32 @@ test.describe('モバイルデバイス', () => {
   });
 
   test('ハンバーガーメニューが正しく動作する', async ({ page }) => {
+    const homePage = new HomePage(page);
+    const watchlistPage = new WatchlistPage(page);
+    await homePage.goto();
+
     // ハンバーガーメニューが表示されていることを確認
-    await expect(page.getByRole('button', { name: 'メニューを開く' })).toBeVisible();
+    await expect(homePage.hamburgerMenuButton).toBeVisible();
 
     // ハンバーガーメニューをクリック
-    await page.getByRole('button', { name: 'メニューを開く' }).click();
+    await homePage.openHamburgerMenu();
 
     // メニューが開いたことを確認
     await expect(page.getByRole('navigation')).toBeVisible();
 
     // ウォッチリストリンクが表示されていることを確認
-    await expect(page.getByRole('link', { name: 'ウォッチリスト' })).toBeVisible();
+    await expect(homePage.watchlistLink).toBeVisible();
 
     // ウォッチリストリンクをクリック
-    await page.getByRole('link', { name: 'ウォッチリスト' }).click();
+    await homePage.navigateToWatchlist();
 
     // ウォッチリストページに遷移したことを確認
     await expect(page).toHaveURL(/.*\/watchlist/);
 
     // ウォッチリストページの要素を確認
-    await expect(page.getByText('ウォッチリスト')).toBeVisible();
+    await expect(watchlistPage.watchlistTitle).toBeVisible();
 
     // 「アイテムを追加」ボタンが表示されていることを確認
-    await expect(page.getByRole('button', { name: 'アイテムを追加' })).toBeVisible();
+    await expect(watchlistPage.addItemButton).toBeVisible();
   });
 });
