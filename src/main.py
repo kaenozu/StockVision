@@ -6,6 +6,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from urllib.parse import urlparse
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -20,7 +21,7 @@ from .services.stock_service import cleanup_stock_service
 from .config import get_settings
 from .constants import (
     DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DEV_PORT, FRONTEND_PROD_PORT,
-    CORS_ORIGINS, DOCS_URL, REDOC_URL, OPENAPI_URL,
+    DEV_CORS_ORIGINS, PROD_ORIGINS, DOCS_URL, REDOC_URL, OPENAPI_URL,
     PerformanceThresholds
 )
 
@@ -38,9 +39,10 @@ async def lifespan(app: FastAPI):
         logger.info(f"Loaded application settings (Yahoo Finance API enabled: {settings.yahoo_finance.enabled})")
         
         if settings.middleware_cors_enabled:
+            allowed_origins = compute_allowed_cors_origins(settings.debug)
             app.add_middleware(
                 CORSMiddleware,
-                allow_origins=CORS_ORIGINS,  # Configure for production
+                allow_origins=allowed_origins,
                 allow_credentials=True,
                 allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
                 allow_headers=["*"],
@@ -113,6 +115,39 @@ app = FastAPI(
     redoc_url=REDOC_URL,
     openapi_url=OPENAPI_URL,
 )
+
+
+def _is_valid_origin(origin: str) -> bool:
+    """Originのバリデーション（http/https + ホスト必須、ワイルドカード不可）。"""
+    if not origin or origin == "*":
+        return False
+    try:
+        parsed = urlparse(origin)
+        if parsed.scheme not in {"http", "https"}:
+            return False
+        if not parsed.netloc:
+            return False
+        return True
+    except Exception:
+        return False
+
+
+def compute_allowed_cors_origins(debug: bool) -> list[str]:
+    """環境に応じてCORSの許可オリジンを算出する。
+
+    - debug=True: 開発用 + 本番用（両方許可）
+    - debug=False: 本番用のみ
+    - 不正なオリジン（'*'やスキーム不明など）は除外
+    - 本番でオリジン未設定の場合は空リスト（実質CORS無効）
+    """
+    origins = [*_safe_filter(PROD_ORIGINS)]
+    if debug:
+        origins = [*_safe_filter(DEV_CORS_ORIGINS), *origins]
+    return origins
+
+
+def _safe_filter(candidates: list[str]) -> list[str]:
+    return [o for o in candidates if _is_valid_origin(o)]
 
 
         
