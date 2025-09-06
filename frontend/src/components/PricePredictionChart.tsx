@@ -12,6 +12,7 @@ import {
   ScriptableContext
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import type { ChartOptions } from 'chart.js';
 import './PricePredictionChart.css';
 
 ChartJS.register(
@@ -73,7 +74,7 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const chartRef = useRef<ChartJS | null>(null);
+  // ref is not required; omit to avoid type friction across versions
 
   useEffect(() => {
     fetchChartData();
@@ -110,7 +111,7 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
     };
   };
 
-  const chartOptions = {
+  const chartOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -129,7 +130,7 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
         text: `${symbol} 価格予想チャート (${period === 'short' ? '短期' : '中期'})`,
         font: {
           size: 16,
-          weight: 'bold'
+          weight: 700
         },
         padding: 20
       },
@@ -147,7 +148,7 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
           },
           label: (context: any) => {
             const value = context.parsed.y;
-            if (value === null) return null;
+            if (value === null || value === undefined) return '';
             return `${context.dataset.label}: ¥${value.toLocaleString('ja-JP')}`;
           }
         }
@@ -259,11 +260,7 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
 
       {/* Chart */}
       <div className="chart-wrapper" style={{ height: `${height}px` }}>
-        <Line 
-          ref={chartRef}
-          data={data} 
-          options={chartOptions} 
-        />
+        <Line data={data} options={chartOptions} />
       </div>
 
       {/* Trading Markers Info */}

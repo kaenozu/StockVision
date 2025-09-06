@@ -3,7 +3,7 @@ FastAPI application entry point for stock tracking application.
 """
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends, APIRouter
+from fastapi import FastAPI, HTTPException, Depends, APIRouter, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -12,9 +12,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from .stock_storage.database import init_db, close_database, check_database_health, get_database_stats, get_session_scope
-from .middleware.performance import setup_error_handlers, setup_performance_middleware
+from .middleware.performance import setup_performance_middleware
 from .utils.logging import setup_logging
-from .utils.cache import get_cache_stats
+from .utils.cache import get_cache_stats, set_cache_ttls
 from .services.stock_service import cleanup_stock_service
 from .config import get_settings
 from .constants import (
@@ -53,6 +53,12 @@ async def lifespan(app: FastAPI):
     logger.info("Stock Test API shutdown complete")
 
 
+import os
+
+# 環境変数からサーバーURLを取得  
+settings = get_settings()
+SERVER_URL = settings.server_url
+
 def get_openapi_servers():
     """Get OpenAPI server configuration based on environment."""
     if ENVIRONMENT == "production":
@@ -69,12 +75,11 @@ def get_openapi_servers():
             {"url": f"http://127.0.0.1:{DEFAULT_PORT}", "description": "Local loopback server"}
         ]
 
-
 app = FastAPI(
     title="Stock Test API",
     version="1.0.0",
     description="株価テスト機能API仕様",
-    servers=get_openapi_servers(),
+    servers=[{"url": SERVER_URL, "description": "Configured server"}],
     lifespan=lifespan,
     docs_url=DOCS_URL,
     redoc_url=REDOC_URL,
@@ -87,18 +92,14 @@ app = FastAPI(
     ]
 )
 
-
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,  # Configure for production
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
-    allow_headers=["*"],
+    allow_origins=settings.cors.allow_origins,
+    allow_credentials=settings.cors.allow_credentials,
+    allow_methods=settings.cors.allow_methods,
+    allow_headers=settings.cors.allow_headers,
 )
-
-# Setup error handlers
-setup_error_handlers(app)
 
 # Setup performance middleware
 setup_performance_middleware(app)
@@ -188,6 +189,50 @@ async def root():
     return {"message": "Stock Test API is running", "version": "1.0.0"}
 
 
+# Admin utilities
+@app.post("/api/admin/cache/ttl", tags=["Admin"])
+async def update_cache_ttls(
+    payload: dict,
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token")
+):
+    """Update in-memory cache TTLs at runtime (admin only).
+
+    Request JSON fields (optional):
+      - stock_info_ttl: float seconds
+      - current_price_ttl: float seconds
+      - price_history_ttl: float seconds
+
+    Authorization: provide X-Admin-Token header matching ADMIN_TOKEN env (if set).
+    """
+    import os
+
+    required = os.getenv("ADMIN_TOKEN")
+    if required:
+        if not x_admin_token or x_admin_token != required:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+    stock_info_ttl = payload.get("stock_info_ttl")
+    current_price_ttl = payload.get("current_price_ttl")
+    price_history_ttl = payload.get("price_history_ttl")
+
+    try:
+        set_cache_ttls(
+            stock_info_ttl=stock_info_ttl,
+            current_price_ttl=current_price_ttl,
+            price_history_ttl=price_history_ttl,
+        )
+        return {
+            "ok": True,
+            "applied": {
+                "stock_info_ttl": stock_info_ttl,
+                "current_price_ttl": current_price_ttl,
+                "price_history_ttl": price_history_ttl,
+            },
+            "stats": get_cache_stats(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to update TTLs: {e}")
+
 @app.get("/openapi.json", include_in_schema=False)
 async def get_openapi_json():
     """OpenAPIスキーマをJSON形式で返すエンドポイント"""
@@ -196,7 +241,7 @@ async def get_openapi_json():
         version=app.version,
         description=app.description,
         routes=app.routes,
-        servers=app.servers,
+        servers=[{"url": SERVER_URL, "description": "Configured server"}],
         tags=app.openapi_tags,
     )
 

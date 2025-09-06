@@ -2,6 +2,8 @@
 API related constants for the StockVision application.
 """
 
+import os
+
 # API Endpoints
 API_PREFIX = "/api"
 
@@ -43,23 +45,19 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 API_HOST = os.getenv("API_HOST", "localhost")
 API_PORT = int(os.getenv("API_PORT", str(DEFAULT_PORT)))
 
-# CORS origins - support both environment variables and defaults
-def get_cors_origins():
-    """Get CORS origins based on environment configuration."""
-    cors_origins_env = os.getenv("CORS_ORIGINS")
-    if cors_origins_env:
-        return [origin.strip() for origin in cors_origins_env.split(",")]
-    
-    # Default CORS origins for development
-    return [
-        f"http://{DEVELOPMENT_HOST}:{FRONTEND_DEV_PORT}",
-        f"http://{DEVELOPMENT_HOST}:{FRONTEND_PROD_PORT}",
-        # Additional common local development URLs
-        f"http://127.0.0.1:{FRONTEND_DEV_PORT}",
-        f"http://127.0.0.1:{FRONTEND_PROD_PORT}"
-    ]
+# CORS origins
+# 環境変数から本番用オリジンを読み込み（カンマ区切り）
+PROD_ORIGINS_STR = os.getenv("PROD_CORS_ORIGINS", "")
+PROD_ORIGINS = [origin.strip() for origin in PROD_ORIGINS_STR.split(",") if origin.strip()]
 
-CORS_ORIGINS = get_cors_origins()
+# 開発時のデフォルト許可オリジン
+DEV_CORS_ORIGINS = [
+    f"http://{DEVELOPMENT_HOST}:{FRONTEND_DEV_PORT}",
+    f"http://{DEVELOPMENT_HOST}:{FRONTEND_PROD_PORT}",
+]
+
+# 後方互換: 既存参照向け（本番・開発を問わず網羅的に含む）
+CORS_ORIGINS = [*DEV_CORS_ORIGINS, *PROD_ORIGINS]
 
 # OpenAPI documentation
 DOCS_URL = "/docs"
