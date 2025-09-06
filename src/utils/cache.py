@@ -14,8 +14,10 @@ from collections import OrderedDict
 from dataclasses import dataclass, asdict
 from threading import Lock
 
+import os
 from .cache_key_generator import generate_stock_cache_key
 from .redis_client import get_redis_client, RedisClient
+from ..config import get_settings
 from ..constants import CacheTTL, CacheSize
 
 logger = logging.getLogger(__name__)
@@ -319,13 +321,16 @@ class AdaptiveTTLCache:
 
 
 # Global cache instances with adaptive strategies
+_settings = get_settings()
+_use_redis = bool(_settings.redis_host) or os.getenv("ENABLE_REDIS", "false").lower() == "true"
+
 _stock_cache = AdaptiveTTLCache(
     maxsize=CacheSize.STOCK_CACHE, 
     ttl=CacheTTL.STOCK_DATA_SHORT,
     adaptive_ttl=True,
     size_based_eviction=True,
     max_memory_bytes=50 * 1024 * 1024,  # 50MB limit
-    use_redis=True,  # Enable Redis integration
+    use_redis=_use_redis,  # Enable Redis integration only when configured
     redis_prefix="stock:"
 )  # Stock data cache
 
@@ -333,7 +338,7 @@ _price_history_cache = AdaptiveTTLCache(
     maxsize=200, 
     ttl=CacheTTL.STOCK_HISTORY,
     adaptive_ttl=True,
-    use_redis=True,  # Enable Redis integration
+    use_redis=_use_redis,  # Enable Redis integration only when configured
     redis_prefix="price_history:"
 )  # Price history cache
 
@@ -341,7 +346,7 @@ _current_price_cache = AdaptiveTTLCache(
     maxsize=CacheSize.CURRENT_PRICE_CACHE, 
     ttl=CacheTTL.CURRENT_PRICE,
     adaptive_ttl=False,  # Keep fixed TTL for current prices
-    use_redis=True,  # Enable Redis integration
+    use_redis=_use_redis,  # Enable Redis integration only when configured
     redis_prefix="current_price:"
 )  # Current price cache
 

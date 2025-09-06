@@ -740,3 +740,8 @@ class BulkStockInfoResponse(BaseModel):
             raise ValueError("total_successful does not match actual successful results")
         
         return values
+
+
+
+
+
