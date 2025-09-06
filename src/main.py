@@ -138,24 +138,19 @@ def _safe_filter(candidates: list[str]) -> list[str]:
     return [o for o in candidates if _is_valid_origin(o)]
 
 
-# Configure middleware at import time to avoid Starlette runtime restrictions
-_settings_for_mw = get_settings()
+# Configure middleware at import time
+_app_settings = get_settings()
+_origins = compute_allowed_cors_origins(_app_settings.debug)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
+    allow_headers=["*"],
+)
 
-if _settings_for_mw.middleware_cors_enabled:
-    _origins = compute_allowed_cors_origins(_settings_for_mw.debug)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
-        allow_headers=["*"],
-    )
-
-if _settings_for_mw.middleware_error_handling_enabled:
-    setup_error_handlers(app)
-
-if _settings_for_mw.middleware_performance_enabled:
-    setup_performance_middleware(app)
+setup_error_handlers(app)
+setup_performance_middleware(app)
 
 # Optional Prometheus metrics (env: ENABLE_METRICS=true)
 try:
