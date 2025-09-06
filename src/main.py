@@ -4,11 +4,12 @@ FastAPI application entry point for stock tracking application.
 import logging
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends, APIRouter
+from fastapi import FastAPI, HTTPException, Depends, APIRouter, Header
 from fastapi.middleware.cors import CORSMiddleware
 from urllib.parse import urlparse
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -17,7 +18,7 @@ from .middleware.error_handler import setup_error_handlers
 from .middleware.performance import setup_performance_middleware
 from .middleware.metrics import setup_metrics
 from .utils.logging import setup_logging
-from .utils.cache import get_cache_stats
+from .utils.cache import get_cache_stats, set_cache_ttls
 from .services.stock_service import cleanup_stock_service
 from .config import get_settings
 from .constants import (
@@ -92,10 +93,27 @@ app = FastAPI(
     docs_url=DOCS_URL,
     redoc_url=REDOC_URL,
     openapi_url=OPENAPI_URL,
+    openapi_tags=[
+        {"name": "Stocks", "description": "株式情報の取得と管理"},
+        {"name": "Watchlist", "description": "ウォッチリストの管理"},
+        {"name": "Health", "description": "アプリケーションとデータベースのヘルスチェック"},
+        {"name": "Root", "description": "ルートエンドポイント"}
+    ]
 )
 
+<<<<<<< HEAD
 # Middleware will be configured below after helper functions are defined
 
+=======
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,  # Configure for production
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
+    allow_headers=["*"],
+)
+>>>>>>> origin/main
 
 def _is_valid_origin(origin: str) -> bool:
     """Originのバリデーション（http/https + ホスト必須、ワイルドカード不可）。"""
@@ -159,6 +177,7 @@ except Exception:
 # Import and include API routes
 from .api.stocks import router as stocks_router
 from .api.watchlist import router as watchlist_router
+from .api.metrics import router as metrics_router
 
 api_router = APIRouter(prefix="/api")
 
@@ -229,6 +248,7 @@ async def status_check(db: Session = Depends(get_db)):
 
 api_router.include_router(stocks_router)
 api_router.include_router(watchlist_router)
+api_router.include_router(metrics_router)
 
 app.include_router(api_router)
 
@@ -237,6 +257,64 @@ app.include_router(api_router)
 async def root():
     """Root endpoint."""
     return {"message": "Stock Test API is running", "version": "1.0.0"}
+
+
+# Admin utilities
+@app.post("/api/admin/cache/ttl", tags=["Admin"])
+async def update_cache_ttls(
+    payload: dict,
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token")
+):
+    """Update in-memory cache TTLs at runtime (admin only).
+
+    Request JSON fields (optional):
+      - stock_info_ttl: float seconds
+      - current_price_ttl: float seconds
+      - price_history_ttl: float seconds
+
+    Authorization: provide X-Admin-Token header matching ADMIN_TOKEN env (if set).
+    """
+    import os
+
+    required = os.getenv("ADMIN_TOKEN")
+    if required:
+        if not x_admin_token or x_admin_token != required:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+    stock_info_ttl = payload.get("stock_info_ttl")
+    current_price_ttl = payload.get("current_price_ttl")
+    price_history_ttl = payload.get("price_history_ttl")
+
+    try:
+        set_cache_ttls(
+            stock_info_ttl=stock_info_ttl,
+            current_price_ttl=current_price_ttl,
+            price_history_ttl=price_history_ttl,
+        )
+        return {
+            "ok": True,
+            "applied": {
+                "stock_info_ttl": stock_info_ttl,
+                "current_price_ttl": current_price_ttl,
+                "price_history_ttl": price_history_ttl,
+            },
+            "stats": get_cache_stats(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to update TTLs: {e}")
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def get_openapi_json():
+    """OpenAPIスキーマをJSON形式で返すエンドポイント"""
+    return get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        servers=app.servers,
+        tags=app.openapi_tags,
+    )
 
 
 if __name__ == "__main__":

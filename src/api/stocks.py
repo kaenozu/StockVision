@@ -43,7 +43,32 @@ def get_db():
            summary="銘柄情報取得",
            response_model=StockData,
            responses={
-               200: {"description": "銘柄情報"},
+               200: {
+                   "description": "銘柄情報",
+                   "content": {
+                       "application/json": {
+                           "example": {
+                               "stock_code": "7203",
+                               "company_name": "トヨタ自動車株式会社",
+                               "current_price": 2500.50,
+                               "previous_close": 2450.00,
+                               "price_change": 50.50,
+                               "price_change_pct": 2.06,
+                               "volume": 1000000,
+                               "market_cap": 3000000000000,
+                               "day_high": 2550.00,
+                               "day_low": 2480.00,
+                               "year_high": 2800.00,
+                               "year_low": 2200.00,
+                               "avg_volume": 900000,
+                               "pe_ratio": 15.5,
+                               "dividend_yield": 2.5,
+                               "last_updated": "2023-10-27T10:00:00Z",
+                               "market_time": "open"
+                           }
+                       }
+                   }
+               },
                404: {"description": "銘柄が見つからない"},
                400: {"description": "不正な銘柄コード"}
            })
@@ -112,7 +137,22 @@ async def get_stock_info(
            summary="リアルタイム価格取得",
            response_model=CurrentPriceResponse,
            responses={
-               200: {"description": "現在価格情報"},
+               200: {
+                   "description": "現在価格情報",
+                   "content": {
+                       "application/json": {
+                           "example": {
+                               "stock_code": "7203",
+                               "current_price": 2500.50,
+                               "previous_close": 2450.00,
+                               "price_change": 50.50,
+                               "price_change_pct": 2.06,
+                               "timestamp": "2023-10-27T10:00:00Z",
+                               "market_status": "open"
+                           }
+                       }
+                   }
+               },
                404: {"description": "銘柄が見つからない"},
                400: {"description": "不正な銘柄コード"}
            })
@@ -175,7 +215,33 @@ async def get_current_price(
            summary="価格履歴取得",
            response_model=List[PriceHistoryItem],
            responses={
-               200: {"description": "価格履歴"},
+               200: {
+                   "description": "価格履歴",
+                   "content": {
+                       "application/json": {
+                           "example": [
+                               {
+                                   "stock_code": "7203",
+                                   "date": "2023-10-27",
+                                   "open": 2480.00,
+                                   "high": 2550.00,
+                                   "low": 2470.00,
+                                   "close": 2500.50,
+                                   "volume": 1000000
+                               },
+                               {
+                                   "stock_code": "7203",
+                                   "date": "2023-10-26",
+                                   "open": 2450.00,
+                                   "high": 2490.00,
+                                   "low": 2440.00,
+                                   "close": 2480.00,
+                                   "volume": 900000
+                               }
+                           ]
+                       }
+                   }
+               },
                404: {"description": "銘柄が見つからない"},
                400: {"description": "不正な銘柄コードまたは日数"}
            })

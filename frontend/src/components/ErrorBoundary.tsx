@@ -1,36 +1,76 @@
-import React from 'react'
-import { ErrorBoundaryLayout } from './Layout/Layout'
+import React, { Component, ErrorInfo, ReactNode } from 'react'
+import { ErrorMessage } from './UI/ErrorMessage'
 
-interface ErrorBoundaryProps {
-  children: React.ReactNode
+interface Props {
+  children: ReactNode
+  fallback?: ReactNode
 }
 
-interface ErrorBoundaryState {
+interface State {
   hasError: boolean
-  error: Error | null
+  error?: Error
 }
 
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props)
-    this.state = { hasError: false, error: null }
+/**
+ * Error Boundary component to catch JavaScript errors anywhere in the child component tree,
+ * log those errors, and display a fallback UI.
+ */
+class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  /**
+   * Static method to update state so the next render shows the fallback UI.
+   */
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('React Error Boundary caught an error:', error, errorInfo)
+  /**
+   * Method to log error information.
+   */
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Uncaught error:', error, errorInfo)
+    
+    // Integrate with Sentry
+    if (window.Sentry) {
+      window.Sentry.captureException(error, {
+        contexts: { react: { componentStack: errorInfo.componentStack } }
+      })
+    }
   }
 
-  render() {
-    if (this.state.hasError && this.state.error) {
+  public render() {
+    if (this.state.hasError) {
+      // If a fallback UI is provided, render it
+      if (this.props.fallback) {
+        return this.props.fallback
+      }
+
+      // Default error UI
       return (
-        <ErrorBoundaryLayout
-          error={this.state.error}
-          onRetry={() => this.setState({ hasError: false, error: null })}
-        />
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+          <div className="max-w-md w-full">
+            <ErrorMessage
+              error={this.state.error || new Error('An unexpected error occurred')}
+              type="error"
+              size="lg"
+              onRetry={() => {
+                // Reset error state
+                this.setState({ hasError: false, error: undefined })
+                // Reload the page to restore functionality
+                window.location.reload()
+              }}
+              retryText="再読み込み"
+              onDismiss={() => {
+                // Reset error state
+                this.setState({ hasError: false, error: undefined })
+              }}
+              dismissText="閉じる"
+            />
+          </div>
+        </div>
       )
     }
 

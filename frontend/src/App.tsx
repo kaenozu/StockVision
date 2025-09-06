@@ -1,4 +1,4 @@
-/**
+/** 
  * Main App Component
  * 
  * Root application component with routing, error boundaries,
@@ -19,6 +19,7 @@ import SettingsPage from './pages/SettingsPage'
 import DemoPage from './pages/DemoPage'
 import RecommendedStocksPage from './pages/RecommendedStocksPage'
 import TradingRecommendationsPage from './pages/TradingRecommendationsPage'
+import PerformancePage from './pages/PerformancePage'
 import TestPage from './pages/TestPage'
 
 // Lazy load components for code splitting
@@ -94,6 +95,7 @@ function App() {
               {/* New Feature Routes */}
               <Route path="recommended-stocks" element={<RecommendedStocksPage />} />
               <Route path="trading-recommendations" element={<TradingRecommendationsPage />} />
+              <Route path="performance" element={<PerformancePage />} />
               
               {/* Test Page for debugging */}
               {import.meta.env.DEV && <Route path="test" element={<TestPage />} />}
