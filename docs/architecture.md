@@ -147,20 +147,24 @@ Yahoo Finance APIへの非同期クライアント。
 
 ```
 frontend/src/
+├── assets/              # 静的アセット (画像, フォントなど)
 ├── components/          # UIコンポーネント
-│   ├── layout/          # レイアウトコンポーネント
-│   ├── stock/           # 株式関連コンポーネント
+│   ├── layout/          # レイアウトコンポーネント (Header, Footer, Layout)
+│   ├── stock/           # 株式関連コンポーネント (StockCard, PriceChart)
 │   ├── watchlist/       # ウォッチリストコンポーネント
-│   ├── UI/              # 汎用UIコンポーネント
-│   └── enhanced/        # 拡張コンポーネント
-├── pages/               # ページコンポーネント
-├── services/            # APIクライアント
-├── hooks/               # カスタムフック
-├── contexts/            # Reactコンテキスト
+│   ├── UI/              # 汎用UIコンポーネント (Button, LoadingSpinner)
+│   ├── enhanced/        # 拡張コンポーネント (アクセシビリティ対応)
+│   └── ...              # その他のコンポーネント
+├── pages/               # ページコンポーネント (ルートに対応)
+├── services/            # APIクライアント (stockApi)
+├── hooks/               # カスタムフック (useStock, useWatchlist)
+├── contexts/            # Reactコンテキスト (Theme, Responsive, Accessibility)
 ├── types/               # TypeScript型定義
-├── utils/               # ユーティリティ
-├── config/              # 設定
-└── main.tsx            # アプリケーションエントリーポイント
+├── utils/               # ユーティリティ (フォーマッター, バリデーター)
+├── config/              # 設定 (UIテーマ)
+├── App.tsx             # ルートアプリケーションコンポーネント
+├── main.tsx            # エントリーポイント
+└── index.css           # グローバルCSS
 ```
 
 ### コンポーネント設計
