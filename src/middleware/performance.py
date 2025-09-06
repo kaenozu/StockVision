@@ -2,13 +2,15 @@
 Performance optimization middleware for StockVision API
 
 Provides response compression, caching headers, and other optimizations.
+Supports integration with external cache systems like Redis.
 """
 
 import time
 import hashlib
 import json
 import re
-from typing import Callable
+from typing import Callable, Optional, Any
+from dataclasses import dataclass, asdict
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.gzip import GZipMiddleware
@@ -24,9 +26,24 @@ from ..utils.performance_monitor import record_request_metrics
 from ..config import get_middleware_config
 
 
+@dataclass
+class CacheMetrics:
+    """Cache metrics for monitoring and optimization."""
+    hits: int = 0
+    misses: int = 0
+    evictions: int = 0
+    expired: int = 0
+    size: int = 0
+    maxsize: int = 0
+    ttl: float = 0.0
+    hit_ratio: float = 0.0
+    memory_usage_bytes: int = 0
+
+
 class CacheControlMiddleware(BaseHTTPMiddleware):
     """
     Middleware to add appropriate cache control headers to API responses.
+    Supports integration with external cache systems like Redis.
     """
     
     # Cache configurations for different endpoints

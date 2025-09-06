@@ -64,6 +64,13 @@ class AppConfig(BaseModel):
     debug: bool = Field(default=False, description="Enable debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
     sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
+    
+    # Redis settings
+    redis_host: Optional[str] = Field(default=None, description="Redis server host")
+    redis_port: Optional[int] = Field(default=6379, description="Redis server port")
+    redis_db: Optional[int] = Field(default=0, description="Redis database number")
+    redis_password: Optional[str] = Field(default=None, description="Redis server password")
+    
     yahoo_finance: YahooFinanceConfig = Field(default_factory=YahooFinanceConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
@@ -76,6 +83,13 @@ class AppConfig(BaseModel):
             debug=os.getenv("DEBUG", "false").lower() == "true",
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             sentry_dsn=os.getenv("SENTRY_DSN"),
+            
+            # Redis settings
+            redis_host=os.getenv("REDIS_HOST"),
+            redis_port=int(os.getenv("REDIS_PORT", "6379")),
+            redis_db=int(os.getenv("REDIS_DB", "0")),
+            redis_password=os.getenv("REDIS_PASSWORD"),
+            
             yahoo_finance=YahooFinanceConfig(
                 enabled=os.getenv("USE_REAL_YAHOO_API", "false").lower() == "true",
                 max_requests=int(os.getenv("YAHOO_MAX_REQUESTS", "10")),
