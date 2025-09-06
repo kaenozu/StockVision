@@ -4,14 +4,23 @@ Performance optimization middleware for StockVision API
 Provides response compression, caching headers, and other optimizations.
 """
 
-from fastapi import FastAPI, Request, Response
-from fastapi.middleware.gzip import GZipMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import StreamingResponse
-from typing import Callable
 import time
 import hashlib
 import json
+import re
+from typing import Callable
+
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import StreamingResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from ..constants import (
+    API_RECOMMENDED_STOCKS, API_TRADING_RECOMMENDATIONS, API_PRICE_PREDICTIONS,
+    API_STOCKS_CURRENT, API_STOCKS_HISTORY, API_WATCHLIST,
+    CacheTTL, SWRTime, PerformanceThresholds, TimeConstants
+)
+from ..utils.performance_monitor import record_request_metrics
 
 
 class CacheControlMiddleware(BaseHTTPMiddleware):
@@ -22,16 +31,16 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
     # Cache configurations for different endpoints
     CACHE_SETTINGS = {
         # Static data - cache longer
-        "/api/recommended-stocks": {"max_age": 3600, "stale_while_revalidate": 1800},  # 1h cache, 30m stale
-        "/api/trading-recommendations": {"max_age": 1800, "stale_while_revalidate": 900},  # 30m cache, 15m stale
-        "/api/price-predictions": {"max_age": 7200, "stale_while_revalidate": 3600},  # 2h cache, 1h stale
+        API_RECOMMENDED_STOCKS: {"max_age": CacheTTL.RECOMMENDED_STOCKS, "stale_while_revalidate": SWRTime.RECOMMENDED_STOCKS},
+        API_TRADING_RECOMMENDATIONS: {"max_age": CacheTTL.TRADING_RECOMMENDATIONS, "stale_while_revalidate": SWRTime.TRADING_RECOMMENDATIONS},
+        API_PRICE_PREDICTIONS: {"max_age": CacheTTL.PRICE_PREDICTIONS, "stale_while_revalidate": SWRTime.PRICE_PREDICTIONS},
         
         # Real-time data - shorter cache
-        "/api/stocks/*/current": {"max_age": 300, "stale_while_revalidate": 150},  # 5m cache, 2.5m stale
-        "/api/stocks/*/history": {"max_age": 1800, "stale_while_revalidate": 900},  # 30m cache, 15m stale
+        API_STOCKS_CURRENT: {"max_age": CacheTTL.STOCK_DATA_SHORT, "stale_while_revalidate": SWRTime.STOCK_DATA_SHORT},
+        API_STOCKS_HISTORY: {"max_age": CacheTTL.STOCK_HISTORY, "stale_while_revalidate": SWRTime.STOCK_HISTORY},
         
         # User-specific data - no cache
-        "/api/watchlist": {"max_age": 0, "no_cache": True}
+        API_WATCHLIST: {"max_age": CacheTTL.NO_CACHE, "no_cache": True}
     }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -64,18 +73,20 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
                 response.headers["Cache-Control"] = cache_control
                 
                 # Add ETag for better cache validation
-                # Skip ETag generation for StreamingResponse as it doesn't have a body attribute
+                # Skip ETag generation for StreamingResponse
                 if not isinstance(response, StreamingResponse):
-                    # For regular responses, we can generate ETag from the response content
-                    # The response body should be available in the body attribute
                     if hasattr(response, 'body') and response.body:
-                        etag = self._generate_etag(response.body)
-                        response.headers["ETag"] = etag
-                        
-                        # Check if client has matching ETag
-                        if_none_match = request.headers.get("If-None-Match")
-                        if if_none_match == etag:
-                            return Response(status_code=304)
+                        try:
+                            etag = self._generate_etag(response.body)
+                            response.headers["ETag"] = etag
+                            
+                            # Check if client has matching ETag
+                            if_none_match = request.headers.get("If-None-Match")
+                            if if_none_match == etag:
+                                return Response(status_code=304)
+                        except AttributeError:
+                            # Skip ETag if body is not accessible
+                            pass
 
         # Add performance headers
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -89,21 +100,31 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
         if path in self.CACHE_SETTINGS:
             return self.CACHE_SETTINGS[path]
         
-        # Pattern matching for dynamic paths
+        # Pattern matching for dynamic paths using regex
         for pattern, config in self.CACHE_SETTINGS.items():
             if "*" in pattern:
-                # Simple wildcard matching
-                pattern_parts = pattern.split("*")
-                if len(pattern_parts) == 2:
-                    prefix, suffix = pattern_parts
-                    if path.startswith(prefix) and path.endswith(suffix):
+                # Convert wildcard pattern to regex pattern
+                # Escape special regex characters but keep wildcards
+                regex_pattern = re.escape(pattern).replace(r'\*', r'[^/]*')
+                # Add anchors to match full path
+                regex_pattern = f'^{regex_pattern}$'
+                
+                try:
+                    if re.match(regex_pattern, path):
                         return config
+                except re.error:
+                    # Fallback to simple wildcard matching if regex fails
+                    pattern_parts = pattern.split("*")
+                    if len(pattern_parts) == 2:
+                        prefix, suffix = pattern_parts
+                        if path.startswith(prefix) and path.endswith(suffix):
+                            return config
         
         return {}
     
     def _generate_etag(self, content: bytes) -> str:
-        """Generate ETag from response content."""
-        return f'"{hashlib.md5(content).hexdigest()}"'
+        """Generate ETag from response content using SHA256 for consistency."""
+        return f'"{hashlib.sha256(content).hexdigest()}"'
 
 
 class ResponseCompressionMiddleware(BaseHTTPMiddleware):
@@ -126,7 +147,7 @@ class ResponseCompressionMiddleware(BaseHTTPMiddleware):
     }
     
     # Minimum size to compress (bytes)
-    MIN_SIZE = 1024
+    MIN_SIZE = PerformanceThresholds.COMPRESSION_MIN_SIZE
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         response = await call_next(request)
@@ -174,11 +195,21 @@ class PerformanceMetricsMiddleware(BaseHTTPMiddleware):
         process_time = time.time() - start_time
         
         # Add performance headers
-        response.headers["X-Process-Time"] = str(round(process_time * 1000, 2))  # milliseconds
+        response.headers["X-Process-Time"] = str(round(process_time * TimeConstants.MILLISECONDS_PER_SECOND, 2))  # milliseconds
         response.headers["X-Timestamp"] = str(int(time.time()))
         
+        # Record metrics
+        record_request_metrics(
+            method=request.method,
+            path=request.url.path,
+            process_time=process_time,
+            status_code=response.status_code,
+            user_agent=request.headers.get("user-agent", ""),
+            client_ip=request.client.host if request.client else ""
+        )
+        
         # Log slow requests
-        if process_time > 1.0:  # Requests taking over 1 second
+        if process_time > PerformanceThresholds.SLOW_REQUEST_THRESHOLD:
             import logging
             logger = logging.getLogger(__name__)
             logger.warning(
@@ -192,17 +223,16 @@ def setup_performance_middleware(app: FastAPI):
     """
     Set up all performance optimization middleware.
     """
+    # Add custom performance middleware
+    # Order is important: CacheControlMiddleware -> GZipMiddleware -> PerformanceMetricsMiddleware
+    app.add_middleware(CacheControlMiddleware)
     # Add GZip compression (built-in FastAPI middleware)
     app.add_middleware(
         GZipMiddleware,
-        minimum_size=1024,
-        compresslevel=6  # Balance between compression ratio and CPU usage
+        minimum_size=PerformanceThresholds.COMPRESSION_MIN_SIZE,
+        compresslevel=PerformanceThresholds.COMPRESSION_LEVEL  # Balance between compression ratio and CPU usage
     )
-    
-    # Add custom performance middleware
     app.add_middleware(PerformanceMetricsMiddleware)
-    app.add_middleware(ResponseCompressionMiddleware)
-    app.add_middleware(CacheControlMiddleware)
 
 
 # Utility functions for manual performance optimization
@@ -290,7 +320,7 @@ def generate_cache_key(prefix: str, *args, **kwargs) -> str:
     return new_generate_cache_key(prefix, str(primary_key), parameters)
 
 
-def cache_response(key: str, data: dict, ttl: int = 3600):
+def cache_response(key: str, data: dict, ttl: int = CacheTTL.DEFAULT):
     """
     Cache response data with TTL.
     This would integrate with Redis or similar in production.

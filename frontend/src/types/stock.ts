@@ -46,14 +46,16 @@ export interface WatchlistItemAPI {
   stock_code: string
   company_name: string
   added_date: string       // ISO timestamp
-  alert_price?: number | null
+  alert_price_high?: number | null
+  alert_price_low?: number | null
   notes?: string | null
 }
 
 // Request interface for adding to watchlist
 export interface AddWatchlistRequest {
   stock_code: string
-  alert_price?: number | null
+  alert_price_high?: number | null
+  alert_price_low?: number | null
   notes?: string | null
 }
 
@@ -62,6 +64,8 @@ export interface WatchlistItem extends WatchlistItemAPI {
   id?: string             // Local ID for React keys
   isLoading?: boolean     // UI loading state
   hasError?: boolean      // UI error state
+  alert_price_high?: number | null // High alert price
+  alert_price_low?: number | null  // Low alert price
 }
 
 // Chart configuration interface for client-side state
@@ -80,10 +84,13 @@ export type ChartType = 'line' | 'candlestick'
 
 // API error interface
 export interface APIError {
-  status: number
-  message: string
-  error_type?: string
-  detail?: string
+  code: number;
+  message: string;
+  type?: string;
+  request_id?: string;
+  timestamp?: string;
+  path?: string;
+  details?: any;
 }
 
 // Generic API response wrapper
@@ -159,7 +166,8 @@ export interface StockSearchFormData {
 
 export interface WatchlistFormData {
   stock_code: string
-  alert_price: string | null
+  alert_price_high: string | null
+  alert_price_low: string | null
   notes: string | null
 }
 
@@ -322,7 +330,45 @@ export function isWatchlistItemAPI(obj: unknown): obj is WatchlistItemAPI {
     typeof typedObj.company_name === 'string' &&
     typeof typedObj.added_date === 'string' &&
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(typedObj.added_date) &&
-    (typedObj.alert_price === null || (typeof typedObj.alert_price === 'number' && typedObj.alert_price > 0)) &&
+    (typedObj.alert_price_high === null || (typeof typedObj.alert_price_high === 'number' && typedObj.alert_price_high > 0)) &&
+    (typedObj.alert_price_low === null || (typeof typedObj.alert_price_low === 'number' && typedObj.alert_price_low > 0)) &&
     (typedObj.notes === null || typeof typedObj.notes === 'string')
   )
+}
+
+export function isApiError(obj: unknown): obj is { error: APIError } {
+  if (obj === null || typeof obj !== 'object') {
+    return false;
+  }
+  if (!('error' in obj)) {
+    return false;
+  }
+  const error = (obj as any).error;
+  if (error === null || typeof error !== 'object') {
+    return false;
+  }
+
+  // 必須プロパティのチェック
+  const hasRequiredProperties = (
+    'code' in error &&
+    typeof error.code === 'number' &&
+    'message' in error &&
+    typeof error.message === 'string'
+  );
+
+  if (!hasRequiredProperties) {
+    return false;
+  }
+
+  // オプションプロパティのチェックを配列と every を使って行う
+  const optionalProperties: (keyof APIError)[] = ['type', 'request_id', 'timestamp', 'path'];
+  const areOptionalPropertiesValid = optionalProperties.every((prop): boolean => {
+    const value = error[prop];
+    return value === undefined || typeof value === 'string';
+  });
+
+  // details は any 型なので、null または object であることをチェック
+  const isDetailsValid = error.details === undefined || error.details === null || typeof error.details === 'object';
+
+  return areOptionalPropertiesValid && isDetailsValid;
 }
