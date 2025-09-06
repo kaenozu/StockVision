@@ -19,7 +19,7 @@ import SettingsPage from './pages/SettingsPage'
 import DemoPage from './pages/DemoPage'
 import RecommendedStocksPage from './pages/RecommendedStocksPage'
 import TradingRecommendationsPage from './pages/TradingRecommendationsPage'
-import PerformancePage from './pages/PerformancePage'
+import { PerformancePage } from './pages/PerformancePage'
 import TestPage from './pages/TestPage'
 import DocumentationPage from './pages/DocumentationPage'
 

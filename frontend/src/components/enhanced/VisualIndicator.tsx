@@ -1,6 +1,6 @@
 import React from 'react'
 // import { useTheme } from '../../contexts/ThemeContext'
-// import { useAccessibility } from '../../contexts/AccessibilityContext'
+import { useAccessibility } from '../../contexts/AccessibilityContext'
 
 export type IndicatorType = 'gain' | 'loss' | 'neutral' | 'unknown'
 export type IndicatorSize = 'sm' | 'md' | 'lg' | 'xl'
