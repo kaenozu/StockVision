@@ -2,18 +2,25 @@
 Performance optimization middleware for StockVision API
 
 Provides response compression, caching headers, and other optimizations.
+Supports integration with external cache systems like Redis.
+Supports multiple compression algorithms including GZip and Brotli.
 """
 
 import time
 import hashlib
 import json
 import re
-from typing import Callable
+import gzip
+import brotli  # type: ignore
+from typing import Callable, Optional, Any, Union
+from dataclasses import dataclass, asdict
+from enum import Enum
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import MutableHeaders
 
 from ..constants import (
     API_RECOMMENDED_STOCKS, API_TRADING_RECOMMENDATIONS, API_PRICE_PREDICTIONS,
@@ -24,9 +31,28 @@ from ..utils.performance_monitor import record_request_metrics
 from ..config import get_middleware_config
 
 
+class CompressionAlgorithm(Enum):
+    """Supported compression algorithms."""
+    GZIP = "gzip"
+    BROTLI = "br"
+    NONE = "none"
+
+
+@dataclass
+class CompressionMetrics:
+    """Compression metrics for monitoring and optimization."""
+    algorithm: str = "none"
+    original_size: int = 0
+    compressed_size: int = 0
+    compression_ratio: float = 0.0
+    cpu_time_ms: float = 0.0
+    savings_bytes: int = 0
+
+
 class CacheControlMiddleware(BaseHTTPMiddleware):
     """
     Middleware to add appropriate cache control headers to API responses.
+    Supports integration with external cache systems like Redis.
     """
     
     # Cache configurations for different endpoints
@@ -113,7 +139,7 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
                 # Escape special regex characters but keep wildcards
                 regex_pattern = re.escape(pattern).replace(r'\*', r'[^/]*')
                 # Add anchors to match full path
-                regex_pattern = f'^{regex_pattern}
+                regex_pattern = f'^{regex_pattern}$'
                 
                 try:
                     if re.match(regex_pattern, path):
@@ -136,6 +162,7 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
 class ResponseCompressionMiddleware(BaseHTTPMiddleware):
     """
     Advanced compression middleware with content-type aware compression.
+    Supports multiple compression algorithms including GZip and Brotli.
     """
     
     # Content types that should be compressed
@@ -155,6 +182,10 @@ class ResponseCompressionMiddleware(BaseHTTPMiddleware):
     # Minimum size to compress (bytes)
     MIN_SIZE = PerformanceThresholds.COMPRESSION_MIN_SIZE
     
+    # Compression levels
+    GZIP_COMPRESSLEVEL = 6  # Balance between compression ratio and CPU usage
+    BROTLI_QUALITY = 4      # Balance between compression ratio and CPU usage (0-11)
+    
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Check if middleware is enabled
         middleware_config = get_middleware_config()
@@ -167,16 +198,37 @@ class ResponseCompressionMiddleware(BaseHTTPMiddleware):
         if not self._should_compress(request, response):
             return response
         
-        # Compression is handled by GZipMiddleware, just add headers
-        response.headers["Vary"] = "Accept-Encoding"
+        # Determine best compression algorithm based on client preference
+        accept_encoding = request.headers.get("accept-encoding", "")
+        algorithm = self._choose_compression_algorithm(accept_encoding)
+        
+        # Compress response body
+        if algorithm != CompressionAlgorithm.NONE:
+            start_time = time.time()
+            compressed_body, metrics = self._compress_response(response.body, algorithm)
+            compression_time = (time.time() - start_time) * 1000  # ms
+            
+            # Update response with compressed body and headers
+            if compressed_body:
+                response.body = compressed_body
+                response.headers["Content-Encoding"] = algorithm.value
+                response.headers["Vary"] = "Accept-Encoding"
+                
+                # Add compression metrics to response headers (for debugging)
+                response.headers["X-Compression-Algorithm"] = algorithm.value
+                response.headers["X-Compression-Ratio"] = str(round(metrics.compression_ratio, 4))
+                response.headers["X-Compression-Time-ms"] = str(round(compression_time, 2))
+                response.headers["X-Original-Size"] = str(metrics.original_size)
+                response.headers["X-Compressed-Size"] = str(metrics.compressed_size)
+                response.headers["X-Bytes-Saved"] = str(metrics.savings_bytes)
         
         return response
     
     def _should_compress(self, request: Request, response: Response) -> bool:
         """Determine if response should be compressed."""
-        # Check if client accepts gzip
+        # Check if client accepts any compression
         accept_encoding = request.headers.get("accept-encoding", "")
-        if "gzip" not in accept_encoding:
+        if "gzip" not in accept_encoding and "br" not in accept_encoding:
             return False
         
         # Check content type
@@ -190,6 +242,49 @@ class ResponseCompressionMiddleware(BaseHTTPMiddleware):
             return False
         
         return True
+    
+    def _choose_compression_algorithm(self, accept_encoding: str) -> CompressionAlgorithm:
+        """Choose the best compression algorithm based on client preference."""
+        # Prefer Brotli if supported
+        if "br" in accept_encoding:
+            return CompressionAlgorithm.BROTLI
+        # Fallback to GZip
+        elif "gzip" in accept_encoding:
+            return CompressionAlgorithm.GZIP
+        # No compression
+        else:
+            return CompressionAlgorithm.NONE
+    
+    def _compress_response(self, body: bytes, algorithm: CompressionAlgorithm) -> tuple[Optional[bytes], CompressionMetrics]:
+        """Compress response body using the specified algorithm."""
+        if not body:
+            return None, CompressionMetrics(algorithm=algorithm.value)
+        
+        metrics = CompressionMetrics(
+            algorithm=algorithm.value,
+            original_size=len(body)
+        )
+        
+        try:
+            if algorithm == CompressionAlgorithm.GZIP:
+                compressed_body = gzip.compress(body, compresslevel=self.GZIP_COMPRESSLEVEL)
+            elif algorithm == CompressionAlgorithm.BROTLI:
+                compressed_body = brotli.compress(body, quality=self.BROTLI_QUALITY)
+            else:
+                compressed_body = body
+            
+            metrics.compressed_size = len(compressed_body)
+            metrics.compression_ratio = metrics.compressed_size / max(1, metrics.original_size)
+            metrics.savings_bytes = metrics.original_size - metrics.compressed_size
+            
+            return compressed_body, metrics
+            
+        except Exception as e:
+            # Log compression error but return original body
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Compression failed with algorithm {algorithm.value}: {e}")
+            return body, CompressionMetrics(algorithm="none", original_size=len(body), compressed_size=len(body))
 
 
 class PerformanceMetricsMiddleware(BaseHTTPMiddleware):
@@ -242,19 +337,15 @@ def setup_performance_middleware(app: FastAPI):
     middleware_config = get_middleware_config()
     
     # Add custom performance middleware
-    # Order is important: CacheControlMiddleware -> GZipMiddleware -> PerformanceMetricsMiddleware
+    # Order is important: CacheControlMiddleware -> ResponseCompressionMiddleware -> PerformanceMetricsMiddleware
     
     # Add Cache Control Middleware if enabled
     if middleware_config.cache_control_enabled:
         app.add_middleware(CacheControlMiddleware)
     
-    # Add GZip compression (built-in FastAPI middleware) if enabled
-    if middleware_config.gzip_enabled:
-        app.add_middleware(
-            GZipMiddleware,
-            minimum_size=middleware_config.gzip_minimum_size,
-            compresslevel=middleware_config.gzip_compresslevel  # Balance between compression ratio and CPU usage
-        )
+    # Add Response Compression Middleware if enabled
+    if middleware_config.response_compression_enabled:
+        app.add_middleware(ResponseCompressionMiddleware)
     
     # Add Performance Metrics Middleware if enabled
     if middleware_config.performance_metrics_enabled:

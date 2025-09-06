@@ -449,16 +449,22 @@ export class StockApiClient {
     // Validate request data
     this.validateStockCode(request.stock_code)
     
-    if (request.alert_price !== undefined && request.alert_price !== null && request.alert_price <= 0) {
-      throw new ValidationError('Invalid alert price: must be greater than 0', 'alert_price')
+    if (request.alert_price_high !== undefined && request.alert_price_high !== null && request.alert_price_high <= 0) {
+      throw new ValidationError('Invalid alert price: must be greater than 0', 'alert_price_high')
+    }
+    if (request.alert_price_low !== undefined && request.alert_price_low !== null && request.alert_price_low <= 0) {
+      throw new ValidationError('Invalid alert price: must be greater than 0', 'alert_price_low')
     }
 
     // Validate request data types
     if (typeof request.stock_code !== 'string') {
       throw new ValidationError('Invalid request data type: stock_code must be string')
     }
-    if (request.alert_price !== undefined && request.alert_price !== null && typeof request.alert_price !== 'number') {
-      throw new ValidationError('Invalid request data type: alert_price must be number or null')
+    if (request.alert_price_high !== undefined && request.alert_price_high !== null && typeof request.alert_price_high !== 'number') {
+      throw new ValidationError('Invalid request data type: alert_price_high must be number or null')
+    }
+    if (request.alert_price_low !== undefined && request.alert_price_low !== null && typeof request.alert_price_low !== 'number') {
+      throw new ValidationError('Invalid request data type: alert_price_low must be number or null')
     }
 
     const response = await this.client.post<WatchlistItemAPI>(

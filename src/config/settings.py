@@ -46,16 +46,14 @@ class MiddlewareConfig(BaseModel):
     # Cache Control Middleware
     cache_control_enabled: bool = Field(default=True, description="Enable Cache Control Middleware")
     
-    # GZip Compression Middleware
-    gzip_enabled: bool = Field(default=True, description="Enable GZip Compression Middleware")
-    gzip_minimum_size: int = Field(default=1024, description="Minimum response size to compress (bytes)")
-    gzip_compresslevel: int = Field(default=6, description="Compression level (1-9, 9 is highest compression)")
+    # Response Compression Middleware
+    response_compression_enabled: bool = Field(default=True, description="Enable Response Compression Middleware")
+    response_compression_min_size: int = Field(default=1024, description="Minimum response size to compress (bytes)")
+    response_compression_gzip_level: int = Field(default=6, description="GZip compression level (1-9, 9 is highest compression)")
+    response_compression_brotli_quality: int = Field(default=4, description="Brotli compression quality (0-11, 11 is highest compression)")
     
     # Performance Metrics Middleware
     performance_metrics_enabled: bool = Field(default=True, description="Enable Performance Metrics Middleware")
-    
-    # Response Compression Middleware (Legacy, kept for backward compatibility)
-    response_compression_enabled: bool = Field(default=False, description="Enable Response Compression Middleware (Legacy)")
 
 
 class CorsConfig(BaseModel):
@@ -74,13 +72,24 @@ class AppConfig(BaseModel):
     log_level: str = Field(default="INFO", description="Logging level")
     server_url: str = Field(default="http://localhost:8000", description="Server URL for OpenAPI specification")
     sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
+<<<<<<< HEAD
     cors: CorsConfig = Field(default_factory=CorsConfig)
+=======
+    
+    # Redis settings
+    redis_host: Optional[str] = Field(default=None, description="Redis server host")
+    redis_port: Optional[int] = Field(default=6379, description="Redis server port")
+    redis_db: Optional[int] = Field(default=0, description="Redis database number")
+    redis_password: Optional[str] = Field(default=None, description="Redis server password")
+    
+>>>>>>> origin/main
     yahoo_finance: YahooFinanceConfig = Field(default_factory=YahooFinanceConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
     
     @classmethod
+<<<<<<< HEAD
             def from_env(cls) -> "AppConfig":
                 """Create configuration from environment variables."""
                 return cls(
@@ -88,6 +97,21 @@ class AppConfig(BaseModel):
                     log_level=os.getenv("LOG_LEVEL", "INFO"),
                     server_url=os.getenv("SERVER_URL", "http://localhost:8000"),
                     sentry_dsn=os.getenv("SENTRY_DSN"),
+=======
+    def from_env(cls) -> "AppConfig":
+        """Create configuration from environment variables."""
+        return cls(
+            debug=os.getenv("DEBUG", "false").lower() == "true",
+            log_level=os.getenv("LOG_LEVEL", "INFO"),
+            sentry_dsn=os.getenv("SENTRY_DSN"),
+            
+            # Redis settings
+            redis_host=os.getenv("REDIS_HOST"),
+            redis_port=int(os.getenv("REDIS_PORT", "6379")),
+            redis_db=int(os.getenv("REDIS_DB", "0")),
+            redis_password=os.getenv("REDIS_PASSWORD"),
+            
+>>>>>>> origin/main
             yahoo_finance=YahooFinanceConfig(
                 enabled=os.getenv("USE_REAL_YAHOO_API", "false").lower() == "true",
                 max_requests=int(os.getenv("YAHOO_MAX_REQUESTS", "10")),
@@ -110,19 +134,19 @@ class AppConfig(BaseModel):
                 max_overflow=int(os.getenv("DATABASE_MAX_OVERFLOW", "10"))
             ),
             middleware=MiddlewareConfig(
-                        cache_control_enabled=os.getenv("MIDDLEWARE_CACHE_CONTROL_ENABLED", "true").lower() == "true",
-                        gzip_enabled=os.getenv("MIDDLEWARE_GZIP_ENABLED", "true").lower() == "true",
-                        gzip_minimum_size=int(os.getenv("MIDDLEWARE_GZIP_MINIMUM_SIZE", "1024")),
-                        gzip_compresslevel=int(os.getenv("MIDDLEWARE_GZIP_COMPRESSLEVEL", "6")),
-                        performance_metrics_enabled=os.getenv("MIDDLEWARE_PERFORMANCE_METRICS_ENABLED", "true").lower() == "true",
-                        response_compression_enabled=os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_ENABLED", "false").lower() == "true"
-                    ),
-                    cors=CorsConfig(
-                        allow_origins=[origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",") if origin.strip()],
-                        allow_credentials=os.getenv("CORS_ALLOW_CREDENTIALS", "true").lower() == "true",
-                        allow_methods=[method.strip() for method in os.getenv("CORS_ALLOW_METHODS", "*").split(",") if method.strip()],
-                        allow_headers=[header.strip() for header in os.getenv("CORS_ALLOW_HEADERS", "*").split(",") if header.strip()]
-                    )
+                cache_control_enabled=os.getenv("MIDDLEWARE_CACHE_CONTROL_ENABLED", "true").lower() == "true",
+                response_compression_enabled=os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_ENABLED", "true").lower() == "true",
+                response_compression_min_size=int(os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_MIN_SIZE", "1024")),
+                response_compression_gzip_level=int(os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_GZIP_LEVEL", "6")),
+                response_compression_brotli_quality=int(os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_BROTLI_QUALITY", "4")),
+                performance_metrics_enabled=os.getenv("MIDDLEWARE_PERFORMANCE_METRICS_ENABLED", "true").lower() == "true"
+            ),
+            cors=CorsConfig(
+                allow_origins=[origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",") if origin.strip()],
+                allow_credentials=os.getenv("CORS_ALLOW_CREDENTIALS", "true").lower() == "true",
+                allow_methods=[method.strip() for method in os.getenv("CORS_ALLOW_METHODS", "*").split(",") if method.strip()],
+                allow_headers=[header.strip() for header in os.getenv("CORS_ALLOW_HEADERS", "*").split(",") if header.strip()]
+            )
         )
 
 

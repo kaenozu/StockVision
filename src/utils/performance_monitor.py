@@ -201,3 +201,55 @@ def record_request_metrics(
         client_ip=client_ip
     )
     performance_monitor.record_request(metrics)
+
+
+# パフォーマンスメトリクスを取得するユーティリティ関数
+def get_performance_metrics() -> Dict:
+    """
+    パフォーマンスメトリクスを取得する
+    """
+    return performance_monitor.export_metrics()
+
+
+def get_slow_requests(limit: int = 50) -> List[Dict]:
+    """
+    最近のスローリクエストを取得する
+    """
+    slow_requests = performance_monitor.get_slow_requests(limit)
+    return [
+        {
+            "timestamp": req.timestamp,
+            "method": req.method,
+            "path": req.path,
+            "process_time": req.process_time,
+            "status_code": req.status_code,
+            "user_agent": req.user_agent,
+            "client_ip": req.client_ip,
+        }
+        for req in slow_requests
+    ]
+
+
+def get_endpoint_statistics() -> Dict:
+    """
+    エンドポイントごとの統計情報を取得する
+    """
+    return performance_monitor.get_endpoint_stats()
+
+
+def get_top_slow_endpoints(limit: int = 10) -> List[Dict]:
+    """
+    最も遅いエンドポイントのトップリストを取得する
+    """
+    top_slow = performance_monitor.get_top_slow_endpoints(limit)
+    return [
+        {"endpoint": endpoint, "average_time": avg_time}
+        for endpoint, avg_time in top_slow
+    ]
+
+
+def clear_performance_metrics():
+    """
+    パフォーマンスメトリクスの履歴をクリアする
+    """
+    performance_monitor.clear_history()

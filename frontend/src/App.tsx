@@ -7,8 +7,8 @@
 
 import React, { Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import Layout from './components/layout/Layout'
-import { LoadingLayout } from './components/layout/Layout'
+import Layout from './components/Layout/Layout'
+import { LoadingLayout } from './components/Layout/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
 import HomePage from './pages/HomePage'
 import SimplifiedHomePage from './pages/SimplifiedHomePage'

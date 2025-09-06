@@ -58,3 +58,4 @@ sentry-sdk==1.38.0
 mkdocs-material==9.5.31
 mkdocs-gen-files==0.5.0
 fastapi-cli==0.0.5
+brotli

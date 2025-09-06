@@ -74,18 +74,31 @@ def get_db():
                                    "id": 1,
                                    "stock_code": "7203",
                                    "added_at": "2023-10-27T10:00:00Z",
+<<<<<<< HEAD
                                    "notes": "注目銘柄",
                                    "alert_price_high": 2600.0,
                                    "alert_price_low": 2400.0,
+=======
+                                   "notes": "トヨタ自動車",
+                                   "alert_price_high": 2600.00,
+                                   "alert_price_low": 2400.00,
+>>>>>>> origin/main
                                    "is_active": True
                                },
                                {
                                    "id": 2,
                                    "stock_code": "9984",
+<<<<<<< HEAD
                                    "added_at": "2023-10-26T15:30:00Z",
                                    "notes": "急騰銘柄",
                                    "alert_price_high": None,
                                    "alert_price_low": None,
+=======
+                                   "added_at": "2023-10-27T10:00:00Z",
+                                   "notes": "ソフトバンクグループ",
+                                   "alert_price_high": None,
+                                   "alert_price_low": 1100.00,
+>>>>>>> origin/main
                                    "is_active": True
                                }
                            ]
@@ -154,18 +167,36 @@ async def get_watchlist(
                         "application/json": {
                             "example": {
                                 "id": 3,
-                                "stock_code": "4755",
-                                "added_at": "2023-10-27T11:00:00Z",
-                                "notes": "新規追加",
-                                "alert_price_high": 3000.0,
-                                "alert_price_low": 2800.0,
+                                "stock_code": "7203",
+                                "added_at": "2023-10-27T10:00:00Z",
+                                "notes": "トヨタ自動車",
+                                "alert_price_high": 2600.00,
+                                "alert_price_low": 2400.00,
                                 "is_active": True
                             }
                         }
                     }
                 },
-                400: {"description": "バリデーションエラー"},
-                409: {"description": "既に存在する銘柄"}
+                400: {
+                    "description": "バリデーションエラー",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "detail": "Stock code must be exactly 4 digits"
+                            }
+                        }
+                    }
+                },
+                409: {
+                    "description": "既に存在する銘柄",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "detail": "Stock code 7203 is already in the active watchlist"
+                            }
+                        }
+                    }
+                }
             })
 async def add_to_watchlist(
     request: WatchlistCreateRequest,
@@ -273,7 +304,16 @@ async def add_to_watchlist(
               status_code=204,
               responses={
                   204: {"description": "削除成功"},
-                  404: {"description": "アイテムが見つからない"}
+                  404: {
+                      "description": "アイテムが見つからない",
+                      "content": {
+                          "application/json": {
+                              "example": {
+                                  "detail": "Watchlist item with ID 999 not found"
+                              }
+                          }
+                      }
+                  }
               })
 async def remove_from_watchlist(
     id: int = Path(..., description="ウォッチリストアイテムID"),
