@@ -16,7 +16,9 @@ import {
   Title,
   Tooltip,
   Legend,
-  TooltipItem
+  TooltipItem,
+  ChartData as ChartJSData,
+  ChartDataset as ChartJSDataset
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import { PriceHistoryItem, ChartConfig, ChartTimeframe, ChartType } from '../../types/stock'
@@ -91,7 +93,7 @@ export function PriceChart({
   }
 
   // Process data for chart
-  const chartData = useMemo(() => {
+  const chartData = useMemo((): ChartJSData<'line'> => {
     if (!data || data.length === 0) {
       return {
         labels: [],
@@ -107,7 +109,7 @@ export function PriceChart({
     const labels = sortedData.map(item => formatDateShort(item.date))
     const closePrices = sortedData.map(item => item.close)
     
-    const datasets: ChartDataset[] = []
+    const datasets: ChartJSDataset<'line'>[] = []
     
     if (chartConfig.chart_type === 'line') {
       // Main price line
@@ -463,7 +465,7 @@ export function MiniPriceChart({
   height?: number
   className?: string
 }) {
-  const chartData = useMemo(() => {
+  const chartData = useMemo((): ChartJSData<'line'> => {
     if (!data || data.length === 0) {
       return {
         labels: [],
@@ -487,7 +489,7 @@ export function MiniPriceChart({
           tension: 0.2,
           pointRadius: 0,
           pointHoverRadius: 0
-        }
+        } as ChartJSDataset<'line'>
       ]
     }
   }, [data])
