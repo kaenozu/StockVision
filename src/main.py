@@ -230,13 +230,29 @@ async def status_check(db: Session = Depends(get_db)):
 api_router.include_router(stocks_router)
 api_router.include_router(watchlist_router)
 
+# Mount API under /api
 app.include_router(api_router)
+
+# Also mount the same routers at root for backward compatibility with tests/contracts
+app.include_router(stocks_router)
+app.include_router(watchlist_router)
 
 
 @app.get("/", tags=["Root"])
 async def root():
     """Root endpoint."""
     return {"message": "Stock Test API is running", "version": "1.0.0"}
+
+
+# Backward-compatible health endpoints at root (mirror /api/health and /api/status)
+@app.get("/health", tags=["Health"])
+async def root_health_check():
+    return await health_check()
+
+
+@app.get("/status", tags=["Health"])
+async def root_status_check(db: Session = Depends(get_db)):
+    return await status_check(db)
 
 
 if __name__ == "__main__":
