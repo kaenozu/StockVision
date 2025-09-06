@@ -14,8 +14,8 @@ import { useStockData, useCurrentPrice, usePriceHistory } from '../hooks/useStoc
 import { useWatchlist } from '../hooks/useWatchlist'
 import { WatchListWidget } from '../components/watchlist/WatchListWidget'
 import { RecentlyViewed } from '../components/stock/RecentlyViewed'
-import Button from '../components/ui/Button'
-import LoadingSpinner, { LoadingSkeleton } from '../components/ui/LoadingSpinner'
+import Button from '../components/UI/Button'
+import LoadingSpinner, { LoadingSkeleton } from '../components/UI/LoadingSpinner'
 
 
 export function HomePage() {

@@ -1,5 +1,5 @@
 import React from 'react'
-import { ErrorBoundaryLayout } from './layout/Layout'
+import { ErrorBoundaryLayout } from './Layout/Layout'
 
 interface ErrorBoundaryProps {
   children: React.ReactNode

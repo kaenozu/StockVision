@@ -21,9 +21,9 @@ import {
 import { Line } from 'react-chartjs-2'
 import { PriceHistoryItem, ChartConfig, ChartTimeframe, ChartType } from '../../types/stock'
 import { formatPrice, formatDateShort, formatDateJapanese } from '../../utils/formatters'
-import LoadingSpinner from '../ui/LoadingSpinner'
-import ErrorMessage from '../ui/ErrorMessage'
-import Button, { ButtonGroup } from '../ui/Button'
+import LoadingSpinner from '../UI/LoadingSpinner'
+import ErrorMessage from '../UI/ErrorMessage'
+import Button, { ButtonGroup } from '../UI/Button'
 
 ChartJS.register(
   CategoryScale,

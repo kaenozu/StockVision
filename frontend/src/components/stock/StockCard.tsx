@@ -9,9 +9,9 @@ import React from 'react'
 import { StockData, CurrentPriceResponse } from '../../types/stock'
 import { formatPrice, formatPriceChange, formatPercentageChange, formatMarketStatus } from '../../utils/formatters'
 import { useWatchlistItem } from '../../hooks/useWatchlist'
-import Button, { IconButton } from '../ui/Button'
-import LoadingSpinner from '../ui/LoadingSpinner'
-import ErrorMessage from '../ui/ErrorMessage'
+import Button, { IconButton } from '../UI/Button'
+import LoadingSpinner from '../UI/LoadingSpinner'
+import ErrorMessage from '../UI/ErrorMessage'
 
 interface StockCardProps {
   stockData?: StockData | null
