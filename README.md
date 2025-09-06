@@ -244,12 +244,15 @@ npm run dev
 USE_REAL_YAHOO_API=false
 DATABASE_URL=sqlite:///data/stock_tracking.db
 LOG_LEVEL=INFO
+ENABLE_METRICS=false
 ```
 
 #### フロントエンド (.env)
 ```
 VITE_API_BASE_URL=http://localhost:8000
 ```
+
+メトリクスを有効化する場合は `ENABLE_METRICS=true` を設定し、`/metrics` エンドポイントから Prometheus 形式で取得できます。
 
 ## 📊 パフォーマンス
 

@@ -49,7 +49,11 @@ def get_db():
            })
 @cache_stock_data(ttl=300.0)  # 5分間キャッシュ
 async def get_stock_info(
-    stock_code: str = Path(..., pattern=r"^[0-9]{4}$", example="7203"),
+    stock_code: str = Path(
+        ...,
+        pattern=r"^[0-9]{4}$",
+        examples={"default": {"summary": "Example", "value": "7203"}},
+    ),
     use_real_data: Optional[bool] = Query(
         None, 
         description="Use real Yahoo Finance API (true) or mock data (false). Defaults to environment setting."
@@ -114,7 +118,11 @@ async def get_stock_info(
            })
 @cache_current_price()  # 1分間キャッシュ
 async def get_current_price(
-    stock_code: str = Path(..., pattern=r"^[0-9]{4}$", example="7203"),
+    stock_code: str = Path(
+        ...,
+        pattern=r"^[0-9]{4}$",
+        examples={"default": {"summary": "Example", "value": "7203"}},
+    ),
     use_real_data: Optional[bool] = Query(
         None, 
         description="Use real Yahoo Finance API (true) or mock data (false). Defaults to environment setting."
