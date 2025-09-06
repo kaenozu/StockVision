@@ -29,6 +29,7 @@ export function Header({ onSearch }: HeaderProps) {
   const navigationItems = [
     { path: '/', label: 'ホーム', icon: '🏠' },
     { path: '/watchlist', label: 'ウォッチリスト', icon: '⭐' },
+    { path: '/performance', label: 'パフォーマンス', icon: '📊' },
     { path: '/about', label: 'About', icon: 'ℹ️' }
   ]
 

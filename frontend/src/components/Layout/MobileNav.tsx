@@ -14,6 +14,7 @@ export function MobileNav() {
   const navItems: NavItem[] = [
     { path: '/', label: 'ホーム', icon: '🏠' },
     { path: '/watchlist', label: 'ウォッチ', icon: '⭐' },
+    { path: '/performance', label: 'パフォーマンス', icon: '📊' },
     { path: '/search', label: '検索', icon: '🔍' },
     { path: '/settings', label: '設定', icon: '⚙️' },
   ]
