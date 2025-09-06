@@ -1,47 +1,50 @@
 import { test, expect } from '@playwright/test';
 
-test('ホームページが正しく表示される', async ({ page }) => {
-  await page.goto('/');
+test.describe('ホームページ', () => {
+  const TEST_STOCK_CODE = '7203';
+  const TEST_COMPANY_NAME = 'トヨタ自動車';
 
-  // タイトルの確認
-  await expect(page).toHaveTitle(/株価チェッカー/);
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+  });
 
-  // ヘッダーの確認
-  await expect(page.getByText('株価チェッカー')).toBeVisible();
+  test('正しく表示される', async ({ page }) => {
+    // タイトルの確認
+    await expect(page).toHaveTitle(/株価チェッカー/);
 
-  // 検索フォームの確認
-  await expect(page.getByPlaceholder('銘柄コードを入力')).toBeVisible();
+    // ヘッダーの確認
+    await expect(page.getByText('株価チェッカー')).toBeVisible();
 
-  // 人気銘柄セクションの確認
-  await expect(page.getByText('人気銘柄')).toBeVisible();
-});
+    // 検索フォームの確認
+    await expect(page.getByPlaceholder('銘柄コードを入力')).toBeVisible();
 
-test('銘柄検索機能', async ({ page }) => {
-  await page.goto('/');
+    // 人気銘柄セクションの確認
+    await expect(page.getByText('人気銘柄')).toBeVisible();
+  });
 
-  // 銘柄コードを入力
-  await page.getByPlaceholder('銘柄コードを入力').fill('7203');
+  test('銘柄検索機能', async ({ page }) => {
+    // 銘柄コードを入力
+    await page.getByPlaceholder('銘柄コードを入力').fill(TEST_STOCK_CODE);
 
-  // 検索ボタンをクリック
-  await page.getByRole('button', { name: '株価を取得' }).click();
+    // 検索ボタンをクリック
+    await page.getByRole('button', { name: '株価を取得' }).click();
 
-  // 株式詳細ページに遷移したことを確認
-  await expect(page).toHaveURL(/.*\/stock\/7203/);
+    // 株式詳細ページに遷移したことを確認
+    await expect(page).toHaveURL(new RegExp(`.*/stock/${TEST_STOCK_CODE}`));
 
-  // 銘柄情報が表示されていることを確認
-  await expect(page.getByText('7203')).toBeVisible();
-  await expect(page.getByText('トヨタ自動車')).toBeVisible();
-});
+    // 銘柄情報が表示されていることを確認
+    await expect(page.getByText(TEST_STOCK_CODE)).toBeVisible();
+    await expect(page.getByText(TEST_COMPANY_NAME)).toBeVisible();
+  });
 
-test('ウォッチリストページへのナビゲーション', async ({ page }) => {
-  await page.goto('/');
+  test('ウォッチリストページへのナビゲーション', async ({ page }) => {
+    // ナビゲーションバーからウォッチリストページへ
+    await page.getByRole('link', { name: 'ウォッチリスト' }).click();
 
-  // ナビゲーションバーからウォッチリストページへ
-  await page.getByRole('link', { name: 'ウォッチリスト' }).click();
+    // ウォッチリストページに遷移したことを確認
+    await expect(page).toHaveURL(/.*\/watchlist/);
 
-  // ウォッチリストページに遷移したことを確認
-  await expect(page).toHaveURL(/.*\/watchlist/);
-
-  // ウォッチリストページの要素を確認
-  await expect(page.getByText('ウォッチリスト')).toBeVisible();
+    // ウォッチリストページの要素を確認
+    await expect(page.getByText('ウォッチリスト')).toBeVisible();
+  });
 });
