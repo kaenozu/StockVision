@@ -148,14 +148,21 @@ class MockDataGenerator:
             base_price = float(close_price)  # Next day's base price
         
         # Sort by date descending (most recent first)
-        from datetime import datetime
-        history_items.sort(key=lambda x: datetime.strptime(x.date, "%Y-%m-%d"), reverse=True)
-        
+        from datetime import datetime as _dt
+        def _to_dt(v):
+            if isinstance(v, _dt):
+                return v
+            if isinstance(v, date):
+                return _dt(v.year, v.month, v.day)
+            return _dt.strptime(v, "%Y-%m-%d")
+
+        history_items.sort(key=lambda x: _to_dt(x.date), reverse=True)
+
         return PriceHistoryData(
             stock_code=stock_code,
             history=history_items,
-            start_date=min(datetime.strptime(item.date, "%Y-%m-%d").date() for item in history_items),
-            end_date=max(datetime.strptime(item.date, "%Y-%m-%d").date() for item in history_items)
+            start_date=min(_to_dt(item.date).date() for item in history_items),
+            end_date=max(_to_dt(item.date).date() for item in history_items)
         )
 
 
@@ -391,7 +398,11 @@ class HybridStockService:
         """Save price history data to database."""
         try:
             for item in history_data.history:
-                item_date = datetime.strptime(item.date, "%Y-%m-%d").date()
+                # item.date may be datetime or str depending on model configuration
+                if isinstance(item.date, datetime):
+                    item_date = item.date.date()
+                else:
+                    item_date = datetime.strptime(item.date, "%Y-%m-%d").date()
                 existing_record = db.query(PriceHistory).filter(
                     PriceHistory.stock_code == item.stock_code,
                     PriceHistory.date == item_date

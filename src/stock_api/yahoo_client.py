@@ -20,6 +20,12 @@ from .data_models import (
     StockData, CurrentPrice, PriceHistoryData, PriceHistoryItem,
     APIResponse, BulkStockInfoResponse, StockInfoRequest, PriceHistoryRequest
 )
+from ..utils.cache import (
+    cache_stock_data,
+    cache_price_history,
+    cache_current_price,
+    configure_cache_ttls_from_settings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +111,11 @@ class YahooFinanceClient:
         self.retry_attempts = retry_attempts
         self.retry_delay = retry_delay
         self._session: Optional[ClientSession] = None
+        # Sync cache TTLs with settings (non-fatal if unavailable)
+        try:
+            configure_cache_ttls_from_settings()
+        except Exception:
+            pass
     
     async def __aenter__(self):
         """Async context manager entry."""
@@ -337,7 +348,8 @@ class YahooFinanceClient:
             logger.error(f"Error extracting price history for {stock_code}: {e}")
             raise DataValidationError(f"Failed to extract price history for stock {stock_code}") from e
     
-    async def get_stock_info(self, stock_code: str) -> StockData:
+    @cache_stock_data(cache_key_func=lambda self, stock_code: f"stock_info:{stock_code}")
+    async def _async_get_stock_info(self, stock_code: str) -> StockData:
         """Get current stock information.
         
         Args:
@@ -373,7 +385,8 @@ class YahooFinanceClient:
             logger.error(f"Error getting stock info for {stock_code}: {e}")
             raise YahooFinanceError(f"Failed to get stock info for {stock_code}") from e
     
-    async def get_price_history(self, stock_code: str, days: int = 30) -> PriceHistoryData:
+    @cache_price_history(cache_key_func=lambda self, stock_code, days=30: f"price_history:{stock_code}:{days}")
+    async def _async_get_price_history(self, stock_code: str, days: int = 30) -> PriceHistoryData:
         """Get historical price data for a stock.
         
         Args:
@@ -454,7 +467,8 @@ class YahooFinanceClient:
             total_successful=successful_count
         )
     
-    async def get_current_price(self, stock_code: str) -> CurrentPrice:
+    @cache_current_price(cache_key_func=lambda self, stock_code: f"current_price:{stock_code}")
+    async def _async_get_current_price(self, stock_code: str) -> CurrentPrice:
         """Get current price information for a stock.
         
         Args:
@@ -467,8 +481,32 @@ class YahooFinanceClient:
             StockNotFoundError: If stock is not found
             YahooFinanceError: If data retrieval fails
         """
-        stock_data = await self.get_stock_info(stock_code)
+        stock_data = await self._async_get_stock_info(stock_code)
         return stock_data.to_current_price()
+
+    # Dual-mode public wrappers: sync call returns value; async context returns awaitable
+    def get_stock_info(self, stock_code: str) -> StockData:
+        try:
+            # In async context, return awaitable
+            asyncio.get_running_loop()
+            return self._async_get_stock_info(stock_code)  # type: ignore[return-value]
+        except RuntimeError:
+            # No running loop: execute synchronously
+            return asyncio.run(self._async_get_stock_info(stock_code))
+
+    def get_price_history(self, stock_code: str, days: int = 30) -> PriceHistoryData:
+        try:
+            asyncio.get_running_loop()
+            return self._async_get_price_history(stock_code, days)  # type: ignore[return-value]
+        except RuntimeError:
+            return asyncio.run(self._async_get_price_history(stock_code, days))
+
+    def get_current_price(self, stock_code: str) -> CurrentPrice:
+        try:
+            asyncio.get_running_loop()
+            return self._async_get_current_price(stock_code)  # type: ignore[return-value]
+        except RuntimeError:
+            return asyncio.run(self._async_get_current_price(stock_code))
     
     def validate_stock_code(self, stock_code: str) -> bool:
         """Validate stock code format.
@@ -490,7 +528,7 @@ class YahooFinanceClient:
         """
         try:
             # 有名な株式（トヨタ自動車: 7203）でテスト
-            await self.get_current_price("7203")
+            await self._async_get_current_price("7203")
             return True
         except Exception as e:
             logger.error(f"Yahoo Finance API health check failed: {e}")
