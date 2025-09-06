@@ -49,5 +49,8 @@ marshmallow==3.20.1
 celery==5.3.4
 
 # Monitoring and metrics (optional)
-prometheus-client==0.19.0"mkdocs-material" 
-"mkdocs-gen-files" 
+prometheus-client==0.19.0
+
+# Documentation generation
+mkdocs-material==9.5.31
+mkdocs-gen-files
