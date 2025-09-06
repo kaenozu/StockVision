@@ -53,4 +53,4 @@ prometheus-client==0.19.0
 
 # Documentation generation
 mkdocs-material==9.5.31
-mkdocs-gen-files
+mkdocs-gen-files"fastapi-cli" 
