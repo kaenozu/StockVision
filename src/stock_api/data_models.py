@@ -532,7 +532,7 @@ class APIResponse(BaseModel):
 class BulkStockInfoRequest(BaseModel):
     """Request model for bulk stock information."""
     
-    stock_codes: List[str] = Field(..., min_items=1, max_items=100, description="List of stock codes")
+    stock_codes: List[str] = Field(..., min_length=1, max_length=100, description="List of stock codes")
     
     @field_validator('stock_codes')
     @classmethod

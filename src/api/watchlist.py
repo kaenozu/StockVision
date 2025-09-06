@@ -12,7 +12,8 @@ from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
+from pydantic.config import ConfigDict
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -37,12 +38,15 @@ class WatchlistResponse(BaseModel):
     alert_price_low: Optional[Decimal] = Field(None, description="安値アラート価格")
     is_active: bool = Field(..., description="アクティブ状態")
     
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            Decimal: lambda v: float(v) if v is not None else None
-        }
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer('added_at')
+    def serialize_added_at(self, v: datetime, _info):
+        return v.isoformat() if v else None
+
+    @field_serializer('alert_price_high', 'alert_price_low')
+    def serialize_decimals(self, v: Optional[Decimal], _info):
+        return float(v) if v is not None else None
 
 
 class WatchlistCreateRequest(BaseModel):
