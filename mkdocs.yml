@@ -17,6 +17,9 @@ theme:
 
 plugins:
   - search
+  - gen-files:
+      scripts:
+        - docs/generate_api_docs.py
   - i18n:
       default_language: ja
       languages:
@@ -39,3 +42,4 @@ nav:
     - Frontend Architecture: frontend_architecture.md
   - Development Guide: development_guide.md
   - Testing Guide: testing_guide.md
+  - Component Catalog (Storybook): storybook.md

@@ -11,6 +11,7 @@ StockVision は、React + TypeScript (フロントエンド) と FastAPI (バッ
 - [フロントエンドアーキテクチャ](frontend_architecture.md)
 - [開発ガイド](development_guide.md)
 - [テストガイド](testing_guide.md)
+- [コンポーネントカタログ (Storybook)](storybook.md)
 
 ## はじめに
 
@@ -21,6 +22,8 @@ APIの詳細な仕様については [API仕様](api_spec.md) を参照してく
 フロントエンドのアーキテクチャとコンポーネントの詳細については [フロントエンドアーキテクチャ](frontend_architecture.md) を参照してください。
 
 バックエンドとフロントエンドのテスト方針と実行方法については [テストガイド](testing_guide.md) を参照してください。
+
+UIコンポーネントのカタログと使用例については [コンポーネントカタログ (Storybook)](storybook.md) を参照してください。
 
 ## コントリビューション
 

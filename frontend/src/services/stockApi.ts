@@ -759,6 +759,52 @@ export class StockApiClient {
 
     return response.data
   }
+
+  // === Metrics API Methods ===
+
+  /**
+   * GET /metrics/summary - Get performance metrics summary
+   */
+  async getMetricsSummary(): Promise<any> {
+    const response = await this.client.get('/metrics/summary');
+    return response.data;
+  }
+
+  /**
+   * GET /metrics/slow-requests - Get recent slow requests
+   */
+  async getSlowRequests(limit: number = 50): Promise<any[]> {
+    const response = await this.client.get('/metrics/slow-requests', {
+      params: { limit }
+    });
+    return response.data;
+  }
+
+  /**
+   * GET /metrics/endpoints - Get endpoint statistics
+   */
+  async getEndpointStats(): Promise<any> {
+    const response = await this.client.get('/metrics/endpoints');
+    return response.data;
+  }
+
+  /**
+   * GET /metrics/top-slow-endpoints - Get top slow endpoints
+   */
+  async getTopSlowEndpoints(limit: number = 10): Promise<any[]> {
+    const response = await this.client.get('/metrics/top-slow-endpoints', {
+      params: { limit }
+    });
+    return response.data;
+  }
+
+  /**
+   * POST /metrics/clear - Clear metrics history
+   */
+  async clearMetrics(): Promise<any> {
+    const response = await this.client.post('/metrics/clear');
+    return response.data;
+  }
 }
 
 /**
@@ -799,7 +845,7 @@ export function formatApiError(error: unknown): string {
   } else if (error instanceof Error) {
     return error.message
   } else {
-    return 'Unknown error occurred'
+    return 'An unknown error occurred'
   }
 }
 

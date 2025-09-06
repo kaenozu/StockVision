@@ -7,8 +7,8 @@ export const IS_DEVELOPMENT = import.meta.env.DEV
 
 // API Base URLs
 export const API_BASE_URL = IS_DEVELOPMENT 
-  ? 'http://localhost:8001/api' 
-  : 'http://localhost:8080/api'
+  ? 'http://localhost:8000/api'  // 正しいポート番号に修正
+  : (import.meta.env.VITE_API_BASE_URL || '/api')  // 環境変数対応
 
 // Cache and refresh intervals (in milliseconds)
 export const CACHE_INTERVALS = {
