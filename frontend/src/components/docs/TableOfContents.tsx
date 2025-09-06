@@ -48,14 +48,13 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
                 href={`#${item.id}`}
                 className={`
                   flex items-start py-1 text-sm transition-colors duration-150
-                  ${indentLevel > 0 ? `pl-${indentLevel * 4}` : ''}
                   ${isDark 
                     ? 'text-gray-400 hover:text-gray-300' 
                     : 'text-gray-600 hover:text-gray-900'
                   }
                   hover:underline
                 `}
-                style={{ paddingLeft: `${indentLevel * 1rem}` }}
+                style={{ paddingLeft: `${indentLevel * 1}rem` }}
               >
                 <FiHash 
                   className={`

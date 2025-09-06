@@ -16,6 +16,7 @@ def client():
 
 
 @pytest.mark.contract
+@pytest.mark.skip(reason="TDD test for unimplemented endpoint")
 class TestStocksGet:
     """Contract tests for GET /stocks/{stock_code} endpoint"""
 

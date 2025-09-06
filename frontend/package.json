@@ -23,13 +23,16 @@
     "@typescript-eslint/parser": "^8.42.0",
     "axios": "^1.11.0",
     "chart.js": "^4.5.0",
+    "highlight.js": "^11.11.1",
     "i18next": "^25.5.2",
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^3.0.2",
+    "marked": "^16.2.1",
     "react": "^19.1.1",
     "react-chartjs-2": "^5.3.0",
     "react-dom": "^19.1.1",
     "react-i18next": "^15.7.3",
+    "react-icons": "^5.5.0",
     "react-router-dom": "^7.8.2"
   },
   "devDependencies": {

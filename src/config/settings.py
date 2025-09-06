@@ -40,6 +40,15 @@ class DatabaseConfig(BaseModel):
     max_overflow: int = Field(default=10, description="Maximum overflow connections")
 
 
+class CorsConfig(BaseModel):
+    """CORS configuration."""
+    
+    allow_origins: list[str] = Field(default_factory=list, description="Allowed CORS origins")
+    allow_credentials: bool = Field(default=True, description="Allow credentials in CORS requests")
+    allow_methods: list[str] = Field(default=["GET", "POST", "PUT", "DELETE", "OPTIONS"], description="Allowed HTTP methods")
+    allow_headers: list[str] = Field(default=["*"], description="Allowed HTTP headers")
+
+
 class MiddlewareConfig(BaseModel):
     """Middleware configuration."""
     
@@ -63,6 +72,12 @@ class AppConfig(BaseModel):
     log_level: str = Field(default="INFO", description="Logging level")
     sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
     
+    # Server configuration
+    api_host: str = Field(default="localhost", description="API server host")
+    api_port: int = Field(default=8000, description="API server port")
+    environment: str = Field(default="development", description="Application environment")
+    server_url: Optional[str] = Field(default=None, description="Explicitly configured server URL")
+    
     # Redis settings
     redis_host: Optional[str] = Field(default=None, description="Redis server host")
     redis_port: Optional[int] = Field(default=6379, description="Redis server port")
@@ -73,14 +88,31 @@ class AppConfig(BaseModel):
     cache: CacheConfig = Field(default_factory=CacheConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
+    cors: CorsConfig = Field(default_factory=CorsConfig)
     
     @classmethod
     def from_env(cls) -> "AppConfig":
         """Create configuration from environment variables."""
+        # Import here to avoid circular imports
+        from ..constants.api import API_HOST, API_PORT, ENVIRONMENT, DEV_CORS_ORIGINS, PROD_ORIGINS
+        
+        # Determine CORS origins based on environment
+        cors_origins = []
+        if ENVIRONMENT == "production":
+            cors_origins = PROD_ORIGINS if PROD_ORIGINS else []
+        else:
+            cors_origins = DEV_CORS_ORIGINS
+            
         return cls(
             debug=os.getenv("DEBUG", "false").lower() == "true",
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             sentry_dsn=os.getenv("SENTRY_DSN"),
+            
+            # Server configuration
+            api_host=API_HOST,
+            api_port=API_PORT,
+            environment=ENVIRONMENT,
+            server_url=os.getenv("SERVER_URL"),
             
             # Redis settings
             redis_host=os.getenv("REDIS_HOST"),
@@ -116,6 +148,12 @@ class AppConfig(BaseModel):
                 response_compression_gzip_level=int(os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_GZIP_LEVEL", "6")),
                 response_compression_brotli_quality=int(os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_BROTLI_QUALITY", "4")),
                 performance_metrics_enabled=os.getenv("MIDDLEWARE_PERFORMANCE_METRICS_ENABLED", "true").lower() == "true"
+            ),
+            cors=CorsConfig(
+                allow_origins=cors_origins,
+                allow_credentials=os.getenv("CORS_ALLOW_CREDENTIALS", "true").lower() == "true",
+                allow_methods=os.getenv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,OPTIONS").split(","),
+                allow_headers=os.getenv("CORS_ALLOW_HEADERS", "*").split(",")
             )
         )
 
@@ -145,6 +183,11 @@ def get_database_config() -> DatabaseConfig:
 def get_middleware_config() -> MiddlewareConfig:
     """Get middleware configuration."""
     return get_settings().middleware
+
+
+def get_cors_config() -> CorsConfig:
+    """Get CORS configuration."""
+    return get_settings().cors
 
 
 def is_yahoo_finance_enabled() -> bool:

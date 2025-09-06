@@ -10,7 +10,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useTranslation } from 'react-i18next'
 import { CompactStockSearch } from '../stock/StockSearch'
-import { IconButton } from '../ui/Button'
+import { IconButton } from '../UI/Button'
 import { SUPPORTED_LANGUAGES } from '../../i18n/config'
 
 interface HeaderProps {

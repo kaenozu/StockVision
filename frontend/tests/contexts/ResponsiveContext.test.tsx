@@ -193,7 +193,7 @@ describe('ResponsiveContext', () => {
     })
 
     it('should debounce resize events to prevent excessive re-renders', async () => {
-      const { rerender } = render(
+      render(
         <ResponsiveProvider>
           <TestComponent />
         </ResponsiveProvider>

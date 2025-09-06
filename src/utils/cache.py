@@ -407,7 +407,9 @@ def cache_stock_data(cache_key_func: Optional[Callable] = None, ttl: float = Cac
             else:
                 # Use improved key generation
                 stock_code = kwargs.get('stock_code') or (args[0] if args else 'unknown')
-                cache_key = generate_stock_cache_key(func.__name__, stock_code, **kwargs)
+                # Remove stock_code from kwargs to avoid duplicate parameter error
+                cache_kwargs = {k: v for k, v in kwargs.items() if k != 'stock_code'}
+                cache_key = generate_stock_cache_key(func.__name__, stock_code, **cache_kwargs)
             
             # Try to get from cache
             cached_result = _stock_cache.get(cache_key)
@@ -438,7 +440,9 @@ def cache_price_history(cache_key_func: Optional[Callable] = None):
             else:
                 # Use improved key generation for price history
                 stock_code = kwargs.get('stock_code') or (args[0] if args else 'unknown')
-                cache_key = generate_stock_cache_key("price_history", stock_code, **kwargs)
+                # Remove stock_code from kwargs to avoid duplicate parameter error
+                cache_kwargs = {k: v for k, v in kwargs.items() if k != 'stock_code'}
+                cache_key = generate_stock_cache_key("price_history", stock_code, **cache_kwargs)
             
             # Try to get from cache
             cached_result = _price_history_cache.get(cache_key)
@@ -469,7 +473,9 @@ def cache_current_price(cache_key_func: Optional[Callable] = None):
             else:
                 # Use improved key generation for current price
                 stock_code = kwargs.get('stock_code') or (args[0] if args else 'unknown')
-                cache_key = generate_stock_cache_key("current_price", stock_code, **kwargs)
+                # Remove stock_code from kwargs to avoid duplicate parameter error
+                cache_kwargs = {k: v for k, v in kwargs.items() if k != 'stock_code'}
+                cache_key = generate_stock_cache_key("current_price", stock_code, **cache_kwargs)
             
             # Try to get from cache
             cached_result = _current_price_cache.get(cache_key)

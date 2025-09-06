@@ -1,5 +1,5 @@
 class CacheService {
-  private cache = new Map<string, { data: any; expiry: number }>();
+  private cache = new Map<string, { data: unknown; expiry: number }>();
   private ttl: number;
 
   constructor(ttl = 60 * 1000) { // 1 minute default TTL

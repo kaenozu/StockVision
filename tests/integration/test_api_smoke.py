@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 # Set environment before any imports
 os.environ["USE_REAL_YAHOO_API"] = "false"
 os.environ["DATABASE_URL"] = "sqlite:///test.db"
+# Disable performance middleware compression for tests to avoid StreamingResponse issues
+os.environ["MIDDLEWARE_RESPONSE_COMPRESSION_ENABLED"] = "false"
 
 from src.main import app  # noqa: E402
 

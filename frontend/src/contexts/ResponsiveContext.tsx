@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react'
 
 export type BreakpointType = 'mobile' | 'tablet' | 'desktop' | 'wide'
 
@@ -66,8 +66,8 @@ export const ResponsiveProvider: React.FC<ResponsiveProviderProps> = ({
     })
   }, [])
 
-  const debouncedHandleResize = useCallback(
-    debounce(handleResize, debounceDelay),
+  const debouncedHandleResize = useMemo(
+    () => debounce(handleResize, debounceDelay),
     [handleResize, debounceDelay]
   )
 

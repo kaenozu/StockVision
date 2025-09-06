@@ -1,6 +1,6 @@
 import React from 'react'
 import { useAccessibility } from '../contexts/AccessibilityContext'
-import { useTheme } from '../contexts/ThemeContext'
+// import { useTheme } from '../contexts/ThemeContext'
 
 interface AccessibilityPanelProps {
   isOpen: boolean
@@ -21,7 +21,6 @@ const AccessibilityPanel: React.FC<AccessibilityPanelProps> = ({ isOpen, onClose
     setFontSize
   } = useAccessibility()
 
-  const { actualTheme } = useTheme()
 
   if (!isOpen) return null
 

@@ -15,7 +15,7 @@ interface TradingRecommendation {
 }
 
 const TradingRecommendationsPage: React.FC = () => {
-  const { actualTheme } = useTheme()
+  const { } = useTheme() // actualTheme unused - to be implemented
   const [recommendations, setRecommendations] = useState<TradingRecommendation[]>([])
   const [loading, setLoading] = useState(true)
 

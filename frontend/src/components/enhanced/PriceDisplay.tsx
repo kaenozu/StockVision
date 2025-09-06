@@ -38,7 +38,7 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
 }) => {
   const { actualTheme } = useTheme()
   const { isMobile, isTablet } = useResponsive()
-  const { reducedMotion, highContrast, fontSize } = useAccessibility()
+  const { reducedMotion, highContrast } = useAccessibility()
   
   const [isAnimating, setIsAnimating] = useState(false)
   const [previousCurrentPrice, setPreviousCurrentPrice] = useState(currentPrice)

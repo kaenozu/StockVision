@@ -54,31 +54,113 @@ async def lifespan(app: FastAPI):
 
 import os
 
-# 環境変数からサーバーURLを取得  
-settings = get_settings()
-SERVER_URL = settings.server_url
-
-def get_openapi_servers():
-    """Get OpenAPI server configuration based on environment."""
-    if ENVIRONMENT == "production":
-        # In production, use environment-specific URLs
-        return [
-            {"url": f"http://{API_HOST}:{API_PORT}", "description": "Production server"},
-            {"url": f"https://{API_HOST}", "description": "Production HTTPS server"}
-        ]
+def generate_server_url(host: str, port: int, protocol: str = "http") -> str:
+    """
+    Generate a server URL with proper handling of standard ports.
+    
+    Args:
+        host: Server hostname or IP address
+        port: Server port number
+        protocol: Protocol (http or https)
+        
+    Returns:
+        Properly formatted server URL
+        
+    Raises:
+        ValueError: If invalid parameters are provided
+    """
+    # Validation
+    if not host or not isinstance(host, str):
+        raise ValueError("Host must be a non-empty string")
+    
+    if not isinstance(port, int) or port <= 0 or port > 65535:
+        raise ValueError("Port must be an integer between 1 and 65535")
+    
+    if protocol not in ["http", "https"]:
+        raise ValueError("Protocol must be 'http' or 'https'")
+    
+    # Standard port mapping
+    standard_ports = {
+        "http": 80,
+        "https": 443
+    }
+    
+    # Omit port if it's the standard port for the protocol
+    if port == standard_ports.get(protocol):
+        return f"{protocol}://{host}"
     else:
-        # Development/staging servers
-        return [
-            {"url": f"http://{API_HOST}:{API_PORT}", "description": "Development server"},
-            {"url": f"http://localhost:{DEFAULT_PORT}", "description": "Local development server"},
-            {"url": f"http://127.0.0.1:{DEFAULT_PORT}", "description": "Local loopback server"}
-        ]
+        return f"{protocol}://{host}:{port}"
+
+
+def get_openapi_servers() -> list[dict[str, str]]:
+    """
+    Get OpenAPI server configuration based on environment.
+    
+    Returns:
+        List of server configurations for OpenAPI documentation
+        
+    Raises:
+        ValueError: If server configuration is invalid
+    """
+    settings = get_settings()
+    
+    # Use explicitly configured server URL if available
+    if settings.server_url:
+        return [{"url": settings.server_url, "description": "Configured server"}]
+    
+    servers = []
+    
+    try:
+        if settings.environment == "production":
+            # Production: prefer HTTPS, include HTTP as fallback
+            servers.append({
+                "url": generate_server_url(settings.api_host, settings.api_port, "https"),
+                "description": "Production HTTPS server"
+            })
+            
+            # Add HTTP fallback only if not using standard HTTPS port
+            if settings.api_port != 443:
+                servers.append({
+                    "url": generate_server_url(settings.api_host, settings.api_port, "http"),
+                    "description": "Production HTTP server"
+                })
+        else:
+            # Development/staging: HTTP first, with common development URLs
+            servers.extend([
+                {
+                    "url": generate_server_url(settings.api_host, settings.api_port, "http"),
+                    "description": "Development server"
+                },
+                {
+                    "url": generate_server_url("localhost", DEFAULT_PORT, "http"),
+                    "description": "Local development server"
+                }
+            ])
+            
+            # Add loopback if different from localhost
+            if settings.api_host != "localhost" and settings.api_host != "127.0.0.1":
+                servers.append({
+                    "url": generate_server_url("127.0.0.1", DEFAULT_PORT, "http"),
+                    "description": "Local loopback server"
+                })
+    
+    except ValueError as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error generating OpenAPI server URLs: {e}")
+        # Fallback to a basic localhost configuration
+        servers = [{
+            "url": f"http://localhost:{DEFAULT_PORT}",
+            "description": "Fallback development server"
+        }]
+    
+    return servers
 
 app = FastAPI(
     title="Stock Test API",
     version="1.0.0",
     description="株価テスト機能API仕様",
-    servers=[{"url": SERVER_URL, "description": "Configured server"}],
+    servers=get_openapi_servers(),
     lifespan=lifespan,
     docs_url=DOCS_URL,
     redoc_url=REDOC_URL,
@@ -91,7 +173,12 @@ app = FastAPI(
     ]
 )
 
-# Add CORS middleware
+# ミドルウェア設定
+# 重要: FastAPIのミドルウェアは逆順（LIFO）で処理される
+# 最後に追加されたミドルウェアが最初にリクエストを受け取る
+
+# 1. CORS Middleware (最優先 - セキュリティチェック)
+settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors.allow_origins,
@@ -100,7 +187,9 @@ app.add_middleware(
     allow_headers=settings.cors.allow_headers,
 )
 
-# Setup performance middleware
+# 2. パフォーマンス最適化ミドルウェア群の設定
+# 内部的な順序: CacheControl -> Compression -> Metrics
+# 詳細は docs/middleware-architecture.md を参照
 setup_performance_middleware(app)
 
 # Import and include API routes
@@ -274,7 +363,7 @@ async def get_openapi_json():
         version=app.version,
         description=app.description,
         routes=app.routes,
-        servers=[{"url": SERVER_URL, "description": "Configured server"}],
+        servers=get_openapi_servers(),
         tags=app.openapi_tags,
     )
 
