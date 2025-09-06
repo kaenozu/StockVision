@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 38,
+  "title": "StockVision Backend Overview",
+  "timezone": "browser",
+  "editable": true,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "HTTP RPS",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[1m]))",
+          "legendFormat": "rps"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "HTTP Latency (p50/p90/p99)",
+      "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0},
+      "targets": [
+        {"expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p50"},
+        {"expr": "histogram_quantile(0.9, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p90"},
+        {"expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p99"}
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "DB Query Duration",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [
+        {"expr": "histogram_quantile(0.9, sum(rate(db_query_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p90"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "External API Error Rate",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+      "targets": [
+        {"expr": "sum(rate(external_api_requests_total{status=\"error\"}[5m])) / clamp_min(sum(rate(external_api_requests_total[5m])), 1)", "legendFormat": "error%"}
+      ],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "horizontal"},
+      "fieldConfig": {"defaults": {"unit": "percentunit"}, "overrides": []}
+    }
+  ],
+  "templating": {"list": []},
+  "version": 1
+}
+
