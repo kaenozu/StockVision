@@ -15,6 +15,7 @@ from sqlalchemy import text
 from .stock_storage.database import init_db, close_database, check_database_health, get_database_stats, get_session_scope
 from .middleware.error_handler import setup_error_handlers
 from .middleware.performance import setup_performance_middleware
+from .middleware.metrics import setup_metrics
 from .utils.logging import setup_logging
 from .utils.cache import get_cache_stats
 from .services.stock_service import cleanup_stock_service
@@ -38,30 +39,7 @@ async def lifespan(app: FastAPI):
         settings = get_settings()
         logger.info(f"Loaded application settings (Yahoo Finance API enabled: {settings.yahoo_finance.enabled})")
         
-        if settings.middleware_cors_enabled:
-            allowed_origins = compute_allowed_cors_origins(settings.debug)
-            app.add_middleware(
-                CORSMiddleware,
-                allow_origins=allowed_origins,
-                allow_credentials=True,
-                allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
-                allow_headers=["*"],
-            )
-            logger.info("CORS middleware enabled.")
-        else:
-            logger.info("CORS middleware disabled.")
-
-        if settings.middleware_error_handling_enabled:
-            setup_error_handlers(app)
-            logger.info("Error handling middleware enabled.")
-        else:
-            logger.info("Error handling middleware disabled.")
-
-        if settings.middleware_performance_enabled:
-            setup_performance_middleware(app)
-            logger.info("Performance middleware enabled.")
-        else:
-            logger.info("Performance middleware disabled.")
+        # Middleware is configured at import time below to avoid adding during lifespan
 
         init_db()
         logger.info("Database initialized successfully")
@@ -116,6 +94,8 @@ app = FastAPI(
     openapi_url=OPENAPI_URL,
 )
 
+# Middleware will be configured below after helper functions are defined
+
 
 def _is_valid_origin(origin: str) -> bool:
     """Originのバリデーション（http/https + ホスト必須、ワイルドカード不可）。"""
@@ -150,11 +130,31 @@ def _safe_filter(candidates: list[str]) -> list[str]:
     return [o for o in candidates if _is_valid_origin(o)]
 
 
-        
+# Configure middleware at import time to avoid Starlette runtime restrictions
+_settings_for_mw = get_settings()
 
+if _settings_for_mw.middleware_cors_enabled:
+    _origins = compute_allowed_cors_origins(_settings_for_mw.debug)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
+        allow_headers=["*"],
+    )
 
+if _settings_for_mw.middleware_error_handling_enabled:
+    setup_error_handlers(app)
 
+if _settings_for_mw.middleware_performance_enabled:
+    setup_performance_middleware(app)
 
+# Optional Prometheus metrics (env: ENABLE_METRICS=true)
+try:
+    setup_metrics(app)
+except Exception:
+    # Metrics are optional; never fail app import on metrics issues
+    pass
 
 # Import and include API routes
 from .api.stocks import router as stocks_router
