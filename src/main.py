@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from .stock_storage.database import init_db, close_database, check_database_health, get_database_stats, get_session_scope
-from .middleware.error_handler import setup_error_handlers
+from .middleware.performance import setup_error_handlers, setup_performance_middleware
 from .utils.logging import setup_logging
 from .utils.cache import get_cache_stats
 from .services.stock_service import cleanup_stock_service
@@ -62,12 +62,7 @@ app = FastAPI(
     openapi_url=OPENAPI_URL,
 )
 
-# Add GZip middleware for response compression (performance optimization)
-app.add_middleware(
-    GZipMiddleware, 
-    minimum_size=PerformanceThresholds.COMPRESSION_MIN_SIZE, 
-    compresslevel=PerformanceThresholds.COMPRESSION_LEVEL
-)
+
 
 # Add CORS middleware
 app.add_middleware(
@@ -80,6 +75,9 @@ app.add_middleware(
 
 # Setup error handlers
 setup_error_handlers(app)
+
+# Setup performance middleware
+setup_performance_middleware(app)
 
 # Import and include API routes
 from .api.stocks import router as stocks_router
