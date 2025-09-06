@@ -77,6 +77,8 @@ jobs:
     - name: Install dependencies
       run: |
         cd frontend
+        rm -f package-lock.json
+        rm -rf node_modules
         npm install --legacy-peer-deps
 
     - name: Build Storybook
