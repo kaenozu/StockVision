@@ -143,6 +143,16 @@ class StockFormatter:
 class JSONFormatter(StockFormatter):
     """JSON形式のフォーマッター。"""
     
+    def format_current_price(self, price: CurrentPrice) -> str:
+        """現在価格をJSON文字列にフォーマット。"""
+        return json.dumps(self.to_serializable_dict(price), ensure_ascii=False)
+
+    def format_json(self, items: List[Union[CurrentPrice, StockData, PriceHistoryItem]] | None) -> str:
+        """モデル配列をJSON文字列にフォーマット。"""
+        if not items:
+            return "[]"
+        return json.dumps([self.to_serializable_dict(x) for x in items], ensure_ascii=False)
+
     def format_stock(self, stock: Union[Stock, CurrentPrice, StockData]) -> str:
         """株価情報をJSON形式でフォーマット。
         
@@ -183,6 +193,30 @@ class JSONFormatter(StockFormatter):
 class TableFormatter(StockFormatter):
     """テーブル形式のフォーマッター。"""
     
+    def format_stock_list(self, stocks: List[Union[StockData, CurrentPrice, Stock]]) -> str:
+        """複数銘柄をテキストテーブル風にフォーマット。"""
+        if not stocks:
+            return ""
+        lines: List[str] = []
+        for s in stocks:
+            code = getattr(s, 'stock_code', '-')
+            name = getattr(s, 'company_name', '-')
+            current = getattr(s, 'current_price', None)
+            prev = getattr(s, 'previous_close', None)
+            change = getattr(s, 'price_change', None)
+            pct = getattr(s, 'price_change_pct', None)
+            vol = getattr(s, 'volume', None)
+            line = (
+                f"{code}\t{name}\t"
+                f"{self.format_price(current) if current is not None else '-'}\t"
+                f"{self.format_price(prev) if prev is not None else '-'}\t"
+                f"{self.format_price(change) if change is not None else '-'}\t"
+                f"{self.format_percentage(pct) if pct is not None else '-'}\t"
+                f"{self.format_volume(vol) if vol is not None else '-'}"
+            )
+            lines.append(line)
+        return "\n".join(lines)
+
     def format_stock(self, stock: Union[Stock, CurrentPrice, StockData]) -> Table:
         """株価情報をテーブル形式でフォーマット。
         
@@ -383,6 +417,10 @@ class TableFormatter(StockFormatter):
 class CompactFormatter(StockFormatter):
     """コンパクト形式のフォーマッター（一行表示用）。"""
     
+    def format_stock_list(self, stocks: List[Union[Stock, CurrentPrice, StockData]]) -> str:
+        """複数銘柄を一行ずつのコンパクト表示文字列に。"""
+        return "\n".join(self.format_stock_compact(s) for s in stocks)
+
     def format_stock_compact(self, stock: Union[Stock, CurrentPrice, StockData]) -> str:
         """株価情報をコンパクト形式でフォーマット。
         

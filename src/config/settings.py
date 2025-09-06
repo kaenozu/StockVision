@@ -45,6 +45,7 @@ class AppConfig(BaseModel):
     
     debug: bool = Field(default=False, description="Enable debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
+    sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
     yahoo_finance: YahooFinanceConfig = Field(default_factory=YahooFinanceConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
@@ -55,6 +56,7 @@ class AppConfig(BaseModel):
         return cls(
             debug=os.getenv("DEBUG", "false").lower() == "true",
             log_level=os.getenv("LOG_LEVEL", "INFO"),
+            sentry_dsn=os.getenv("SENTRY_DSN"),
             yahoo_finance=YahooFinanceConfig(
                 enabled=os.getenv("USE_REAL_YAHOO_API", "false").lower() == "true",
                 max_requests=int(os.getenv("YAHOO_MAX_REQUESTS", "10")),

@@ -1,3 +1,9 @@
+"""
+Performance optimization middleware for StockVision API
+
+Provides response compression, caching headers, and other optimizations.
+"""
+
 import time
 import hashlib
 import json
