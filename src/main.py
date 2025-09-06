@@ -19,7 +19,6 @@ from .middleware.performance import setup_performance_middleware
 from .middleware.metrics import setup_metrics
 from .utils.logging import setup_logging
 from .utils.cache import get_cache_stats, set_cache_ttls
-from .services.stock_service import cleanup_stock_service
 from .config import get_settings
 from .constants import (
     DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DEV_PORT, FRONTEND_PROD_PORT,
@@ -53,7 +52,11 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    await cleanup_stock_service()
+    try:
+        from .services.stock_service import cleanup_stock_service  # Lazy import to avoid heavy import at startup
+        await cleanup_stock_service()
+    except Exception:
+        pass
     close_database()
     logger.info("Stock Test API shutdown complete")
 
