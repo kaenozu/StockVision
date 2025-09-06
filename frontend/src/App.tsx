@@ -21,6 +21,11 @@ import RecommendedStocksPage from './pages/RecommendedStocksPage'
 import TradingRecommendationsPage from './pages/TradingRecommendationsPage'
 import PerformancePage from './pages/PerformancePage'
 import TestPage from './pages/TestPage'
+import DocumentationPage from './pages/DocumentationPage'
+
+// i18n
+import './i18n/config';
+import { I18nProvider } from './contexts/I18nContext';
 
 // Lazy load components for code splitting
 const AboutPage = React.lazy(() => 
@@ -74,7 +79,8 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <Router>
+      <I18nProvider>
+        <Router>
         <div className="App">
           <Routes>
             {/* Demo page - standalone without layout */}
@@ -88,6 +94,9 @@ function App() {
               <Route path="watchlist" element={<WatchlistPage />} />
               <Route path="search" element={<SearchPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              
+              {/* Documentation Route */}
+              <Route path="docs/*" element={<DocumentationPage />} />
               
               {/* Legacy route for complex home page */}
               <Route path="home-advanced" element={<HomePage />} />
@@ -127,6 +136,7 @@ function App() {
           </Routes>
         </div>
       </Router>
+      </I18nProvider>
     </ErrorBoundary>
   )
 }

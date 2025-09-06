@@ -48,23 +48,16 @@ def get_db():
                    "content": {
                        "application/json": {
                            "example": {
-                               "stock_code": "7203",
-                               "company_name": "トヨタ自動車株式会社",
-                               "current_price": 2500.50,
-                               "previous_close": 2450.00,
-                               "price_change": 50.50,
-                               "price_change_pct": 2.06,
-                               "volume": 1000000,
-                               "market_cap": 3000000000000,
-                               "day_high": 2550.00,
-                               "day_low": 2480.00,
-                               "year_high": 2800.00,
-                               "year_low": 2200.00,
-                               "avg_volume": 900000,
-                               "pe_ratio": 15.5,
+                               "code": "7203",
+                               "name": "トヨタ自動車",
+                               "sector": "自動車",
+                               "market_cap": 2500000000000,
                                "dividend_yield": 2.5,
-                               "last_updated": "2023-10-27T10:00:00Z",
-                               "market_time": "open"
+                               "per": 15.2,
+                               "pbr": 1.8,
+                               "eps": 165.0,
+                               "bps": 1350.0,
+                               "last_updated": "2023-10-27T10:00:00Z"
                            }
                        }
                    }
@@ -74,11 +67,7 @@ def get_db():
            })
 @cache_stock_data(ttl=300.0)  # 5分間キャッシュ
 async def get_stock_info(
-    stock_code: str = Path(
-        ...,
-        pattern=r"^[0-9]{4}$",
-        examples={"default": {"summary": "Example", "value": "7203"}},
-    ),
+    stock_code: str = Path(..., pattern=r"^[0-9]{4}$", example="7203"),
     use_real_data: Optional[bool] = Query(
         None, 
         description="Use real Yahoo Finance API (true) or mock data (false). Defaults to environment setting."
@@ -101,6 +90,11 @@ async def get_stock_info(
     Note:
         use_real_data=true でリアルYahoo Finance API、false または未指定でモックデータを使用。
         環境変数 USE_REAL_YAHOO_API=true でデフォルト動作を変更可能。
+    
+    Examples:
+        - リクエスト: `GET /stocks/7203`
+        - リクエスト (リアルデータ): `GET /stocks/7203?use_real_data=true`
+        - リクエスト (モックデータ): `GET /stocks/7203?use_real_data=false`
     """
     logger.info(f"Fetching stock info for {stock_code} (use_real_data={use_real_data})")
     
@@ -142,13 +136,17 @@ async def get_stock_info(
                    "content": {
                        "application/json": {
                            "example": {
-                               "stock_code": "7203",
-                               "current_price": 2500.50,
-                               "previous_close": 2450.00,
-                               "price_change": 50.50,
-                               "price_change_pct": 2.06,
-                               "timestamp": "2023-10-27T10:00:00Z",
-                               "market_status": "open"
+                               "code": "7203",
+                               "name": "トヨタ自動車",
+                               "price": 2500.5,
+                               "change": 25.0,
+                               "change_percent": 1.01,
+                               "previous_close": 2475.5,
+                               "open": 2490.0,
+                               "high": 2510.0,
+                               "low": 2485.0,
+                               "volume": 1000000,
+                               "timestamp": "2023-10-27T10:00:00Z"
                            }
                        }
                    }
@@ -158,11 +156,7 @@ async def get_stock_info(
            })
 @cache_current_price()  # 1分間キャッシュ
 async def get_current_price(
-    stock_code: str = Path(
-        ...,
-        pattern=r"^[0-9]{4}$",
-        examples={"default": {"summary": "Example", "value": "7203"}},
-    ),
+    stock_code: str = Path(..., pattern=r"^[0-9]{4}$", example="7203"),
     use_real_data: Optional[bool] = Query(
         None, 
         description="Use real Yahoo Finance API (true) or mock data (false). Defaults to environment setting."
@@ -181,6 +175,11 @@ async def get_current_price(
     
     Note:
         use_real_data=true でリアルYahoo Finance API、false または未指定でモックデータを使用。
+    
+    Examples:
+        - リクエスト: `GET /stocks/7203/current`
+        - リクエスト (リアルデータ): `GET /stocks/7203/current?use_real_data=true`
+        - リクエスト (モックデータ): `GET /stocks/7203/current?use_real_data=false`
     """
     logger.info(f"Fetching current price for {stock_code} (use_real_data={use_real_data})")
     
@@ -221,22 +220,20 @@ async def get_current_price(
                        "application/json": {
                            "example": [
                                {
-                                   "stock_code": "7203",
                                    "date": "2023-10-27",
-                                   "open": 2480.00,
-                                   "high": 2550.00,
-                                   "low": 2470.00,
-                                   "close": 2500.50,
+                                   "open": 2490.0,
+                                   "high": 2510.0,
+                                   "low": 2485.0,
+                                   "close": 2500.5,
                                    "volume": 1000000
                                },
                                {
-                                   "stock_code": "7203",
                                    "date": "2023-10-26",
-                                   "open": 2450.00,
-                                   "high": 2490.00,
-                                   "low": 2440.00,
-                                   "close": 2480.00,
-                                   "volume": 900000
+                                   "open": 2480.0,
+                                   "high": 2495.0,
+                                   "low": 2470.0,
+                                   "close": 2490.0,
+                                   "volume": 950000
                                }
                            ]
                        }
@@ -268,6 +265,11 @@ async def get_price_history(
     
     Note:
         use_real_data=true でリアルYahoo Finance API、false または未指定でモックデータを使用。
+    
+    Examples:
+        - リクエスト: `GET /stocks/7203/history`
+        - リクエスト (30日分): `GET /stocks/7203/history?days=30`
+        - リクエスト (リアルデータ): `GET /stocks/7203/history?use_real_data=true`
     """
     logger.info(f"Fetching price history for {stock_code}, {days} days (use_real_data={use_real_data})")
     
