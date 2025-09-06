@@ -1,3 +1,6 @@
+# Web Framework
+fastapi==0.115.6
+
 # Database
 SQLAlchemy==2.0.35
 
