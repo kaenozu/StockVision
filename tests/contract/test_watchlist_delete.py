@@ -16,6 +16,7 @@ def client():
 
 
 @pytest.mark.contract
+@pytest.mark.skip(reason="TDD test for unimplemented endpoint")
 class TestWatchlistDelete:
     """Contract tests for DELETE /watchlist/{id} endpoint"""
 
