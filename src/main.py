@@ -172,6 +172,14 @@ async def health_check():
     """Simple health check endpoint."""
     return {"status": "ok"}
 
+@api_router.get("/live", tags=["Health"])
+async def live_check():
+    """Liveness probe endpoint.
+
+    軽量な応答でプロセスが生存していることのみを示します。
+    """
+    return {"status": "alive"}
+
 @api_router.get("/status", tags=["Health"])
 async def status_check(db: Session = Depends(get_db)):
     """Health check endpoint with database connectivity."""
@@ -227,6 +235,19 @@ async def status_check(db: Session = Depends(get_db)):
         "version": "1.0.0"
     }
 
+@api_router.get("/ready", tags=["Health"])
+async def readiness_check(db: Session = Depends(get_db)):
+    """Readiness probe endpoint.
+
+    依存関係（DB 等）の準備完了を確認し、
+    トラフィック受け入れ可能かを判定します。
+    """
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ready"}
+    except Exception:
+        raise HTTPException(status_code=503, detail="Not ready")
+
 api_router.include_router(stocks_router)
 api_router.include_router(watchlist_router)
 
@@ -253,6 +274,15 @@ async def root_health_check():
 @app.get("/status", tags=["Health"])
 async def root_status_check(db: Session = Depends(get_db)):
     return await status_check(db)
+
+@app.get("/live", tags=["Health"])
+async def root_live_check():
+    return await live_check()
+
+
+@app.get("/ready", tags=["Health"])
+async def root_ready_check(db: Session = Depends(get_db)):
+    return await readiness_check(db)
 
 
 if __name__ == "__main__":
