@@ -689,7 +689,7 @@ export class StockApiClient {
         break
       case '6758': // Sony
         realisticBasePrice = 11000
-        companyName = 'ソニ�Eグループ株式会社'
+        companyName = 'ソニ�Eグループ株式会社'
         break
       case '9984': // SoftBank
         realisticBasePrice = 6000
@@ -697,11 +697,11 @@ export class StockApiClient {
         break
       case '9983': // Fast Retailing
         realisticBasePrice = 85000
-        companyName = '株式会社ファーストリチE��リング'
+        companyName = '株式会社ファーストリチE��リング'
         break
       case '8306': // Mitsubishi UFJ
         realisticBasePrice = 1200
-        companyName = '株式会社三菱UFJフィナンシャル・グルーチE
+        companyName = '株式会社三菱UFJフィナンシャル・グループ';
         break
       default:
         realisticBasePrice = 2500 // Default realistic price
