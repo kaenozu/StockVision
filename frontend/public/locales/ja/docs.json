@@ -1,0 +1,10 @@
+{
+  "api_spec": {
+    "title": "API仕様",
+    "description": "StockVision APIの仕様"
+  },
+  "architecture": {
+    "title": "アーキテクチャ",
+    "description": "StockVisionのアーキテクチャ"
+  }
+}

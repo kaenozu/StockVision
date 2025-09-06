@@ -260,7 +260,6 @@ class PriceHistoryItem(BaseModel):
         return super().model_dump(*args, **kwargs)
     
     stock_code: str = Field(..., description="4-digit stock code")
-    date: datetime = Field(..., description="Trading date (datetime)")
     date: datetime = Field(..., description="Trading date")
     open: Decimal = Field(..., gt=0, description="Opening price")
     high: Decimal = Field(..., gt=0, description="High price")
@@ -555,17 +554,6 @@ class PriceHistoryData(BaseModel):
         end_date = values.get('end_date')
 
         if history:
-            actual_dates = [item.date.date() if isinstance(item.date, datetime) else item.date for item in history]
-            if actual_dates:
-                actual_start = min(actual_dates)
-                actual_end = max(actual_dates)
-
-                if start_date and actual_start < start_date:
-                    raise ValueError(f"History contains dates before start_date {start_date}")
-
-                if end_date and actual_end > end_date:
-                    raise ValueError(f"History contains dates after end_date {end_date}")
-
             from datetime import datetime as _dt
             def _to_dt(v):
                 if isinstance(v, _dt):

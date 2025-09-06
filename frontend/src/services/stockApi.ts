@@ -28,7 +28,10 @@ import {
   isWatchlistItemAPI,
   DEFAULT_DAYS_HISTORY,
   MAX_DAYS_HISTORY,
-  MIN_DAYS_HISTORY
+  MIN_DAYS_HISTORY,
+  MetricsSummary,
+  SlowRequest,
+  EndpointStat
 } from '../types/stock'
 import { stockDataCache, priceHistoryCache, recommendationCache } from './cacheService'
 import { errorLogger, ErrorCategory, ErrorSeverity, logNetworkError, logValidationError, logCacheError } from './errorLogger'
@@ -685,7 +688,7 @@ export class StockApiClient {
         break
       case '6758': // Sony
         realisticBasePrice = 11000
-        companyName = 'ソニーグループ株式会社'
+        companyName = 'ソニ�Eグループ株式会社'
         break
       case '9984': // SoftBank
         realisticBasePrice = 6000
@@ -693,11 +696,11 @@ export class StockApiClient {
         break
       case '9983': // Fast Retailing
         realisticBasePrice = 85000
-        companyName = '株式会社ファーストリテイリング'
+        companyName = '株式会社ファーストリチE��リング'
         break
       case '8306': // Mitsubishi UFJ
         realisticBasePrice = 1200
-        companyName = '株式会社三菱UFJフィナンシャル・グループ'
+        companyName = '株式会社三菱UFJフィナンシャル・グルーチE
         break
       default:
         realisticBasePrice = 2500 // Default realistic price
@@ -770,7 +773,7 @@ export class StockApiClient {
   /**
    * GET /metrics/summary - Get performance metrics summary
    */
-  async getMetricsSummary(): Promise<any> {
+  async getMetricsSummary(): Promise<MetricsSummary> {
     const response = await this.client.get('/metrics/summary');
     return response.data;
   }
@@ -778,7 +781,7 @@ export class StockApiClient {
   /**
    * GET /metrics/slow-requests - Get recent slow requests
    */
-  async getSlowRequests(limit: number = 50): Promise<any[]> {
+  async getSlowRequests(limit: number = 50): Promise<SlowRequest[]> {
     const response = await this.client.get('/metrics/slow-requests', {
       params: { limit }
     });
@@ -788,7 +791,7 @@ export class StockApiClient {
   /**
    * GET /metrics/endpoints - Get endpoint statistics
    */
-  async getEndpointStats(): Promise<any> {
+  async getEndpointStats(): Promise<Record<string, EndpointStat>> {
     const response = await this.client.get('/metrics/endpoints');
     return response.data;
   }
@@ -806,7 +809,7 @@ export class StockApiClient {
   /**
    * POST /metrics/clear - Clear metrics history
    */
-  async clearMetrics(): Promise<any> {
+  async clearMetrics(): Promise<{ message: string }> {
     const response = await this.client.post('/metrics/clear');
     return response.data;
   }

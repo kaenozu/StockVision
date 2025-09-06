@@ -58,6 +58,25 @@ jobs:
         cd frontend
         npm run test:run || true
         
+    - name: Install Playwright browsers
+      run: |
+        cd frontend
+        npx playwright install --with-deps
+        
+    - name: Run E2E tests
+      run: |
+        cd frontend
+        npx playwright test
+        
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: e2e-test-results
+        path: |
+          frontend/test-results/
+          frontend/playwright-report/
+        
     - name: Build frontend
       run: |
         cd frontend
