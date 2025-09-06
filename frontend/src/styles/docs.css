@@ -1,0 +1,80 @@
+/* ドキュメントページのスタイル */
+
+/* 検索バー */
+.doc-search-bar {
+  @apply relative flex items-center w-full;
+}
+
+.doc-search-input {
+  @apply w-full pl-10 pr-10 py-2 border rounded-lg outline-none transition-all duration-200;
+}
+
+.doc-search-icon {
+  @apply absolute left-3 text-lg pointer-events-none;
+}
+
+.doc-clear-button {
+  @apply absolute right-3 p-1 rounded-full;
+}
+
+/* 検索結果 */
+.doc-search-results {
+  @apply rounded-lg shadow-lg overflow-hidden;
+}
+
+.doc-search-results-header {
+  @apply px-4 py-2 text-sm font-medium border-b;
+}
+
+.doc-search-results-list {
+  @apply max-h-96 overflow-y-auto;
+}
+
+.doc-search-result-item {
+  @apply block p-4 border-b transition-colors duration-150;
+}
+
+.doc-search-result-icon {
+  @apply mt-1 mr-3 flex-shrink-0;
+}
+
+.doc-search-result-heading {
+  @apply text-xs font-medium truncate mb-1;
+}
+
+.doc-search-result-title {
+  @apply text-sm font-medium truncate mb-1;
+}
+
+.doc-search-result-content {
+  @apply text-xs line-clamp-2;
+}
+
+/* ドキュメントコンテンツ */
+.doc-content {
+  @apply prose prose-lg max-w-none;
+}
+
+/* 目次 */
+.doc-toc {
+  @apply space-y-1;
+}
+
+.doc-toc-item {
+  @apply flex items-start py-1 text-sm transition-colors duration-150;
+}
+
+.doc-toc-hash {
+  @apply flex-shrink-0 mt-1 mr-2 text-xs;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 1023px) {
+  .doc-sidebar-mobile {
+    @apply fixed inset-0 z-20 bg-black bg-opacity-50 lg:hidden;
+  }
+  
+  .doc-sidebar-content {
+    @apply fixed inset-y-0 left-0 w-64 p-4 transform transition-transform duration-300 ease-in-out;
+  }
+}

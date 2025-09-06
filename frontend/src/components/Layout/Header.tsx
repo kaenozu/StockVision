@@ -30,6 +30,7 @@ export function Header({ onSearch }: HeaderProps) {
     { path: '/', label: 'ホーム', icon: '🏠' },
     { path: '/watchlist', label: 'ウォッチリスト', icon: '⭐' },
     { path: '/performance', label: 'パフォーマンス', icon: '📊' },
+    { path: '/docs', label: 'ドキュメント', icon: '📚' },
     { path: '/about', label: 'About', icon: 'ℹ️' }
   ]
 

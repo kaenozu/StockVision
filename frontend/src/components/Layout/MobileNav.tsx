@@ -15,6 +15,7 @@ export function MobileNav() {
     { path: '/', label: 'ホーム', icon: '🏠' },
     { path: '/watchlist', label: 'ウォッチ', icon: '⭐' },
     { path: '/performance', label: 'パフォーマンス', icon: '📊' },
+    { path: '/docs', label: 'ドキュメント', icon: '📚' },
     { path: '/search', label: '検索', icon: '🔍' },
     { path: '/settings', label: '設定', icon: '⚙️' },
   ]

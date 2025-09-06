@@ -89,6 +89,9 @@ function App() {
               <Route path="search" element={<SearchPage />} />
               <Route path="settings" element={<SettingsPage />} />
               
+              {/* Documentation Route */}
+              <Route path="docs/*" element={<DocumentationPage />} />
+              
               {/* Legacy route for complex home page */}
               <Route path="home-advanced" element={<HomePage />} />
               
