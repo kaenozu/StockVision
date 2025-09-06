@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 
-from ..config import get_settings, should_use_real_data, get_yahoo_finance_config
+from ..config import get_settings, should_use_real_data, get_yahoo_finance_config, get_cache_config
 from ..stock_api.yahoo_client import YahooFinanceClient, YahooFinanceError, StockNotFoundError
 from ..stock_api.data_models import StockData, CurrentPrice, PriceHistoryData, PriceHistoryItem
 from ..models.stock import Stock
@@ -82,14 +82,34 @@ class MockDataGenerator:
     
     @staticmethod
     def generate_stock_data(stock_code: str) -> StockData:
-        """Generate mock stock data."""
-        import random
+        """Generate deterministic mock stock data based on stock code."""
+        import hashlib
         
-        base_price = Decimal('1000.0')
-        current_price = base_price + Decimal(str(random.uniform(-200, 200)))
+        # Use stock code as seed for consistent data generation
+        seed = int(hashlib.md5(stock_code.encode()).hexdigest()[:8], 16)
+        import random
+        random.seed(seed)
+        
+        # Generate consistent base price based on stock code
+        known_stocks = {
+            '7203': 2800,  # Toyota
+            '6758': 12500, # Sony
+            '9984': 8200,  # SoftBank
+            '7974': 24000, # Nintendo
+            '6503': 1650,  # Mitsubishi Electric
+            '8001': 4800,  # Itochu
+        }
+        
+        base_price = Decimal(str(known_stocks.get(stock_code, 2500)))
+        # Add small variation
+        current_price = base_price + Decimal(str(random.uniform(-100, 100)))
         previous_close = base_price + Decimal(str(random.uniform(-50, 50)))
         price_change = current_price - previous_close
         price_change_pct = (price_change / previous_close) * 100 if previous_close > 0 else Decimal('0')
+        
+        # Reset random seed to avoid affecting other operations
+        import time
+        random.seed(int(time.time()))
         
         return StockData(
             stock_code=stock_code,
@@ -180,6 +200,7 @@ class HybridStockService:
     def __init__(self):
         self.settings = get_settings()
         self.yahoo_config = get_yahoo_finance_config()
+        self.cache_config = get_cache_config()
         self.cache = CacheManager()
         self.mock_generator = MockDataGenerator()
         self._yahoo_client: Optional[YahooFinanceClient] = None
@@ -261,9 +282,20 @@ class HybridStockService:
                 # Fall back to mock data
                 pass
         
-        # Use mock data
-        logger.info(f"Using mock stock info for {stock_code}")
+        # Use mock data - check cache first
+        cached_mock_data = await self.cache.get(
+            "stock_info", stock_code, ttl=self.cache_config.stock_info_ttl
+        )
+        
+        if cached_mock_data:
+            logger.info(f"Using cached mock stock info for {stock_code}")
+            return cached_mock_data
+        
+        logger.info(f"Generating new mock stock info for {stock_code}")
         mock_data = self.mock_generator.generate_stock_data(stock_code)
+        
+        # Cache the mock data
+        await self.cache.set("stock_info", stock_code, mock_data)
         
         # Optionally save mock data to database
         if db:
@@ -304,9 +336,22 @@ class HybridStockService:
             except Exception as e:
                 logger.warning(f"Real API failed for current price {stock_code}, using mock: {e}")
         
-        # Use mock data
-        logger.info(f"Using mock current price for {stock_code}")
-        return self.mock_generator.generate_current_price(stock_code)
+        # Use mock data - check cache first
+        cached_mock_price = await self.cache.get(
+            "current_price", stock_code, ttl=self.cache_config.current_price_ttl
+        )
+        
+        if cached_mock_price:
+            logger.info(f"Using cached mock current price for {stock_code}")
+            return cached_mock_price
+        
+        logger.info(f"Generating new mock current price for {stock_code}")
+        mock_price = self.mock_generator.generate_current_price(stock_code)
+        
+        # Cache the mock data
+        await self.cache.set("current_price", stock_code, mock_price)
+        
+        return mock_price
     
     async def get_price_history(
         self,
@@ -347,9 +392,20 @@ class HybridStockService:
             except Exception as e:
                 logger.warning(f"Real API failed for price history {stock_code}, using mock: {e}")
         
-        # Use mock data
-        logger.info(f"Using mock price history for {stock_code}")
+        # Use mock data - check cache first
+        cached_mock_history = await self.cache.get(
+            "price_history", stock_code, ttl=self.cache_config.price_history_ttl, days=days
+        )
+        
+        if cached_mock_history:
+            logger.info(f"Using cached mock price history for {stock_code}")
+            return cached_mock_history
+        
+        logger.info(f"Generating new mock price history for {stock_code}")
         mock_history = self.mock_generator.generate_price_history(stock_code, days)
+        
+        # Cache the mock data
+        await self.cache.set("price_history", stock_code, mock_history, days=days)
         
         # Optionally save mock data to database
         if db:

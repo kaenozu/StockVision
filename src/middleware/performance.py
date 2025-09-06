@@ -132,32 +132,68 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
         return response
     
     def _get_cache_config(self, path: str) -> dict:
-        """Get cache configuration for the given path."""
+        """Get cache configuration for the given path with improved wildcard matching."""
         # Direct match first
         if path in self.CACHE_SETTINGS:
             return self.CACHE_SETTINGS[path]
         
-        # Pattern matching for dynamic paths using regex
+        # Pattern matching for dynamic paths using enhanced regex
         for pattern, config in self.CACHE_SETTINGS.items():
             if "*" in pattern:
-                # Convert wildcard pattern to regex pattern
-                # Escape special regex characters but keep wildcards
-                regex_pattern = re.escape(pattern).replace(r'\*', r'[^/]*')
-                # Add anchors to match full path
-                regex_pattern = f'^{regex_pattern}$'
-                
                 try:
-                    if re.match(regex_pattern, path):
+                    if self._match_wildcard_pattern(pattern, path):
                         return config
-                except re.error:
+                except (re.error, ValueError):
                     # Fallback to simple wildcard matching if regex fails
-                    pattern_parts = pattern.split("*")
-                    if len(pattern_parts) == 2:
-                        prefix, suffix = pattern_parts
-                        if path.startswith(prefix) and path.endswith(suffix):
-                            return config
+                    if self._simple_wildcard_match(pattern, path):
+                        return config
         
         return {}
+    
+    def _match_wildcard_pattern(self, pattern: str, path: str) -> bool:
+        """
+        Enhanced wildcard pattern matching supporting multiple wildcards.
+        
+        Supports patterns like:
+        - /api/stocks/* -> matches /api/stocks/7203
+        - /api/stocks/*/history -> matches /api/stocks/7203/history  
+        - /api/stocks/*/history/* -> matches /api/stocks/7203/history/30d
+        """
+        # Escape special regex characters except wildcards
+        escaped_pattern = re.escape(pattern)
+        
+        # Convert wildcards to regex patterns
+        # Use [^/]* to match any character except slash (single path segment)
+        regex_pattern = escaped_pattern.replace(r'\*', r'[^/]*')
+        
+        # Add anchors to match full path
+        regex_pattern = f'^{regex_pattern}$'
+        
+        return bool(re.match(regex_pattern, path))
+    
+    def _simple_wildcard_match(self, pattern: str, path: str) -> bool:
+        """
+        Simple fallback wildcard matching for basic patterns.
+        
+        Handles single wildcards at start, middle, or end of pattern.
+        """
+        # Handle patterns with single wildcard
+        if pattern.count("*") == 1:
+            if pattern.startswith("*"):
+                return path.endswith(pattern[1:])
+            elif pattern.endswith("*"):
+                return path.startswith(pattern[:-1])
+            else:
+                # Wildcard in middle
+                prefix, suffix = pattern.split("*", 1)
+                return path.startswith(prefix) and path.endswith(suffix)
+        
+        # For multiple wildcards, fall back to basic fnmatch-like behavior
+        import fnmatch
+        try:
+            return fnmatch.fnmatch(path, pattern)
+        except Exception:
+            return False
     
     def _generate_etag(self, content: bytes) -> str:
         """Generate ETag from response content using SHA256 for consistency."""
