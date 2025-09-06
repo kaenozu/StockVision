@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import React, { useEffect, useState, useMemo } from 'react'
 
 interface VirtualListOptions {
   itemHeight: number
@@ -59,13 +60,45 @@ export function useVirtualList<T>(
 }
 
 /**
- * VirtualList component props interface
- * For the actual component, create a separate .tsx file
+ * VirtualList component
  */
-export interface VirtualListProps<T> {
+interface VirtualListProps<T> {
   items: T[]
   itemHeight: number
   height: number
   renderItem: (item: T, index: number) => React.ReactNode
   className?: string
+}
+
+export function VirtualList<T>(props: VirtualListProps<T>) {
+  const { items, itemHeight, height, renderItem, className = '' } = props
+  const { virtualItems, totalHeight, setScrollOffset } = useVirtualList(items, {
+    itemHeight,
+    containerHeight: height
+  })
+
+  return (
+    <div
+      className={`overflow-auto ${className}`}
+      style={{ height }}
+      onScroll={(e) => setScrollOffset(e.currentTarget.scrollTop)}
+    >
+      <div style={{ height: totalHeight, position: 'relative' }}>
+        {virtualItems.map((virtualItem) => (
+          <div
+            key={virtualItem.index}
+            style={{
+              position: 'absolute',
+              top: virtualItem.start,
+              left: 0,
+              right: 0,
+              height: itemHeight
+            }}
+          >
+            {renderItem(items[virtualItem.index], virtualItem.index)}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }

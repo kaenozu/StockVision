@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { stockApi } from '../../services/stockApi'
 import { useTheme } from '../../contexts/ThemeContext'
 
-import { useToastActions } from '../UI/Toast'
+import { useToastActions } from '../../hooks/useToastActions'
 import { Skeleton } from '../UI/Skeleton'
 
 interface WatchListItem {
