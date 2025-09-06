@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { stockApi } from '../../services/stockApi';
 import { useTheme } from '../../contexts/ThemeContext';
-import Button from '../ui/Button';
+import Button from '../UI/Button';
 
 interface MetricsSummary {
   total_requests: number;

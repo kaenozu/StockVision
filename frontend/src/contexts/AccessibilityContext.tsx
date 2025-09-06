@@ -183,6 +183,76 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     root.classList.toggle('focus-mode', focusMode)
   }, [highContrast, largeText, fontSize, reducedMotion, focusMode])
 
+  // Persistent storage for settings
+  const setFocusMode = useCallback((enabled: boolean) => {
+    setFocusModeState(enabled)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`${storagePrefix}-focus-mode`, String(enabled))
+      } catch {
+        // ignore
+      }
+    }
+  }, [storagePrefix])
+
+  const setReducedMotion = useCallback((enabled: boolean) => {
+    setReducedMotionState(enabled)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`${storagePrefix}-reduced-motion`, String(enabled))
+      } catch {
+        // ignore
+      }
+    }
+  }, [storagePrefix])
+
+  const setHighContrast = useCallback((enabled: boolean) => {
+    setHighContrastState(enabled)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`${storagePrefix}-high-contrast`, String(enabled))
+      } catch {
+        // ignore
+      }
+    }
+  }, [storagePrefix])
+
+  const setLargeText = useCallback((enabled: boolean) => {
+    setLargeTextState(enabled)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`${storagePrefix}-large-text`, String(enabled))
+      } catch {
+        // ignore
+      }
+    }
+  }, [storagePrefix])
+
+  const setFontSize = useCallback((size: 'small' | 'medium' | 'large' | 'extra-large') => {
+    setFontSizeState(size)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`${storagePrefix}-font-size`, size)
+      } catch {
+        // ignore
+      }
+    }
+  }, [storagePrefix])
+
+  // Announcement system for screen readers
+  const announce = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
+    setAnnouncements(prev => [...prev, `${priority}: ${message}`])
+    
+    // Auto-clear announcements after 5 seconds
+    setTimeout(() => {
+      setAnnouncements(prev => prev.filter(ann => ann !== `${priority}: ${message}`))
+    }, 5000)
+  }, [])
+
+  const clearAnnouncements = useCallback(() => {
+    setAnnouncements([])
+  }, [])
+
   // Listen for system preference changes
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -257,76 +327,6 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [enableKeyboardShortcuts, focusMode, highContrast, reducedMotion, fontSize, setFocusMode, setFontSize, setHighContrast, setReducedMotion])
-
-  // Persistent storage for settings
-  const setFocusMode = useCallback((enabled: boolean) => {
-    setFocusModeState(enabled)
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`${storagePrefix}-focus-mode`, String(enabled))
-      } catch {
-        // ignore
-      }
-    }
-  }, [storagePrefix])
-
-  const setReducedMotion = useCallback((enabled: boolean) => {
-    setReducedMotionState(enabled)
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`${storagePrefix}-reduced-motion`, String(enabled))
-      } catch {
-        // ignore
-      }
-    }
-  }, [storagePrefix])
-
-  const setHighContrast = useCallback((enabled: boolean) => {
-    setHighContrastState(enabled)
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`${storagePrefix}-high-contrast`, String(enabled))
-      } catch {
-        // ignore
-      }
-    }
-  }, [storagePrefix])
-
-  const setLargeText = useCallback((enabled: boolean) => {
-    setLargeTextState(enabled)
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`${storagePrefix}-large-text`, String(enabled))
-      } catch {
-        // ignore
-      }
-    }
-  }, [storagePrefix])
-
-  const setFontSize = useCallback((size: 'small' | 'medium' | 'large' | 'extra-large') => {
-    setFontSizeState(size)
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`${storagePrefix}-font-size`, size)
-      } catch {
-        // ignore
-      }
-    }
-  }, [storagePrefix])
-
-  // Announcement system for screen readers
-  const announce = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
-    setAnnouncements(prev => [...prev, `${priority}: ${message}`])
-    
-    // Auto-clear announcements after 5 seconds
-    setTimeout(() => {
-      setAnnouncements(prev => prev.filter(ann => ann !== `${priority}: ${message}`))
-    }, 5000)
-  }, [])
-
-  const clearAnnouncements = useCallback(() => {
-    setAnnouncements([])
-  }, [])
 
   const value: AccessibilityContextType = {
     focusMode,
