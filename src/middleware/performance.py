@@ -1,24 +1,20 @@
-"""
-Performance optimization middleware for StockVision API
-
-Provides response compression, caching headers, and other optimizations.
-"""
+import time
+import hashlib
+import json
+import re
+from typing import Callable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Callable
-import time
-import hashlib
-import json
-import re
 
 from ..constants import (
     API_RECOMMENDED_STOCKS, API_TRADING_RECOMMENDATIONS, API_PRICE_PREDICTIONS,
     API_STOCKS_CURRENT, API_STOCKS_HISTORY, API_WATCHLIST,
     CacheTTL, SWRTime, PerformanceThresholds, TimeConstants
 )
+from ..utils.performance_monitor import record_request_metrics
 
 
 class CacheControlMiddleware(BaseHTTPMiddleware):
@@ -195,6 +191,16 @@ class PerformanceMetricsMiddleware(BaseHTTPMiddleware):
         # Add performance headers
         response.headers["X-Process-Time"] = str(round(process_time * TimeConstants.MILLISECONDS_PER_SECOND, 2))  # milliseconds
         response.headers["X-Timestamp"] = str(int(time.time()))
+        
+        # Record metrics
+        record_request_metrics(
+            method=request.method,
+            path=request.url.path,
+            process_time=process_time,
+            status_code=response.status_code,
+            user_agent=request.headers.get("user-agent", ""),
+            client_ip=request.client.host if request.client else ""
+        )
         
         # Log slow requests
         if process_time > PerformanceThresholds.SLOW_REQUEST_THRESHOLD:
