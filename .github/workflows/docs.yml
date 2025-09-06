@@ -29,7 +29,7 @@ jobs:
         cd ../docs && python generate_api_docs.py
 
     - name: Upload generated docs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: generated-docs
         path: |
@@ -45,7 +45,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Download generated docs
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: generated-docs
         path: .
@@ -81,7 +81,7 @@ jobs:
         npm run build-storybook
 
     - name: Upload Storybook build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: storybook-build
         path: frontend/storybook-static
@@ -95,7 +95,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Download Storybook build
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: storybook-build
         path: storybook-static
