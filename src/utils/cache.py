@@ -6,6 +6,7 @@ for caching API responses and reducing database queries.
 """
 import logging
 import time
+import re
 from functools import wraps
 from typing import Any, Optional, Callable, Dict, Tuple
 
@@ -114,6 +115,46 @@ class TTLCache:
 _stock_cache = TTLCache(maxsize=CacheSize.STOCK_CACHE, ttl=CacheTTL.STOCK_DATA_SHORT)  # Stock data cache
 _price_history_cache = TTLCache(maxsize=200, ttl=CacheTTL.STOCK_HISTORY)  # Price history cache
 _current_price_cache = TTLCache(maxsize=CacheSize.CURRENT_PRICE_CACHE, ttl=CacheTTL.CURRENT_PRICE)  # Current price cache
+
+
+def _get_cache_config(path: str) -> dict:
+    """Get cache configuration for a given path using enhanced wildcard matching.
+    
+    This function supports complex wildcard patterns with multiple '*' characters.
+    
+    Args:
+        path: The request path to match against cache settings
+        
+    Returns:
+        Dictionary with cache configuration (ttl, maxsize) or empty dict if no match
+    """
+    # Example CACHE_SETTINGS - in a real implementation this would be defined elsewhere
+    # CACHE_SETTINGS = {
+    #     "/api/stocks/*": {"ttl": 300, "maxsize": 500},
+    #     "/api/stocks/*/history/*": {"ttl": 600, "maxsize": 200},
+    #     "/api/stocks/*/current": {"ttl": 60, "maxsize": 1000}
+    # }
+    
+    # For this implementation, we'll use a mock CACHE_SETTINGS
+    CACHE_SETTINGS = {
+        "/api/stocks/*": {"ttl": 300, "maxsize": 500},
+        "/api/stocks/*/history/*": {"ttl": 600, "maxsize": 200},
+        "/api/stocks/*/current": {"ttl": 60, "maxsize": 1000}
+    }
+    
+    for pattern, config in CACHE_SETTINGS.items():
+        # Convert wildcard pattern to regex
+        # Escape special regex characters except '*'
+        escaped_pattern = re.escape(pattern)
+        # Replace escaped '*' with '.*' for regex matching
+        regex_pattern = escaped_pattern.replace(r'\*', '[^/]*')
+        # Add start and end anchors
+        regex_pattern = f"^{regex_pattern}$"
+        
+        if re.match(regex_pattern, path):
+            return config
+    
+    return {}
 
 
 def cache_stock_data(cache_key_func: Optional[Callable] = None, ttl: float = CacheTTL.STOCK_DATA_SHORT):

@@ -1,3 +1,9 @@
+"""
+Performance optimization middleware for StockVision API
+
+Provides response compression, caching headers, and other optimizations.
+"""
+
 import time
 import hashlib
 import json
@@ -15,6 +21,7 @@ from ..constants import (
     CacheTTL, SWRTime, PerformanceThresholds, TimeConstants
 )
 from ..utils.performance_monitor import record_request_metrics
+from ..config import get_middleware_config
 
 
 class CacheControlMiddleware(BaseHTTPMiddleware):
@@ -38,6 +45,11 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
     }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Check if middleware is enabled
+        middleware_config = get_middleware_config()
+        if not middleware_config.cache_control_enabled:
+            return await call_next(request)
+            
         response = await call_next(request)
         
         # Skip caching for non-GET requests
@@ -101,7 +113,7 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
                 # Escape special regex characters but keep wildcards
                 regex_pattern = re.escape(pattern).replace(r'\*', r'[^/]*')
                 # Add anchors to match full path
-                regex_pattern = f'^{regex_pattern}$'
+                regex_pattern = f'^{regex_pattern}
                 
                 try:
                     if re.match(regex_pattern, path):
@@ -144,6 +156,11 @@ class ResponseCompressionMiddleware(BaseHTTPMiddleware):
     MIN_SIZE = PerformanceThresholds.COMPRESSION_MIN_SIZE
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Check if middleware is enabled
+        middleware_config = get_middleware_config()
+        if not middleware_config.response_compression_enabled:
+            return await call_next(request)
+            
         response = await call_next(request)
         
         # Check if compression is appropriate
@@ -181,6 +198,11 @@ class PerformanceMetricsMiddleware(BaseHTTPMiddleware):
     """
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Check if middleware is enabled
+        middleware_config = get_middleware_config()
+        if not middleware_config.performance_metrics_enabled:
+            return await call_next(request)
+            
         start_time = time.time()
         
         response = await call_next(request)
@@ -217,16 +239,26 @@ def setup_performance_middleware(app: FastAPI):
     """
     Set up all performance optimization middleware.
     """
+    middleware_config = get_middleware_config()
+    
     # Add custom performance middleware
     # Order is important: CacheControlMiddleware -> GZipMiddleware -> PerformanceMetricsMiddleware
-    app.add_middleware(CacheControlMiddleware)
-    # Add GZip compression (built-in FastAPI middleware)
-    app.add_middleware(
-        GZipMiddleware,
-        minimum_size=PerformanceThresholds.COMPRESSION_MIN_SIZE,
-        compresslevel=PerformanceThresholds.COMPRESSION_LEVEL  # Balance between compression ratio and CPU usage
-    )
-    app.add_middleware(PerformanceMetricsMiddleware)
+    
+    # Add Cache Control Middleware if enabled
+    if middleware_config.cache_control_enabled:
+        app.add_middleware(CacheControlMiddleware)
+    
+    # Add GZip compression (built-in FastAPI middleware) if enabled
+    if middleware_config.gzip_enabled:
+        app.add_middleware(
+            GZipMiddleware,
+            minimum_size=middleware_config.gzip_minimum_size,
+            compresslevel=middleware_config.gzip_compresslevel  # Balance between compression ratio and CPU usage
+        )
+    
+    # Add Performance Metrics Middleware if enabled
+    if middleware_config.performance_metrics_enabled:
+        app.add_middleware(PerformanceMetricsMiddleware)
 
 
 # Utility functions for manual performance optimization

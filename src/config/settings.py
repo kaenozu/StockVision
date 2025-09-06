@@ -40,14 +40,34 @@ class DatabaseConfig(BaseModel):
     max_overflow: int = Field(default=10, description="Maximum overflow connections")
 
 
+class MiddlewareConfig(BaseModel):
+    """Middleware configuration."""
+    
+    # Cache Control Middleware
+    cache_control_enabled: bool = Field(default=True, description="Enable Cache Control Middleware")
+    
+    # GZip Compression Middleware
+    gzip_enabled: bool = Field(default=True, description="Enable GZip Compression Middleware")
+    gzip_minimum_size: int = Field(default=1024, description="Minimum response size to compress (bytes)")
+    gzip_compresslevel: int = Field(default=6, description="Compression level (1-9, 9 is highest compression)")
+    
+    # Performance Metrics Middleware
+    performance_metrics_enabled: bool = Field(default=True, description="Enable Performance Metrics Middleware")
+    
+    # Response Compression Middleware (Legacy, kept for backward compatibility)
+    response_compression_enabled: bool = Field(default=False, description="Enable Response Compression Middleware (Legacy)")
+
+
 class AppConfig(BaseModel):
     """Main application configuration."""
     
     debug: bool = Field(default=False, description="Enable debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
+    sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
     yahoo_finance: YahooFinanceConfig = Field(default_factory=YahooFinanceConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
     
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -55,6 +75,7 @@ class AppConfig(BaseModel):
         return cls(
             debug=os.getenv("DEBUG", "false").lower() == "true",
             log_level=os.getenv("LOG_LEVEL", "INFO"),
+            sentry_dsn=os.getenv("SENTRY_DSN"),
             yahoo_finance=YahooFinanceConfig(
                 enabled=os.getenv("USE_REAL_YAHOO_API", "false").lower() == "true",
                 max_requests=int(os.getenv("YAHOO_MAX_REQUESTS", "10")),
@@ -75,6 +96,14 @@ class AppConfig(BaseModel):
                 echo=os.getenv("DATABASE_ECHO", "false").lower() == "true",
                 pool_size=int(os.getenv("DATABASE_POOL_SIZE", "5")),
                 max_overflow=int(os.getenv("DATABASE_MAX_OVERFLOW", "10"))
+            ),
+            middleware=MiddlewareConfig(
+                cache_control_enabled=os.getenv("MIDDLEWARE_CACHE_CONTROL_ENABLED", "true").lower() == "true",
+                gzip_enabled=os.getenv("MIDDLEWARE_GZIP_ENABLED", "true").lower() == "true",
+                gzip_minimum_size=int(os.getenv("MIDDLEWARE_GZIP_MINIMUM_SIZE", "1024")),
+                gzip_compresslevel=int(os.getenv("MIDDLEWARE_GZIP_COMPRESSLEVEL", "6")),
+                performance_metrics_enabled=os.getenv("MIDDLEWARE_PERFORMANCE_METRICS_ENABLED", "true").lower() == "true",
+                response_compression_enabled=os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_ENABLED", "false").lower() == "true"
             )
         )
 
@@ -99,6 +128,11 @@ def get_cache_config() -> CacheConfig:
 def get_database_config() -> DatabaseConfig:
     """Get database configuration."""
     return get_settings().database
+
+
+def get_middleware_config() -> MiddlewareConfig:
+    """Get middleware configuration."""
+    return get_settings().middleware
 
 
 def is_yahoo_finance_enabled() -> bool:
