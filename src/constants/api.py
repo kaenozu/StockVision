@@ -2,6 +2,8 @@
 API related constants for the StockVision application.
 """
 
+import os
+
 # API Endpoints
 API_PREFIX = "/api"
 
@@ -37,9 +39,14 @@ FRONTEND_DEV_PORT = 3000
 FRONTEND_PROD_PORT = 8080
 
 # CORS origins
+# 環境変数から本番用オリジンを読み込み
+PROD_ORIGINS_STR = os.getenv("PROD_CORS_ORIGINS", "")
+PROD_ORIGINS = [origin.strip() for origin in PROD_ORIGINS_STR.split(",") if origin.strip()]
+
 CORS_ORIGINS = [
     f"http://{DEVELOPMENT_HOST}:{FRONTEND_DEV_PORT}",
-    f"http://{DEVELOPMENT_HOST}:{FRONTEND_PROD_PORT}"
+    f"http://{DEVELOPMENT_HOST}:{FRONTEND_PROD_PORT}",
+    *PROD_ORIGINS,  # 本番環境オリジンを追加
 ]
 
 # OpenAPI documentation
