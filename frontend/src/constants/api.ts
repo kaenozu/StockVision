@@ -1,0 +1,44 @@
+/**
+ * API constants for the StockVision frontend application.
+ */
+
+// Development environment detection
+export const IS_DEVELOPMENT = import.meta.env.DEV
+
+// API Base URLs
+export const API_BASE_URL = IS_DEVELOPMENT 
+  ? 'http://localhost:8000/api'  // 正しいポート番号に修正
+  : (import.meta.env.VITE_API_BASE_URL || '/api')  // 環境変数対応
+
+// Cache and refresh intervals (in milliseconds)
+export const CACHE_INTERVALS = {
+  DEFAULT_REFRESH: 30000, // 30 seconds
+  PRICE_UPDATE: 60000,    // 1 minute
+  CHART_UPDATE: 300000,   // 5 minutes
+} as const
+
+// HTTP status codes
+export const HTTP_STATUS = {
+  OK: 200,
+  CREATED: 201,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  INTERNAL_SERVER_ERROR: 500,
+} as const
+
+// API Endpoints
+export const API_ENDPOINTS = {
+  STOCKS: '/stocks',
+  WATCHLIST: '/watchlist',
+  RECOMMENDATIONS: '/recommendations',
+  PRICE_PREDICTIONS: '/price-predictions',
+  TRADING_RECOMMENDATIONS: '/trading-recommendations',
+} as const
+
+// Stock data mock values
+export const MOCK_VALUES = {
+  DEFAULT_VOLUME: 8000000,
+  DEFAULT_PRICE: 12543000,
+} as const

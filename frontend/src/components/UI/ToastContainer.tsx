@@ -15,24 +15,24 @@ export function ToastContainer() {
         <ToastItem
           key={toast.id}
           toast={toast}
-          onClose={() => removeToast(toast.id)}
+          onClose={removeToast}
         />
       ))}
     </div>
   )
 }
 
-function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
+function ToastItem({ toast, onClose }: { toast: Toast; onClose: (id: string) => void }) {
   const { theme } = useTheme()
 
   useEffect(() => {
     if (toast.duration && toast.duration > 0) {
       const timer = setTimeout(() => {
-        onClose()
+        onClose(toast.id)
       }, toast.duration)
       return () => clearTimeout(timer)
     }
-  }, [toast.duration, onClose])
+  }, [toast.id, toast.duration, onClose])
 
   const typeStyles = {
     success: `${
@@ -95,7 +95,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
       </div>
       
       <button
-        onClick={onClose}
+        onClick={() => onClose(toast.id)}
         className="flex-shrink-0 ml-4 opacity-50 hover:opacity-100 transition-opacity"
         aria-label="閉じる"
       >
