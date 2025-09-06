@@ -27,9 +27,9 @@ jobs:
     - name: Generate API documentation
       run: |
         python -c "from src.main import app
-import json
-with open('openapi.json', 'w') as f:
-    json.dump(app.openapi(), f)"
+        import json
+        with open('openapi.json', 'w') as f:
+            json.dump(app.openapi(), f)"
         cd docs && python generate_api_docs.py
 
     - name: Upload generated docs
