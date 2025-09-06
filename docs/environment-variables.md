@@ -22,6 +22,20 @@ This document describes the environment variables used in the application.
 - `ADMIN_TOKEN`: The token required for admin endpoints.
   - Default: (empty)
 
+## CORS (Cross-Origin Resource Sharing)
+
+- `CORS_ORIGINS`: Comma-separated list of allowed origins for CORS.
+  - Default: `*` (allows all origins)
+  - Example: `http://localhost:3000,https://myapp.com`
+- `CORS_ALLOW_CREDENTIALS`: Whether to allow credentials for CORS.
+  - Default: `true`
+- `CORS_ALLOW_METHODS`: Comma-separated list of allowed methods for CORS.
+  - Default: `*` (allows all methods)
+  - Example: `GET,POST,PUT,DELETE`
+- `CORS_ALLOW_HEADERS`: Comma-separated list of allowed headers for CORS.
+  - Default: `*` (allows all headers)
+  - Example: `Authorization,Content-Type`
+
 ## Logging
 
 - `LOG_LEVEL`: The log level.

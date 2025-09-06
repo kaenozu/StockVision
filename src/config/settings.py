@@ -58,6 +58,15 @@ class MiddlewareConfig(BaseModel):
     response_compression_enabled: bool = Field(default=False, description="Enable Response Compression Middleware (Legacy)")
 
 
+class CorsConfig(BaseModel):
+    """CORS configuration."""
+    
+    allow_origins: list[str] = Field(default=["*"], description="Allowed origins for CORS")
+    allow_credentials: bool = Field(default=True, description="Allow credentials for CORS")
+    allow_methods: list[str] = Field(default=["*"], description="Allowed methods for CORS")
+    allow_headers: list[str] = Field(default=["*"], description="Allowed headers for CORS")
+
+
 class AppConfig(BaseModel):
     """Main application configuration."""
     
@@ -65,6 +74,7 @@ class AppConfig(BaseModel):
     log_level: str = Field(default="INFO", description="Logging level")
     server_url: str = Field(default="http://localhost:8000", description="Server URL for OpenAPI specification")
     sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
+    cors: CorsConfig = Field(default_factory=CorsConfig)
     yahoo_finance: YahooFinanceConfig = Field(default_factory=YahooFinanceConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
@@ -100,13 +110,19 @@ class AppConfig(BaseModel):
                 max_overflow=int(os.getenv("DATABASE_MAX_OVERFLOW", "10"))
             ),
             middleware=MiddlewareConfig(
-                cache_control_enabled=os.getenv("MIDDLEWARE_CACHE_CONTROL_ENABLED", "true").lower() == "true",
-                gzip_enabled=os.getenv("MIDDLEWARE_GZIP_ENABLED", "true").lower() == "true",
-                gzip_minimum_size=int(os.getenv("MIDDLEWARE_GZIP_MINIMUM_SIZE", "1024")),
-                gzip_compresslevel=int(os.getenv("MIDDLEWARE_GZIP_COMPRESSLEVEL", "6")),
-                performance_metrics_enabled=os.getenv("MIDDLEWARE_PERFORMANCE_METRICS_ENABLED", "true").lower() == "true",
-                response_compression_enabled=os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_ENABLED", "false").lower() == "true"
-            )
+                        cache_control_enabled=os.getenv("MIDDLEWARE_CACHE_CONTROL_ENABLED", "true").lower() == "true",
+                        gzip_enabled=os.getenv("MIDDLEWARE_GZIP_ENABLED", "true").lower() == "true",
+                        gzip_minimum_size=int(os.getenv("MIDDLEWARE_GZIP_MINIMUM_SIZE", "1024")),
+                        gzip_compresslevel=int(os.getenv("MIDDLEWARE_GZIP_COMPRESSLEVEL", "6")),
+                        performance_metrics_enabled=os.getenv("MIDDLEWARE_PERFORMANCE_METRICS_ENABLED", "true").lower() == "true",
+                        response_compression_enabled=os.getenv("MIDDLEWARE_RESPONSE_COMPRESSION_ENABLED", "false").lower() == "true"
+                    ),
+                    cors=CorsConfig(
+                        allow_origins=[origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",") if origin.strip()],
+                        allow_credentials=os.getenv("CORS_ALLOW_CREDENTIALS", "true").lower() == "true",
+                        allow_methods=[method.strip() for method in os.getenv("CORS_ALLOW_METHODS", "*").split(",") if method.strip()],
+                        allow_headers=[header.strip() for header in os.getenv("CORS_ALLOW_HEADERS", "*").split(",") if header.strip()]
+                    )
         )
 
 

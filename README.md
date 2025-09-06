@@ -233,6 +233,10 @@ USE_REAL_YAHOO_API=false
 DATABASE_URL=sqlite:///data/stock_tracking.db
 LOG_LEVEL=INFO
 SERVER_URL=http://localhost:8000
+CORS_ORIGINS=*
+CORS_ALLOW_CREDENTIALS=true
+CORS_ALLOW_METHODS=*
+CORS_ALLOW_HEADERS=*
 ```
 
 #### フロントエンド (.env)
