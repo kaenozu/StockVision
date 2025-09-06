@@ -248,3 +248,65 @@ export const errorLogger = new ErrorLogger()
 if (typeof window !== 'undefined') {
   errorLogger.initialize()
 }
+
+// Export error categories and severity levels
+export enum ErrorCategory {
+  NETWORK = 'network',
+  VALIDATION = 'validation',
+  CACHE = 'cache',
+  PREDICTION = 'prediction',
+  AUTHENTICATION = 'authentication',
+  RENDERING = 'rendering',
+  BUSINESS_LOGIC = 'business_logic'
+}
+
+export enum ErrorSeverity {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  CRITICAL = 'critical'
+}
+
+// Convenience functions for specific error types
+export function logNetworkError(
+  error: Error, 
+  context?: { 
+    url?: string
+    method?: string
+    status?: number
+    function?: string
+  }
+) {
+  errorLogger.logError(error, {
+    ...context,
+    category: ErrorCategory.NETWORK
+  }, ErrorLevel.ERROR)
+}
+
+export function logValidationError(
+  message: string, 
+  context?: { 
+    field?: string
+    value?: any
+    function?: string
+  }
+) {
+  errorLogger.logError(new Error(message), {
+    ...context,
+    category: ErrorCategory.VALIDATION
+  }, ErrorLevel.WARNING)
+}
+
+export function logCacheError(
+  error: Error, 
+  context?: { 
+    operation?: string
+    key?: string
+    function?: string
+  }
+) {
+  errorLogger.logError(error, {
+    ...context,
+    category: ErrorCategory.CACHE
+  }, ErrorLevel.WARNING)
+}

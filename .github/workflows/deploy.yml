@@ -23,6 +23,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
+        pip install aiohttp==3.11.10
         pip install pytest pytest-cov redis
 
     - name: Run backend tests (unit + smoke)
@@ -46,6 +47,8 @@ jobs:
     - name: Install dependencies
       run: |
         cd frontend
+        rm -f package-lock.json
+        rm -rf node_modules
         npm install --legacy-peer-deps
         
     - name: Run linting
@@ -69,7 +72,7 @@ jobs:
         npx playwright test
         
     - name: Upload E2E test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: e2e-test-results

@@ -197,7 +197,7 @@ export function PriceChart({
         ]
       }
     }
-  }, [data, chartConfig.chart_type, isDark, showMA5, showMA20]) // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, chartConfig.chart_type, isDark, showMA5, showMA20])
 
   // Chart options
   const chartOptions = useMemo<ChartOptions<'line'>>(() => ({
@@ -302,7 +302,7 @@ export function PriceChart({
       axis: 'x' as const,
       intersect: false
     }
-  }), [stockCode, data, isDark, showMA5, showMA20])
+  }), [stockCode, data, isDark])
 
   if (loading) {
     return (

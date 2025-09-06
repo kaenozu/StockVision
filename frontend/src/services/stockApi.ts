@@ -24,19 +24,13 @@ import {
   isStockData,
   isCurrentPriceResponse,
   isPriceHistoryItem,
-  isApiError,
   isWatchlistItemAPI,
   DEFAULT_DAYS_HISTORY,
   MAX_DAYS_HISTORY,
-  MIN_DAYS_HISTORY,
-  MetricsSummary,
-  SlowRequest,
-  EndpointStat
+  MIN_DAYS_HISTORY
 } from '../types/stock'
 import { stockDataCache, priceHistoryCache, recommendationCache } from './cacheService'
-import { errorLogger } from './errorLogger'
-import { generateCacheKey } from '../utils/cache'
-import { handleApiError, fetchWithErrorHandling, retryWithBackoff, showErrorNotification } from '../utils/errorHandler'
+import { errorLogger, ErrorCategory, ErrorSeverity, logNetworkError, logValidationError, logCacheError } from './errorLogger'
 
 /**
  * Stock API Configuration
@@ -52,11 +46,11 @@ interface StockApiConfig {
  * Default configuration for the API client
  */
 const DEFAULT_CONFIG: StockApiConfig = {
-  baseURL: import.meta.env.VITE_API_BASE_URL || (process.env.NODE_ENV === 'production' 
+  baseURL: process.env.NODE_ENV === 'production' 
     ? '/api' 
     : process.env.NODE_ENV === 'test' 
     ? 'http://localhost:8001/api' 
-    : 'http://localhost:8080/api'),
+    : 'http://localhost:8080/api',
   timeout: 10000, // 10 seconds
   retries: 3,
   retryDelay: 1000 // 1 second
@@ -69,8 +63,8 @@ export class StockApiError extends Error {
   constructor(
     public status: number,
     public message: string,
-    public type?: string,
-    public details?: any
+    public errorType?: string,
+    public detail?: string
   ) {
     super(message)
     this.name = 'StockApiError'
@@ -107,13 +101,14 @@ export class StockApiClient {
       }
     })
 
-    // Setup request interceptor for logging in development
+    // Setup request interceptor
     this.client.interceptors.request.use(
       (config) => {
-        if (process.env.NODE_ENV === 'development') {
-          const fullUrl = `${config.baseURL}${config.url}`
-          console.log(`[StockAPI] ${config.method?.toUpperCase()} ${fullUrl}`)
-        }
+        const fullUrl = config.baseURL + config.url
+        console.log(`[StockAPI] ${config.method?.toUpperCase()} ${fullUrl}`)
+        console.log(`[StockAPI] Base URL: ${config.baseURL}`)
+        console.log(`[StockAPI] Request URL: ${config.url}`)
+        console.log(`[StockAPI] Params:`, config.params)
         return config
       },
       (error) => Promise.reject(error)
@@ -122,9 +117,7 @@ export class StockApiClient {
     // Setup response interceptor
     this.client.interceptors.response.use(
       (response) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[StockAPI] Response ${response.status} for ${response.config.url}`)
-        }
+        console.log(`[StockAPI] Response ${response.status} for ${response.config.url}`)
         return response
       },
       (error) => this.handleHttpError(error)
@@ -132,91 +125,38 @@ export class StockApiClient {
   }
 
   /**
-   * Retry mechanism with exponential backoff
-   */
-  private async retryRequest<T>(
-    requestFn: () => Promise<T>,
-    maxRetries: number = this.config.retries,
-    baseDelay: number = this.config.retryDelay
-  ): Promise<T> {
-    let lastError: any
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        return await requestFn()
-      } catch (error) {
-        lastError = error
-        
-        // Don't retry on client errors (4xx) or if max retries reached
-        if (attempt >= maxRetries || this.isClientError(error)) {
-          break
-        }
-
-        // Exponential backoff with jitter
-        const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000
-        await this.sleep(delay)
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[StockAPI] Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`)
-        }
-      }
-    }
-
-    throw lastError
-  }
-
-  /**
-   * Check if error is a client error (4xx) that shouldn't be retried
-   */
-  private isClientError(error: any): boolean {
-    return error instanceof StockApiError && error.status >= 400 && error.status < 500
-  }
-
-  /**
-   * Sleep utility for retry delays
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
-  }
-
-  /**
    * Handle HTTP errors and transform them to StockApiError
    */
   private handleHttpError(error: AxiosError): Promise<never> {
-    // Log detailed error information in development mode
-    if (process.env.NODE_ENV === 'development') {
-      console.error('[StockAPI] HTTP Error Details:', {
-        message: error.message,
-        code: error.code,
-        config: {
-          url: error.config?.url,
-          baseURL: error.config?.baseURL,
-          method: error.config?.method,
-          fullURL: `${error.config?.baseURL || ''}${error.config?.url || ''}`
-        },
-        request: error.request ? 'Request was made' : 'Request was not made',
-        response: error.response ? {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data
-        } : 'No response received'
-      })
-    }
+    console.error('[StockAPI] HTTP Error Details:', {
+      message: error.message,
+      code: error.code,
+      config: {
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        method: error.config?.method,
+        fullURL: error.config?.baseURL + error.config?.url
+      },
+      request: error.request ? 'Request was made' : 'Request was not made',
+      response: error.response ? {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      } : 'No response received'
+    })
     
     const stockApiError = (() => {
       if (error.response) {
         // Server responded with error status
         const { status, data } = error.response
-        if (isApiError(data)) {
-          const apiError = data.error;
-          return new StockApiError(
-            status,
-            apiError.message || `HTTP ${status} Error`,
-            apiError.type,
-            apiError.details
-          )
-        }
-        return new StockApiError(status, `HTTP ${status} Error`)
+        const apiError = data as APIError
+        
+        return new StockApiError(
+          status,
+          apiError.message || `HTTP ${status} Error`,
+          apiError.error_type,
+          apiError.detail
+        )
       } else if (error.request) {
         // Request was made but no response received
         return new StockApiError(0, 'Network Error', 'network', 'No response from server')
@@ -277,7 +217,7 @@ export class StockApiClient {
     this.validateStockCode(stockCode)
 
     // Check cache first
-    const cacheKey = generateCacheKey('stock', { stockCode, useRealData });
+    const cacheKey = `stock_${stockCode}_${useRealData}`
     try {
       const cached = stockDataCache.get<StockData>(cacheKey)
       if (cached) {
@@ -292,26 +232,22 @@ export class StockApiClient {
       })
     }
 
-    const params: Record<string, any> = {}
+    const params: Record<string, boolean> = {}
     if (useRealData) {
       params.use_real_data = true
     }
 
-    const stockData = await this.retryRequest(async () => {
-      const response = await this.client.get<StockData>(
-        `/stocks/${stockCode}`,
-        { params }
-      )
+    const response = await this.client.get<StockData>(
+      `/stocks/${stockCode}`,
+      { params }
+    )
 
-      const adjustedData = this.adjustPriceToRealistic(response.data)
+    const stockData = this.adjustPriceToRealistic(response.data)
 
-      // Validate response data structure
-      if (!isStockData(adjustedData)) {
-        throw new ValidationError('Invalid data type in StockData response')
-      }
-
-      return adjustedData
-    })
+    // Validate response data structure
+    if (!isStockData(stockData)) {
+      throw new ValidationError('Invalid data type in StockData response')
+    }
 
     // Cache the result
     try {
@@ -338,21 +274,19 @@ export class StockApiClient {
       params.use_real_data = true
     }
 
-    return await this.retryRequest(async () => {
-      const response = await this.client.get<CurrentPriceResponse>(
-        `/stocks/${stockCode}/current`,
-        { params }
-      )
+    const response = await this.client.get<CurrentPriceResponse>(
+      `/stocks/${stockCode}/current`,
+      { params }
+    )
 
-      const currentPrice = this.adjustCurrentPriceToRealistic(response.data)
+    const currentPrice = this.adjustCurrentPriceToRealistic(response.data)
 
-      // Validate response data structure
-      if (!isCurrentPriceResponse(currentPrice)) {
-        throw new ValidationError('Invalid data type in CurrentPriceResponse')
-      }
+    // Validate response data structure
+    if (!isCurrentPriceResponse(currentPrice)) {
+      throw new ValidationError('Invalid data type in CurrentPriceResponse')
+    }
 
-      return currentPrice
-    })
+    return currentPrice
   }
 
   /**
@@ -367,14 +301,14 @@ export class StockApiClient {
     this.validateDays(days)
 
     // Check cache first
-    const cacheKey = generateCacheKey('history', { stockCode, days, useRealData });
+    const cacheKey = `history_${stockCode}_${days}_${useRealData}`
     const cached = priceHistoryCache.get<PriceHistoryItem[]>(cacheKey)
     if (cached) {
       console.log(`[StockAPI] Using cached price history for ${stockCode}`)
       return cached
     }
 
-    const params: Record<string, any> = { days }
+    const params: Record<string, unknown> = { days }
     if (useRealData) {
       params.use_real_data = true
     }
@@ -450,22 +384,16 @@ export class StockApiClient {
     // Validate request data
     this.validateStockCode(request.stock_code)
     
-    if (request.alert_price_high !== undefined && request.alert_price_high !== null && request.alert_price_high <= 0) {
-      throw new ValidationError('Invalid alert price: must be greater than 0', 'alert_price_high')
-    }
-    if (request.alert_price_low !== undefined && request.alert_price_low !== null && request.alert_price_low <= 0) {
-      throw new ValidationError('Invalid alert price: must be greater than 0', 'alert_price_low')
+    if (request.alert_price !== undefined && request.alert_price !== null && request.alert_price <= 0) {
+      throw new ValidationError('Invalid alert price: must be greater than 0', 'alert_price')
     }
 
     // Validate request data types
     if (typeof request.stock_code !== 'string') {
       throw new ValidationError('Invalid request data type: stock_code must be string')
     }
-    if (request.alert_price_high !== undefined && request.alert_price_high !== null && typeof request.alert_price_high !== 'number') {
-      throw new ValidationError('Invalid request data type: alert_price_high must be number or null')
-    }
-    if (request.alert_price_low !== undefined && request.alert_price_low !== null && typeof request.alert_price_low !== 'number') {
-      throw new ValidationError('Invalid request data type: alert_price_low must be number or null')
+    if (request.alert_price !== undefined && request.alert_price !== null && typeof request.alert_price !== 'number') {
+      throw new ValidationError('Invalid request data type: alert_price must be number or null')
     }
 
     const response = await this.client.post<WatchlistItemAPI>(
@@ -499,11 +427,11 @@ export class StockApiClient {
   /**
    * GET /stocks/{code}/enhanced - Get enhanced stock information with predictions
    */
-  async getEnhancedStockInfo(stockCode: string, useRealData = true): Promise<any> {
+  async getEnhancedStockInfo(stockCode: string, useRealData = true): Promise<unknown> {
     this.validateStockCode(stockCode)
 
-    const params: Record<string, any> = {}
-    if (useRealData !== null) {
+    const params: Record<string, boolean> = {}
+    if (useRealData !== undefined) {
       params.use_real_data = useRealData
     }
 
@@ -518,11 +446,11 @@ export class StockApiClient {
   /**
    * GET /recommended-stocks - Get recommended stocks with caching
    */
-  async getRecommendedStocks(limit = 10, useRealData = true): Promise<any[]> {
+  async getRecommendedStocks(limit = 10, useRealData = true): Promise<unknown[]> {
     // Check cache first for 24h offline support
-    const cacheKey = generateCacheKey('recommended-stocks', { limit, useRealData });
+    const cacheKey = `recommended_stocks_${limit}_${useRealData}`
     try {
-      const cached = recommendationCache.get<any[]>(cacheKey)
+      const cached = recommendationCache.get<unknown[]>(cacheKey)
       if (cached) {
         console.log('[StockAPI] Using cached recommended stocks')
         return cached
@@ -536,16 +464,16 @@ export class StockApiClient {
     }
 
     try {
-      const params: Record<string, any> = { limit }
+      const params: Record<string, unknown> = { limit }
       if (useRealData) {
         params.use_real_data = useRealData
       }
 
-      const response = await this.client.get<any>('/recommended-stocks', { params })
+      const response = await this.client.get<unknown>('/recommended-stocks', { params })
       const responseData = response.data
 
       // Handle different response formats
-      let recommendations: any[]
+      let recommendations: unknown[]
       if (Array.isArray(responseData)) {
         // Direct array response
         recommendations = responseData
@@ -598,21 +526,21 @@ export class StockApiClient {
   /**
    * GET /trading-recommendations - Get trading recommendations with caching
    */
-  async getTradingRecommendations(useRealData = true): Promise<any[]> {
+  async getTradingRecommendations(useRealData = true): Promise<unknown[]> {
     // Check cache first
-    const cacheKey = generateCacheKey('trading-recommendations', { useRealData });
-    const cached = recommendationCache.get<any[]>(cacheKey)
+    const cacheKey = `trading_recommendations_${useRealData}`
+    const cached = recommendationCache.get<unknown[]>(cacheKey)
     if (cached) {
       console.log('[StockAPI] Using cached trading recommendations')
       return cached
     }
 
-    const params: Record<string, any> = {}
+    const params: Record<string, boolean> = {}
     if (useRealData) {
       params.use_real_data = useRealData
     }
 
-    const response = await this.client.get<any[]>('/trading-recommendations', { params })
+    const response = await this.client.get<unknown[]>('/trading-recommendations', { params })
     const recommendations = response.data
 
     // Validate response is array
@@ -679,33 +607,33 @@ export class StockApiClient {
   private adjustPriceToRealistic(stockData: StockData): StockData {
     const stockCode = stockData.stock_code
     let realisticBasePrice: number
-    let companyName: string
+    let compunknownName: string
     
     // Set realistic prices based on stock code
     switch (stockCode) {
       case '7203': // Toyota
         realisticBasePrice = 3500
-        companyName = 'トヨタ自動車株式会社'
+        compunknownName = 'トヨタ自動車株式会社'
         break
       case '6758': // Sony
         realisticBasePrice = 11000
-        companyName = 'ソニ�Eグループ株式会社'
+        compunknownName = 'ソニーグループ株式会社'
         break
       case '9984': // SoftBank
         realisticBasePrice = 6000
-        companyName = 'ソフトバンクグループ株式会社'
+        compunknownName = 'ソフトバンクグループ株式会社'
         break
       case '9983': // Fast Retailing
         realisticBasePrice = 85000
-        companyName = '株式会社ファーストリチE��リング'
+        compunknownName = '株式会社ファーストリテイリング'
         break
       case '8306': // Mitsubishi UFJ
         realisticBasePrice = 1200
-        companyName = '株式会社三菱UFJフィナンシャル・グルーチE
+        compunknownName = '株式会社三菱UFJフィナンシャル・グループ'
         break
       default:
         realisticBasePrice = 2500 // Default realistic price
-        companyName = stockData.company_name
+        compunknownName = stockData.compunknown_name
         break
     }
     
@@ -718,7 +646,7 @@ export class StockApiClient {
     
     const adjustedData = {
       ...stockData,
-      company_name: companyName,
+      compunknown_name: compunknownName,
       current_price: Math.round(currentPrice * 100) / 100,
       previous_close: Math.round(previousClose * 100) / 100,
       price_change: Math.round(priceChange * 100) / 100,
@@ -747,9 +675,9 @@ export class StockApiClient {
    * Get cache statistics for monitoring
    */
   getCacheStats(): {
-    stockData: any
-    priceHistory: any
-    recommendations: any
+    stockData: unknown
+    priceHistory: unknown
+    recommendations: unknown
   } {
     return {
       stockData: stockDataCache.getStats(),
@@ -767,52 +695,6 @@ export class StockApiClient {
     )
 
     return response.data
-  }
-
-  // === Metrics API Methods ===
-
-  /**
-   * GET /metrics/summary - Get performance metrics summary
-   */
-  async getMetricsSummary(): Promise<MetricsSummary> {
-    const response = await this.client.get('/metrics/summary');
-    return response.data;
-  }
-
-  /**
-   * GET /metrics/slow-requests - Get recent slow requests
-   */
-  async getSlowRequests(limit: number = 50): Promise<SlowRequest[]> {
-    const response = await this.client.get('/metrics/slow-requests', {
-      params: { limit }
-    });
-    return response.data;
-  }
-
-  /**
-   * GET /metrics/endpoints - Get endpoint statistics
-   */
-  async getEndpointStats(): Promise<Record<string, EndpointStat>> {
-    const response = await this.client.get('/metrics/endpoints');
-    return response.data;
-  }
-
-  /**
-   * GET /metrics/top-slow-endpoints - Get top slow endpoints
-   */
-  async getTopSlowEndpoints(limit: number = 10): Promise<any[]> {
-    const response = await this.client.get('/metrics/top-slow-endpoints', {
-      params: { limit }
-    });
-    return response.data;
-  }
-
-  /**
-   * POST /metrics/clear - Clear metrics history
-   */
-  async clearMetrics(): Promise<{ message: string }> {
-    const response = await this.client.post('/metrics/clear');
-    return response.data;
   }
 }
 
@@ -854,7 +736,7 @@ export function formatApiError(error: unknown): string {
   } else if (error instanceof Error) {
     return error.message
   } else {
-    return 'An unknown error occurred'
+    return 'Unknown error occurred'
   }
 }
 

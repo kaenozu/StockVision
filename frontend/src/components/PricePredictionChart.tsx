@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -9,7 +9,6 @@ import {
   Tooltip,
   Legend,
   Filler,
-  ScriptableContext
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import type { ChartOptions } from 'chart.js';
@@ -26,20 +25,21 @@ ChartJS.register(
   Filler
 );
 
-interface ChartDataPoint {
-  date: string;
-  actual?: number;
-  predicted?: number;
-  upperBound?: number;
-  lowerBound?: number;
-}
+// Interface definitions (unused but kept for future expansion)
+// interface ChartDataPointLocal {
+//   date: string;
+//   actual?: number;
+//   predicted?: number;
+//   upperBound?: number;
+//   lowerBound?: number;
+// }
 
-interface TradingMarker {
-  date: string;
-  price: number;
-  type: 'buy' | 'sell';
-  reason: string;
-}
+// interface TradingMarkerLocal {
+//   date: string;
+//   price: number;
+//   type: 'buy' | 'sell';
+//   reason: string;
+// }
 
 interface ChartData {
   stock: {
@@ -50,7 +50,7 @@ interface ChartData {
   };
   chartData: {
     labels: string[];
-    datasets: any[];
+    datasets: unknown[];
   };
   markers: {
     buy: { date: string; price: number; reason: string; }[];
@@ -78,9 +78,9 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
 
   useEffect(() => {
     fetchChartData();
-  }, [symbol, period]);
+  }, [symbol, period, fetchChartData]);
 
-  const fetchChartData = async () => {
+  const fetchChartData = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/price-predictions/${symbol}?period=${period}`);
@@ -99,7 +99,7 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [symbol, period]);
 
   const createChartData = () => {
     if (!chartData) return null;
@@ -138,7 +138,7 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
         mode: 'index' as const,
         intersect: false,
         callbacks: {
-          title: (context: any) => {
+          title: (context: unknown[]) => {
             const date = new Date(chartData?.chartData.labels[context[0].dataIndex] || '');
             return date.toLocaleDateString('ja-JP', { 
               year: 'numeric', 
@@ -146,7 +146,7 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
               day: 'numeric' 
             });
           },
-          label: (context: any) => {
+          label: (context: { parsed: { y: number }, dataset: { label: string } }) => {
             const value = context.parsed.y;
             if (value === null || value === undefined) return '';
             return `${context.dataset.label}: ¥${value.toLocaleString('ja-JP')}`;
@@ -171,13 +171,13 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
           display: true,
           text: '価格 (¥)'
         },
-        min: chartData ? Math.min(...chartData.chartData.datasets.flatMap(d => d.data.filter((v: any) => v !== null))) * 0.95 : undefined,
-        max: chartData ? Math.max(...chartData.chartData.datasets.flatMap(d => d.data.filter((v: any) => v !== null))) * 1.05 : undefined,
+        min: chartData ? Math.min(...chartData.chartData.datasets.flatMap((d: { data: number[] }) => d.data.filter((v: number) => v !== null))) * 0.95 : undefined,
+        max: chartData ? Math.max(...chartData.chartData.datasets.flatMap((d: { data: number[] }) => d.data.filter((v: number) => v !== null))) * 1.05 : undefined,
         grid: {
           color: 'rgba(0, 0, 0, 0.1)'
         },
         ticks: {
-          callback: (value: any) => {
+          callback: (value: number) => {
             return `¥${value.toLocaleString('ja-JP')}`;
           }
         }
