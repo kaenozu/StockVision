@@ -1,3 +1,6 @@
+# Database
+SQLAlchemy==2.0.35
+
 # Monitoring and metrics (optional)
 prometheus-client==0.19.0
 
