@@ -74,7 +74,15 @@
     ```
     これにより、Chromium, Firefox, WebKitブラウザがインストールされます。
 
-3.  **環境変数の設定 (.envファイル)**
+3.  **Storybookの起動 (コンポーネント開発用)**
+
+    ```bash
+    cd frontend
+    npm run storybook
+    ```
+    ブラウザで `http://localhost:6006` にアクセスすると、Storybookが表示されます。
+
+4.  **環境変数の設定 (.envファイル)**
 
     `frontend` ディレクトリに `.env` ファイルを作成し、以下の変数を設定します。
 

@@ -60,6 +60,12 @@ app = FastAPI(
     docs_url=DOCS_URL,
     redoc_url=REDOC_URL,
     openapi_url=OPENAPI_URL,
+    openapi_tags=[
+        {"name": "Stocks", "description": "株式情報の取得と管理"},
+        {"name": "Watchlist", "description": "ウォッチリストの管理"},
+        {"name": "Health", "description": "アプリケーションとデータベースのヘルスチェック"},
+        {"name": "Root", "description": "ルートエンドポイント"}
+    ]
 )
 
 
