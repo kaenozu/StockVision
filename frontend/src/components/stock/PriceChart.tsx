@@ -7,6 +7,7 @@
 
 import React, { useMemo, useState } from 'react'
 import { useTheme } from '../../contexts/ThemeContext'
+import type { ChartDataset, ChartOptions } from 'chart.js'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -107,7 +108,7 @@ export function PriceChart({
     const labels = sortedData.map(item => formatDateShort(item.date))
     const closePrices = sortedData.map(item => item.close)
     
-    const datasets: ChartDataset[] = []
+    const datasets: ChartDataset<'line', (number | null)[]>[] = []
     
     if (chartConfig.chart_type === 'line') {
       // Main price line
@@ -197,7 +198,7 @@ export function PriceChart({
   }, [data, chartConfig.chart_type, isDark, showMA5, showMA20]) // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // Chart options
-  const chartOptions = useMemo(() => ({
+  const chartOptions = useMemo<ChartOptions<'line'>>(() => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -216,7 +217,7 @@ export function PriceChart({
         font: {
           family: 'Noto Sans JP, sans-serif',
           size: 16,
-          weight: 'bold'
+          weight: 700
         },
         color: isDark ? 'rgb(209, 213, 219)' : 'rgb(55, 65, 81)'
       },
@@ -285,8 +286,8 @@ export function PriceChart({
             family: 'Noto Sans JP, sans-serif'
           },
           color: isDark ? 'rgb(156, 163, 175)' : 'rgb(75, 85, 99)',
-          callback: function(value: number) {
-            return formatPrice(value)
+          callback: function(this, tickValue: string | number) {
+            return typeof tickValue === 'number' ? formatPrice(tickValue) : String(tickValue)
           }
         },
         grid: {
