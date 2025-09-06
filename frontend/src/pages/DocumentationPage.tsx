@@ -5,7 +5,7 @@ import { SearchBar } from '../components/docs/SearchBar';
 import { SearchResults } from '../components/docs/SearchResults';
 import { TableOfContents } from '../components/docs/TableOfContents';
 import { searchDocs, DocSearchResult } from '../services/docSearchService';
-import { loadDocContent, getDocMetadataById, generateTableOfContents, DocMetadata } from '../services/docLoaderService';
+import { fetchDocContent, getDocMetadataById, generateTableOfContents, DocMetadata } from '../services/docLoaderService';
 import { FiBook, FiChevronRight, FiMenu, FiX } from 'react-icons/fi';
 import { Link, useParams, useLocation } from 'react-router-dom';
 
@@ -50,7 +50,7 @@ const DocumentationPage: React.FC = () => {
             setDocMetadata(docs);
             
             // ドキュメントのコンテンツを読み込む
-            const content = await loadDocContent(docs.path);
+            const content = await fetchDocContent(docs.path);
             setDocContent(content);
             
             // 目次を生成
