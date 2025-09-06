@@ -20,6 +20,12 @@ test.describe('ホームページ', () => {
 
     // 人気銘柄セクションの確認
     await expect(page.getByText('人気銘柄')).toBeVisible();
+
+    // フッターの確認
+    await expect(page.getByText('© 2023 株価チェッカー')).toBeVisible();
+
+    // スクリーンショットを取得
+    await page.screenshot({ path: 'test-results/homepage.png' });
   });
 
   test('銘柄検索機能', async ({ page }) => {
@@ -35,6 +41,10 @@ test.describe('ホームページ', () => {
     // 銘柄情報が表示されていることを確認
     await expect(page.getByText(TEST_STOCK_CODE)).toBeVisible();
     await expect(page.getByText(TEST_COMPANY_NAME)).toBeVisible();
+
+    // 価格情報が表示されていることを確認
+    await expect(page.getByText('現在価格')).toBeVisible();
+    await expect(page.getByText('前日比')).toBeVisible();
   });
 
   test('ウォッチリストページへのナビゲーション', async ({ page }) => {
@@ -46,5 +56,8 @@ test.describe('ホームページ', () => {
 
     // ウォッチリストページの要素を確認
     await expect(page.getByText('ウォッチリスト')).toBeVisible();
+
+    // 「アイテムを追加」ボタンが表示されていることを確認
+    await expect(page.getByRole('button', { name: 'アイテムを追加' })).toBeVisible();
   });
 });

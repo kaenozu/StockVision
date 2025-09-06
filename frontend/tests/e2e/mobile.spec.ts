@@ -17,6 +17,12 @@ test.describe('モバイルデバイス', () => {
 
     // 人気銘柄セクションの確認
     await expect(page.getByText('人気銘柄')).toBeVisible();
+
+    // フッターの確認
+    await expect(page.getByText('© 2023 株価チェッカー')).toBeVisible();
+
+    // スクリーンショットを取得
+    await page.screenshot({ path: 'test-results/mobile-homepage.png' });
   });
 
   test('ハンバーガーメニューが正しく動作する', async ({ page }) => {
@@ -40,5 +46,8 @@ test.describe('モバイルデバイス', () => {
 
     // ウォッチリストページの要素を確認
     await expect(page.getByText('ウォッチリスト')).toBeVisible();
+
+    // 「アイテムを追加」ボタンが表示されていることを確認
+    await expect(page.getByRole('button', { name: 'アイテムを追加' })).toBeVisible();
   });
 });
