@@ -25,8 +25,8 @@ jobs:
 
     - name: Generate API documentation
       run: |
-        cd src && python -m fastapi.openapi ../openapi.json
-        cd ../docs && python generate_api_docs.py
+        python -c "from src.main import app; import json; with open('openapi.json', 'w') as f: json.dump(app.openapi(), f)"
+        cd docs && python generate_api_docs.py
 
     - name: Upload generated docs
       uses: actions/upload-artifact@v4
@@ -73,7 +73,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd frontend
-        npm ci
+        npm ci --legacy-peer-deps
 
     - name: Build Storybook
       run: |

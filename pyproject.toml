@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-vision"
+version = "0.1.0"
+description = "株価情報を取得・管理・表示するアプリケーション"
+readme = "README.md"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.68.0",
+    "uvicorn>=0.15.0",
+    "yfinance>=0.1.63",
+    "click>=8.0.0",
+    "rich>=10.0.0",
+    "pydantic>=2.0.0",
+    "sqlalchemy>=1.4.0",
+    "aiosqlite>=0.17.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.2.0",
+    "pytest-asyncio>=0.15.0",
+    "pytest-cov>=2.12.0",
+    "black>=21.0.0",
+    "flake8>=3.9.0",
+]
+
+[project.scripts]
+stock-cli = "src.stock_cli.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["src.*"]
