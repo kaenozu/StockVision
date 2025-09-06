@@ -131,7 +131,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [actualTheme])
+  }, [actualTheme, toggleTheme])
 
   const value: ThemeContextType = {
     theme,
