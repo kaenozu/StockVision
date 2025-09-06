@@ -64,7 +64,8 @@ StockVision APIは、株価情報を取得・管理するためのRESTful APIで
 `GET /metrics`
 
 `ENABLE_METRICS=true` の場合に公開され、Prometheusテキスト形式でメトリクスを返します。
-`METRICS_BASIC_AUTH=user:pass` を設定すると、Basic認証が必須になります。
+- `METRICS_BASIC_AUTH=user:pass` を設定するとBasic認証が必須に
+- `METRICS_ALLOW_CIDRS=...` を設定するとCIDR/IP許可リストでアクセス制限
 
 主なメトリクス:
 - `http_requests_total{method, path, status}`

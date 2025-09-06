@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Callable
+from typing import Callable, List
 
 from fastapi import FastAPI, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
+import ipaddress
 
 try:
     from prometheus_client import Counter, Histogram, CONTENT_TYPE_LATEST, generate_latest
@@ -126,5 +127,50 @@ def setup_metrics(app: FastAPI) -> None:
             except Exception:
                 return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="metrics"'})
 
+        # Optional IP allowlist via CIDRs or IPs
+        allow_cidrs = os.getenv("METRICS_ALLOW_CIDRS", "").strip()
+        if allow_cidrs:
+            if not _is_ip_allowed(request, allow_cidrs):
+                return Response(status_code=403)
+
         content = generate_latest()
         return Response(content=content, media_type=CONTENT_TYPE_LATEST)
+
+
+def _is_ip_allowed(request: Request, cidrs_csv: str) -> bool:
+    """Check if request IP is within any of the allowed CIDRs or exact IPs.
+
+    Supports comma-separated list like "127.0.0.1, 10.0.0.0/8, ::1".
+    Considers X-Forwarded-For (first) if present; falls back to client.host.
+    """
+    # Determine client IP
+    xff = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    host = xff or (request.client.host if request.client else "")
+    try:
+        client_ip = ipaddress.ip_address(host)
+    except ValueError:
+        # Unknown host format; deny
+        return False
+
+    # Parse allow list
+    networks: List[ipaddress._BaseNetwork] = []
+    for raw in cidrs_csv.split(","):
+        entry = raw.strip()
+        if not entry:
+            continue
+        try:
+            # Try network first
+            net = ipaddress.ip_network(entry, strict=False)
+            networks.append(net)
+            continue
+        except ValueError:
+            try:
+                # Single IP fallback -> convert to /32 or /128
+                ip = ipaddress.ip_address(entry)
+                net = ipaddress.ip_network(f"{ip}/{ip.max_prefixlen}")
+                networks.append(net)
+            except ValueError:
+                # Skip invalid entry
+                pass
+
+    return any(client_ip in net for net in networks)

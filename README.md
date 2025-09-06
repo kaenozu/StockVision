@@ -270,7 +270,9 @@ VITE_API_BASE_URL=http://localhost:8000
 ```
 
 メトリクスを有効化する場合は `ENABLE_METRICS=true` を設定し、`/metrics` エンドポイントから Prometheus 形式で取得できます。
-公開環境などで保護が必要な場合は `METRICS_BASIC_AUTH` を `user:pass` 形式で設定してください（Basic 認証）。
+公開環境などで保護が必要な場合は以下を併用できます:
+- `METRICS_BASIC_AUTH=user:pass`（Basic 認証）
+- `METRICS_ALLOW_CIDRS=127.0.0.1/32, 10.0.0.0/8, ::1`（アクセス許可CIDR/IPのカンマ区切り）
 
 運用向けヘルスチェック:
 - Liveness: `/live`（および `/api/live`）
