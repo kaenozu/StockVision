@@ -55,7 +55,6 @@ frontend/src/
 
 - **StockCard.tsx**: 株式情報をカード形式で表示。価格、変動率、ウォッチリストボタンを含む。
 - **PriceChart.tsx**: 価格チャート (ライン/ローソク足)。テクニカル指標 (SMA, EMA) の表示。
-- **TechnicalChart.tsx**: 詳細なテクニカル分析チャート (MACD, RSI, ボリンジャーバンド)。
 - **StockSearch.tsx**: 株式検索フォーム。銘柄コードの入力とバリデーション。
 
 ### ウォッチリストコンポーネント
@@ -69,7 +68,6 @@ frontend/src/
 - **Button.tsx**: ボタンコンポーネント。プライマリ、セカンダリ、アウトライン、アイコンボタンなどをサポート。
 - **LoadingSpinner.tsx**: ローディングスピナーとスケルトンUI。
 - **ErrorMessage.tsx**: エラーメッセージ表示。
-- **Toast.tsx**: トースト通知。
 
 ## 状態管理
 
@@ -159,9 +157,6 @@ frontend/src/
 - `getWatchlist`: ウォッチリストを取得。
 - `addToWatchlist`: ウォッチリストに追加。
 - `removeFromWatchlist`: ウォッチリストから削除。
-- `getEnhancedStockInfo`: 拡張株式情報を取得 (予測など)。
-- `getRecommendedStocks`: おすすめ銘柄を取得。
-- `getTradingRecommendations`: 取引推奨を取得。
 - `healthCheck`: ヘルスチェック。
 
 ## ユーティリティ
@@ -183,7 +178,6 @@ frontend/src/
 - `validateDays`: 日数のバリデーション。
 - `validateStockSearchForm`: 株式検索フォームのバリデーション。
 - `validateWatchlistForm`: ウォッチリストフォームのバリデーション。
-- `validateOHLCData`: OHLCデータのバリデーション。
 
 ### キャッシュユーティリティ (cache.ts)
 
@@ -210,6 +204,12 @@ frontend/src/
 
 - 大量のデータを表示する場合に、仮想リストを使用。
 - DOMノードの数を削減し、パフォーマンスを向上。
+
+### パフォーマンスモニタリング
+
+- バックエンドの `PerformanceMetricsMiddleware` を使用して、APIリクエストのパフォーマンスを監視。
+- スローリクエストのログ出力と警告。
+- メトリクスAPIを使用して、フロントエンドからパフォーマンスデータを取得し、ダッシュボードで可視化。
 
 ## アクセシビリティ
 
@@ -252,16 +252,22 @@ frontend/src/
 - デバイスタイプに応じたコンポーネントの表示/非表示。
 - モバイル用の特別なコンポーネント (例: MobileNav)。
 
-## テスト
+### テスト
 
-### 単体テスト
+#### 単体テスト
 
 - JestとReact Testing Libraryを使用。
 - コンポーネント、フック、ユーティリティ関数のテスト。
 
-### E2Eテスト
+#### E2Eテスト
 
-- CypressなどのE2Eテストフレームワークの導入を検討中。
+- Playwrightを使用して、実際のブラウザ上でアプリケーション全体のフローをテストします。
+
+#### コンポーネントテストとカタログ化
+
+- Storybookを使用して、UIコンポーネントを独立した環境で開発、テスト、ドキュメント化します。
+- 各コンポーネントのストーリーを作成し、さまざまな状態やプロパティの組み合わせを可視化します。
+- コンポーネントのプロパティや使用方法を自動生成されたドキュメントで確認できます。
 
 ## デプロイ
 
@@ -278,3 +284,44 @@ frontend/src/
 ### ホスティング
 
 - Vercelなど、静的サイトホスティングサービスでデプロイ。
+
+## 追加情報
+
+### useWatchlistItem カスタムフック
+
+`useWatchlistItem` は、特定の銘柄コードに対するウォッチリストアイテムの状態を管理するカスタムフックです。
+
+**主な機能:**
+
+- 特定の銘柄がウォッチリストに含まれているかどうかを確認 (`isInWatchlist`)。
+- ウォッチリストアイテムのデータを取得 (`item`)。
+- アイテムをウォッチリストに追加、削除、またはトグルする関数 (`addToWatchlist`, `removeFromWatchlist`, `toggleWatchlist`)。
+- アラート価格を設定する機能。
+
+**使用例:**
+
+```typescript
+import { useWatchlistItem } from '../hooks/useWatchlist';
+
+function MyComponent({ stockCode }: { stockCode: string }) {
+  const { item, isInWatchlist, addToWatchlist, removeFromWatchlist } = useWatchlistItem(stockCode);
+
+  return (
+    <div>
+      {isInWatchlist ? (
+        <button onClick={() => removeFromWatchlist(stockCode)}>ウォッチリストから削除</button>
+      ) : (
+        <button onClick={() => addToWatchlist({ stock_code: stockCode })}>ウォッチリストに追加</button>
+      )}
+      {item && item.alert_price_high && <p>高値アラート: {item.alert_price_high}</p>}
+      {item && item.alert_price_low && <p>安値アラート: {item.alert_price_low}</p>}
+    </div>
+  );
+}
+```
+
+### ウォッチリスト関連コンポーネント
+
+ウォッチリスト関連のコンポーネントは `frontend/src/components/watchlist/` に配置されています。
+
+- **EditWatchlistItemModal.tsx**: ウォッチリストアイテムのアラート価格やメモを編集するためのモーダルコンポーネント。
