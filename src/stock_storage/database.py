@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..models.stock import Base
+from ..middleware.metrics import observe_db_query
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,26 @@ class DatabaseManager:
                 # 自動バキューム設定
                 cursor.execute("PRAGMA auto_vacuum=INCREMENTAL")
                 cursor.close()
-                
+
+            # Query timing for metrics (lightweight, no SQL labels to avoid cardinality)
+            @event.listens_for(self._engine, "before_cursor_execute")
+            def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+                try:
+                    import time as _t
+                    context._query_start_time = _t.perf_counter()
+                except Exception:
+                    context._query_start_time = None
+
+            @event.listens_for(self._engine, "after_cursor_execute")
+            def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+                try:
+                    import time as _t
+                    if getattr(context, "_query_start_time", None) is not None:
+                        duration = _t.perf_counter() - context._query_start_time
+                        observe_db_query(duration)
+                except Exception:
+                    pass
+
             logger.info(f"Database engine created: {self.config.database_url}")
             return self._engine
             

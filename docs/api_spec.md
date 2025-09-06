@@ -56,7 +56,7 @@ StockVision APIは、株価情報を取得・管理するためのRESTful APIで
 依存関係（DB等）の準備ができているかを確認します。準備未完了時は `503` を返します。
 
 ```json
-{ "status": "ready" }
+{ "status": "ready", "db_ping_ms": 12.34 }
 ```
 
 #### Metrics (Prometheus)

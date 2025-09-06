@@ -276,7 +276,7 @@ VITE_API_BASE_URL=http://localhost:8000
 
 運用向けヘルスチェック:
 - Liveness: `/live`（および `/api/live`）
-- Readiness: `/ready`（および `/api/ready`）
+- Readiness: `/ready`（および `/api/ready`）: DB疎通時間 `db_ping_ms` を含む
 
 ## 📊 パフォーマンス
 

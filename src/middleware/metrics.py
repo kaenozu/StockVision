@@ -30,6 +30,7 @@ except Exception:  # pragma: no cover - optional dependency path
 REQUEST_COUNT = None
 REQUEST_LATENCY = None
 DB_PING_LATENCY = None
+DB_QUERY_LATENCY = None
 EXTERNAL_API_REQUESTS = None
 EXTERNAL_API_LATENCY = None
 
@@ -69,6 +70,12 @@ def _init_metrics():
         "db_ping_duration_seconds",
         "Database ping latency (seconds)",
         buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0),
+    )
+
+    DB_QUERY_LATENCY = Histogram(
+        "db_query_duration_seconds",
+        "Database query latency (seconds)",
+        buckets=(0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25),
     )
 
     # External API metrics (e.g., Yahoo Finance)
@@ -215,5 +222,14 @@ def record_external_api_metric(service: str, operation: str, status: str, durati
     try:
         EXTERNAL_API_REQUESTS.labels(service=service, operation=operation, status=status).inc()
         EXTERNAL_API_LATENCY.labels(service=service, operation=operation, status=status).observe(duration_seconds)
+    except Exception:
+        pass
+
+
+def observe_db_query(duration_seconds: float) -> None:
+    if DB_QUERY_LATENCY is None:
+        return
+    try:
+        DB_QUERY_LATENCY.observe(duration_seconds)
     except Exception:
         pass
