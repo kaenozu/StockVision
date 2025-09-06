@@ -29,6 +29,9 @@ except Exception:  # pragma: no cover - optional dependency path
 
 REQUEST_COUNT = None
 REQUEST_LATENCY = None
+DB_PING_LATENCY = None
+EXTERNAL_API_REQUESTS = None
+EXTERNAL_API_LATENCY = None
 
 
 def _init_metrics():
@@ -59,6 +62,26 @@ def _init_metrics():
             2.5,
             5.0,
         ),
+    )
+
+    # DB ping latency (e.g., readiness checks)
+    DB_PING_LATENCY = Histogram(
+        "db_ping_duration_seconds",
+        "Database ping latency (seconds)",
+        buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0),
+    )
+
+    # External API metrics (e.g., Yahoo Finance)
+    EXTERNAL_API_REQUESTS = Counter(
+        "external_api_requests_total",
+        "External API requests",
+        labelnames=("service", "operation", "status"),
+    )
+    EXTERNAL_API_LATENCY = Histogram(
+        "external_api_duration_seconds",
+        "External API latency in seconds",
+        labelnames=("service", "operation", "status"),
+        buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
     )
 
 
@@ -174,3 +197,23 @@ def _is_ip_allowed(request: Request, cidrs_csv: str) -> bool:
                 pass
 
     return any(client_ip in net for net in networks)
+
+
+# Helper APIs for code outside FastAPI modules
+def observe_db_ping(duration_seconds: float) -> None:
+    if DB_PING_LATENCY is None:
+        return
+    try:
+        DB_PING_LATENCY.observe(duration_seconds)
+    except Exception:
+        pass
+
+
+def record_external_api_metric(service: str, operation: str, status: str, duration_seconds: float) -> None:
+    if EXTERNAL_API_REQUESTS is None or EXTERNAL_API_LATENCY is None:
+        return
+    try:
+        EXTERNAL_API_REQUESTS.labels(service=service, operation=operation, status=status).inc()
+        EXTERNAL_API_LATENCY.labels(service=service, operation=operation, status=status).observe(duration_seconds)
+    except Exception:
+        pass

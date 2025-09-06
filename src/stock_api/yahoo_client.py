@@ -20,6 +20,7 @@ from .data_models import (
     StockData, CurrentPrice, PriceHistoryData, PriceHistoryItem,
     APIResponse, BulkStockInfoResponse, StockInfoRequest, PriceHistoryRequest
 )
+from ..middleware.metrics import record_external_api_metric
 
 logger = logging.getLogger(__name__)
 
@@ -350,6 +351,8 @@ class YahooFinanceClient:
             StockNotFoundError: If stock is not found
             YahooFinanceError: If data retrieval fails
         """
+        start = time.perf_counter()
+        status = "success"
         try:
             # yfinanceは同期APIなので、executor で実行
             ticker = self._get_yfinance_ticker(stock_code)
@@ -366,12 +369,18 @@ class YahooFinanceClient:
             return stock_data
             
         except StockNotFoundError:
+            status = "not_found"
             raise
         except DataValidationError:
+            status = "invalid"
             raise
         except Exception as e:
+            status = "error"
             logger.error(f"Error getting stock info for {stock_code}: {e}")
             raise YahooFinanceError(f"Failed to get stock info for {stock_code}") from e
+        finally:
+            duration = time.perf_counter() - start
+            record_external_api_metric("yahoo_finance", "get_stock_info", status, duration)
     
     async def get_price_history(self, stock_code: str, days: int = 30) -> PriceHistoryData:
         """Get historical price data for a stock.
@@ -387,6 +396,8 @@ class YahooFinanceClient:
             StockNotFoundError: If stock is not found
             YahooFinanceError: If data retrieval fails
         """
+        start = time.perf_counter()
+        status = "success"
         try:
             ticker = self._get_yfinance_ticker(stock_code)
             
@@ -406,10 +417,15 @@ class YahooFinanceClient:
             return price_history_data
             
         except DataValidationError:
+            status = "invalid"
             raise
         except Exception as e:
+            status = "error"
             logger.error(f"Error getting price history for {stock_code}: {e}")
             raise YahooFinanceError(f"Failed to get price history for {stock_code}") from e
+        finally:
+            duration = time.perf_counter() - start
+            record_external_api_metric("yahoo_finance", "get_price_history", status, duration)
     
     async def get_multiple_stock_info(self, stock_codes: List[str]) -> BulkStockInfoResponse:
         """Get stock information for multiple stocks.

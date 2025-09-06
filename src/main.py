@@ -20,6 +20,7 @@ from .utils.logging import setup_logging
 from .utils.cache import get_cache_stats
 from .services.stock_service import cleanup_stock_service
 from .config import get_settings
+from .middleware.metrics import observe_db_ping
 from .constants import (
     DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DEV_PORT, FRONTEND_PROD_PORT,
     DEV_CORS_ORIGINS, PROD_ORIGINS, DOCS_URL, REDOC_URL, OPENAPI_URL,
@@ -242,11 +243,21 @@ async def readiness_check(db: Session = Depends(get_db)):
     依存関係（DB 等）の準備完了を確認し、
     トラフィック受け入れ可能かを判定します。
     """
+    import time as _t
+    start = _t.perf_counter()
     try:
         db.execute(text("SELECT 1"))
-        return {"status": "ready"}
+        ok = True
     except Exception:
+        ok = False
+    duration = _t.perf_counter() - start
+    try:
+        observe_db_ping(duration)
+    except Exception:
+        pass
+    if not ok:
         raise HTTPException(status_code=503, detail="Not ready")
+    return {"status": "ready", "db_ping_ms": round(duration * 1000, 2)}
 
 api_router.include_router(stocks_router)
 api_router.include_router(watchlist_router)
