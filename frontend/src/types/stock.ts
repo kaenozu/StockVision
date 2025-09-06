@@ -186,19 +186,6 @@ export interface ChartDataPoint {
   y: number
 }
 
-export interface ChartDataset {
-  label: string
-  data: ChartDataPoint[]
-  borderColor: string
-  backgroundColor: string
-  fill?: boolean
-}
-
-export interface ChartData {
-  labels: string[]
-  datasets: ChartDataset[]
-}
-
 // Price formatting utilities
 export interface PriceFormatOptions {
   locale: string
