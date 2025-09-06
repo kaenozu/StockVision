@@ -60,21 +60,28 @@
 
 ### フロントエンド環境構築
 
-1. **依存関係のインストール**
+1.  **依存関係のインストール**
 
-   ```bash
-   cd frontend
-   npm install
-   ```
+    ```bash
+    cd frontend
+    npm install
+    ```
 
-2. **環境変数の設定 (.envファイル)**
+2.  **Playwrightのインストール (E2Eテスト用)**
 
-   `frontend` ディレクトリに `.env` ファイルを作成し、以下の変数を設定します。
+    ```bash
+    npx playwright install --with-deps
+    ```
+    これにより、Chromium, Firefox, WebKitブラウザがインストールされます。
 
-   ```env
-   # バックエンドAPIのベースURL
-   VITE_API_BASE_URL=http://localhost:8000
-   ```
+3.  **環境変数の設定 (.envファイル)**
+
+    `frontend` ディレクトリに `.env` ファイルを作成し、以下の変数を設定します。
+
+    ```env
+    # バックエンドAPIのベースURL
+    VITE_API_BASE_URL=http://localhost:8000
+    ```
 
 ## 開発サーバーの起動
 
