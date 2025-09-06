@@ -37,6 +37,39 @@ StockVision APIは、株価情報を取得・管理するためのRESTful APIで
 
 ## エンドポイント
 
+### ヘルスチェック / メトリクス
+
+#### Liveness
+
+`GET /live` または `GET /api/live`
+
+プロセスの生存確認用の軽量エンドポイント。
+
+```json
+{ "status": "alive" }
+```
+
+#### Readiness
+
+`GET /ready` または `GET /api/ready`
+
+依存関係（DB等）の準備ができているかを確認します。準備未完了時は `503` を返します。
+
+```json
+{ "status": "ready" }
+```
+
+#### Metrics (Prometheus)
+
+`GET /metrics`
+
+`ENABLE_METRICS=true` の場合に公開され、Prometheusテキスト形式でメトリクスを返します。
+`METRICS_BASIC_AUTH=user:pass` を設定すると、Basic認証が必須になります。
+
+主なメトリクス:
+- `http_requests_total{method, path, status}`
+- `http_request_duration_seconds{method, path, status}`
+
 ### 株式情報
 
 #### 銘柄情報の取得
