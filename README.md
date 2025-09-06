@@ -138,6 +138,18 @@ curl -X DELETE http://localhost:8000/watchlist/1
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
+本番環境などで公開URLが異なる場合は、以下の環境変数でOpenAPIの`servers`を設定できます。
+
+- `API_PUBLIC_URL`: 公開APIのベースURL（例: `https://api.stockvision.example.com`）
+- `API_ADDITIONAL_SERVER_URLS`: 追加サーバーURL（カンマ区切り）
+
+`.env` 例:
+
+```
+API_PUBLIC_URL=https://api.stockvision.example.com
+API_ADDITIONAL_SERVER_URLS=https://staging.api.stockvision.example.com, https://dev.api.stockvision.example.com
+```
+
 ## テスト実行
 
 ```bash
@@ -232,12 +244,15 @@ npm run dev
 USE_REAL_YAHOO_API=false
 DATABASE_URL=sqlite:///data/stock_tracking.db
 LOG_LEVEL=INFO
+ENABLE_METRICS=false
 ```
 
 #### フロントエンド (.env)
 ```
 VITE_API_BASE_URL=http://localhost:8000
 ```
+
+メトリクスを有効化する場合は `ENABLE_METRICS=true` を設定し、`/metrics` エンドポイントから Prometheus 形式で取得できます。
 
 ## 📊 パフォーマンス
 

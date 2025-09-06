@@ -5,7 +5,7 @@ This module defines data models for Yahoo Finance API integration,
 request/response validation, and conversion between API and database models.
 """
 import re
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Optional, List, Dict, Any, Union
 
@@ -260,7 +260,11 @@ class PriceHistoryItem(BaseModel):
         return super().model_dump(*args, **kwargs)
     
     stock_code: str = Field(..., description="4-digit stock code")
+<<<<<<< HEAD
+    date: datetime = Field(..., description="Trading date (datetime)")
+=======
     date: datetime = Field(..., description="Trading date")
+>>>>>>> origin/main
     open: Decimal = Field(..., gt=0, description="Opening price")
     high: Decimal = Field(..., gt=0, description="High price")
     low: Decimal = Field(..., gt=0, description="Low price")
@@ -333,7 +337,7 @@ class PriceHistoryItem(BaseModel):
         """
         return cls(
             stock_code=price_history.stock_code,
-            date=price_history.date.strftime("%Y-%m-%d"),
+            date=datetime.combine(price_history.date, time.min),
             open=price_history.open_price,
             high=price_history.high_price,
             low=price_history.low_price,
@@ -552,8 +556,21 @@ class PriceHistoryData(BaseModel):
         history = values.get('history', [])
         start_date = values.get('start_date')
         end_date = values.get('end_date')
-        
+
         if history:
+<<<<<<< HEAD
+            actual_dates = [item.date.date() if isinstance(item.date, datetime) else item.date for item in history]
+            if actual_dates:
+                actual_start = min(actual_dates)
+                actual_end = max(actual_dates)
+
+                if start_date and actual_start < start_date:
+                    raise ValueError(f"History contains dates before start_date {start_date}")
+
+                if end_date and actual_end > end_date:
+                    raise ValueError(f"History contains dates after end_date {end_date}")
+
+=======
             from datetime import datetime as _dt
             def _to_dt(v):
                 if isinstance(v, _dt):
@@ -571,12 +588,16 @@ class PriceHistoryData(BaseModel):
             if end_date and actual_end > end_date:
                 raise ValueError(f"History contains dates after end_date {end_date}")
         
+>>>>>>> origin/main
         return values
     
     def get_latest_item(self) -> Optional[PriceHistoryItem]:
         """Get the latest price history item."""
         if not self.history:
             return None
+<<<<<<< HEAD
+        return max(self.history, key=lambda x: x.date)
+=======
         from datetime import datetime as _dt
         def _to_dt(v):
             if isinstance(v, _dt):
@@ -585,11 +606,15 @@ class PriceHistoryData(BaseModel):
                 return _dt(v.year, v.month, v.day)
             return _dt.strptime(v, "%Y-%m-%d")
         return max(self.history, key=lambda x: _to_dt(x.date).date())
+>>>>>>> origin/main
     
     def get_oldest_item(self) -> Optional[PriceHistoryItem]:
         """Get the oldest price history item."""
         if not self.history:
             return None
+<<<<<<< HEAD
+        return min(self.history, key=lambda x: x.date)
+=======
         from datetime import datetime as _dt
         def _to_dt(v):
             if isinstance(v, _dt):
@@ -598,6 +623,7 @@ class PriceHistoryData(BaseModel):
                 return _dt(v.year, v.month, v.day)
             return _dt.strptime(v, "%Y-%m-%d")
         return min(self.history, key=lambda x: _to_dt(x.date).date())
+>>>>>>> origin/main
     
     def sort_by_date(self, ascending: bool = True) -> List[PriceHistoryItem]:
         """Sort history items by date.
@@ -608,6 +634,9 @@ class PriceHistoryData(BaseModel):
         Returns:
             Sorted list of price history items
         """
+<<<<<<< HEAD
+        return sorted(self.history, key=lambda x: x.date, reverse=not ascending)
+=======
         from datetime import datetime as _dt
         def _to_dt(v):
             if isinstance(v, _dt):
@@ -616,6 +645,7 @@ class PriceHistoryData(BaseModel):
                 return _dt(v.year, v.month, v.day)
             return _dt.strptime(v, "%Y-%m-%d")
         return sorted(self.history, key=lambda x: _to_dt(x.date).date(), reverse=not ascending)
+>>>>>>> origin/main
     
     def filter_by_date_range(self, start_date: date, end_date: date) -> 'PriceHistoryData':
         """Filter history by date range.
@@ -627,10 +657,16 @@ class PriceHistoryData(BaseModel):
         Returns:
             New PriceHistoryData with filtered history
         """
+<<<<<<< HEAD
+        filtered_history = [
+            item for item in self.history
+            if start_date <= (item.date.date() if isinstance(item.date, datetime) else item.date) <= end_date
+=======
         from datetime import datetime as _dt
         filtered_history = [
             item for item in self.history
             if start_date <= (_dt(item.date.year, item.date.month, item.date.day).date() if isinstance(item.date, date) else (_dt.strptime(item.date, "%Y-%m-%d").date() if isinstance(item.date, str) else item.date.date())) <= end_date
+>>>>>>> origin/main
         ]
         
         return PriceHistoryData(

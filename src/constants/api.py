@@ -39,15 +39,18 @@ FRONTEND_DEV_PORT = 3000
 FRONTEND_PROD_PORT = 8080
 
 # CORS origins
-# 環境変数から本番用オリジンを読み込み
+# 環境変数から本番用オリジンを読み込み（カンマ区切り）
 PROD_ORIGINS_STR = os.getenv("PROD_CORS_ORIGINS", "")
 PROD_ORIGINS = [origin.strip() for origin in PROD_ORIGINS_STR.split(",") if origin.strip()]
 
-CORS_ORIGINS = [
+# 開発時のデフォルト許可オリジン
+DEV_CORS_ORIGINS = [
     f"http://{DEVELOPMENT_HOST}:{FRONTEND_DEV_PORT}",
     f"http://{DEVELOPMENT_HOST}:{FRONTEND_PROD_PORT}",
-    *PROD_ORIGINS,  # 本番環境オリジンを追加
 ]
+
+# 後方互換: 既存参照向け（本番・開発を問わず網羅的に含む）
+CORS_ORIGINS = [*DEV_CORS_ORIGINS, *PROD_ORIGINS]
 
 # OpenAPI documentation
 DOCS_URL = "/docs"
