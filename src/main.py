@@ -2,13 +2,8 @@
 FastAPI application entry point for stock tracking application.
 """
 import logging
-import sentry_sdk
 from contextlib import asynccontextmanager
-<<<<<<< HEAD
 from fastapi import FastAPI, HTTPException, Depends, APIRouter, Header
-=======
-from fastapi import FastAPI, HTTPException, Depends, APIRouter
->>>>>>> origin/main
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -40,17 +35,6 @@ async def lifespan(app: FastAPI):
         # Load settings
         settings = get_settings()
         logger.info(f"Loaded application settings (Yahoo Finance API enabled: {settings.yahoo_finance.enabled})")
-        
-        # Initialize Sentry if DSN is provided
-        if settings.sentry_dsn:
-            sentry_sdk.init(
-                dsn=settings.sentry_dsn,
-                traces_sample_rate=1.0,
-                profiles_sample_rate=1.0,
-            )
-            logger.info("Sentry initialized successfully")
-        else:
-            logger.info("Sentry DSN not provided, skipping initialization")
         
         init_db()
         logger.info("Database initialized successfully")
@@ -84,7 +68,6 @@ app = FastAPI(
         {"name": "Root", "description": "ルートエンドポイント"}
     ]
 )
-
 
 # Add CORS middleware
 app.add_middleware(
@@ -229,7 +212,8 @@ async def update_cache_ttls(
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to update TTLs: {e}")
-=======
+
+
 @app.get("/openapi.json", include_in_schema=False)
 async def get_openapi_json():
     """OpenAPIスキーマをJSON形式で返すエンドポイント"""
@@ -241,7 +225,6 @@ async def get_openapi_json():
         servers=app.servers,
         tags=app.openapi_tags,
     )
->>>>>>> origin/main
 
 
 if __name__ == "__main__":
