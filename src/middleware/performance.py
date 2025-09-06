@@ -337,26 +337,36 @@ class PerformanceMetricsMiddleware(BaseHTTPMiddleware):
 
 def setup_performance_middleware(app: FastAPI):
     """
-    Set up all performance optimization middleware.
+    パフォーマンス最適化ミドルウェアの設定
     
-    Important: Middleware is applied in reverse order of registration.
-    The last middleware added becomes the first to process requests.
-    Response processing happens in the reverse order.
+    ★ 重要: FastAPIのミドルウェアは逆順（LIFO）で処理される
+    最後に登録されたミドルウェアが最初にリクエストを受け取り、
+    レスポンス処理では登録順に処理される
+    
+    想定される実行順序:
+    リクエスト: Metrics -> Compression -> CacheControl -> App
+    レスポンス: App -> CacheControl -> Compression -> Metrics
+    
+    理由:
+    1. Metrics: 全体の処理時間を正確に測定するため最外層
+    2. Compression: キャッシュヘッダー設定後に圧縮を実行
+    3. CacheControl: アプリデータに基づいたキャッシュ戦略適用
+    
+    詳細は docs/middleware-architecture.md を参照
     """
     middleware_config = get_middleware_config()
     
-    # Add custom performance middleware
-    # Order is important: CacheControlMiddleware -> ResponseCompressionMiddleware -> PerformanceMetricsMiddleware
+    # 注意: 登録順序と実行順序は逆になる
     
-    # Add Cache Control Middleware if enabled
+    # 1. Cache Control Middleware (最内層 - アプリに最も近い)
     if middleware_config.cache_control_enabled:
         app.add_middleware(CacheControlMiddleware)
     
-    # Add Response Compression Middleware if enabled
+    # 2. Response Compression Middleware (中間層)  
     if middleware_config.response_compression_enabled:
         app.add_middleware(ResponseCompressionMiddleware)
     
-    # Add Performance Metrics Middleware if enabled
+    # 3. Performance Metrics Middleware (最外層 - 全体測定)
     if middleware_config.performance_metrics_enabled:
         app.add_middleware(PerformanceMetricsMiddleware)
 

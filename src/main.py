@@ -91,7 +91,11 @@ app = FastAPI(
     ]
 )
 
-# Add CORS middleware
+# ミドルウェア設定
+# 重要: FastAPIのミドルウェアは逆順（LIFO）で処理される
+# 最後に追加されたミドルウェアが最初にリクエストを受け取る
+
+# 1. CORS Middleware (最優先 - セキュリティチェック)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors.allow_origins,
@@ -100,7 +104,9 @@ app.add_middleware(
     allow_headers=settings.cors.allow_headers,
 )
 
-# Setup performance middleware
+# 2. パフォーマンス最適化ミドルウェア群の設定
+# 内部的な順序: CacheControl -> Compression -> Metrics
+# 詳細は docs/middleware-architecture.md を参照
 setup_performance_middleware(app)
 
 # Import and include API routes
