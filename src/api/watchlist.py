@@ -65,7 +65,33 @@ def get_db():
            summary="ウォッチリスト取得",
            response_model=List[WatchlistResponse],
            responses={
-               200: {"description": "ウォッチリスト"}
+               200: {
+                   "description": "ウォッチリスト",
+                   "content": {
+                       "application/json": {
+                           "example": [
+                               {
+                                   "id": 1,
+                                   "stock_code": "7203",
+                                   "added_at": "2023-10-27T10:00:00Z",
+                                   "notes": "注目銘柄",
+                                   "alert_price_high": 2600.0,
+                                   "alert_price_low": 2400.0,
+                                   "is_active": True
+                               },
+                               {
+                                   "id": 2,
+                                   "stock_code": "9984",
+                                   "added_at": "2023-10-26T15:30:00Z",
+                                   "notes": "急騰銘柄",
+                                   "alert_price_high": None,
+                                   "alert_price_low": None,
+                                   "is_active": True
+                               }
+                           ]
+                       }
+                   }
+               }
            })
 async def get_watchlist(
     active: bool = Query(default=True, description="アクティブなアイテムのみ取得"),
@@ -79,6 +105,10 @@ async def get_watchlist(
     
     Returns:
         List[WatchlistResponse]: ウォッチリストのリスト
+    
+    Examples:
+        - リクエスト: `GET /watchlist`
+        - リクエスト (すべてのアイテム): `GET /watchlist?active=false`
     """
     logger.info(f"Fetching watchlist items (active={active})")
     
@@ -118,7 +148,22 @@ async def get_watchlist(
             response_model=WatchlistResponse,
             status_code=201,
             responses={
-                201: {"description": "追加成功"},
+                201: {
+                    "description": "追加成功",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "id": 3,
+                                "stock_code": "4755",
+                                "added_at": "2023-10-27T11:00:00Z",
+                                "notes": "新規追加",
+                                "alert_price_high": 3000.0,
+                                "alert_price_low": 2800.0,
+                                "is_active": True
+                            }
+                        }
+                    }
+                },
                 400: {"description": "バリデーションエラー"},
                 409: {"description": "既に存在する銘柄"}
             })
@@ -137,6 +182,17 @@ async def add_to_watchlist(
     
     Raises:
         HTTPException: バリデーションエラーまたは重複エラー
+    
+    Examples:
+        - リクエストボディ:
+        ```json
+        {
+            "stock_code": "4755",
+            "notes": "新規追加",
+            "alert_price_high": 3000.0,
+            "alert_price_low": 2800.0
+        }
+        ```
     """
     logger.info(f"Adding stock {request.stock_code} to watchlist")
     
@@ -231,6 +287,9 @@ async def remove_from_watchlist(
     
     Raises:
         HTTPException: アイテムが見つからない場合は404
+    
+    Examples:
+        - リクエスト: `DELETE /watchlist/1`
     """
     logger.info(f"Removing watchlist item with ID {id}")
     

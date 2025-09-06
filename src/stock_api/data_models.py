@@ -5,7 +5,7 @@ This module defines data models for Yahoo Finance API integration,
 request/response validation, and conversion between API and database models.
 """
 import re
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Optional, List, Dict, Any, Union
 
@@ -34,9 +34,48 @@ class StockCode(BaseModel):
 
 
 class CurrentPrice(BaseModel):
-    """Current stock price data model."""
+    """Current stock price data model with comprehensive market context.
     
-    stock_code: str = Field(..., description="4-digit stock code")
+    This model represents the most up-to-date pricing information for a stock,
+    including both the raw price data and derived analytical metrics that
+    help investors quickly assess market sentiment and momentum.
+    
+    Core Pricing Elements:
+    
+    1. Absolute Price Levels:
+       - Current real-time or delayed market price
+       - Previous day's official closing price
+    
+    2. Derived Change Metrics:
+       - Absolute price movement (current - previous)
+       - Percentage change ((abs change / previous) * 100)
+    
+    3. Market Activity Indicators:
+       - Trading volume for the current session
+       - Timestamp of last price update
+    
+    4. Company Valuation Context:
+       - Market capitalization (total company value)
+    
+    5. Data Quality & Source Metadata:
+       - Timestamp indicating when data was captured
+    
+    Key Use Cases:
+    - Real-time price tracking dashboards
+    - Alert systems for significant price movements
+    - Portfolio performance monitoring
+    - Quick-glance market overviews
+    
+    Validation rules ensure:
+    - Prices are non-negative
+    - Stock codes follow 4-digit format
+    - Company names are not empty
+    - Calculated price changes match raw data inputs
+    - Market caps (when present) are positive
+    - Timestamps are properly formatted
+    """
+    
+    stock_code: str = Field(..., description="4-digit Japanese stock code")
     company_name: Optional[str] = Field(None, description="Company name")
     current_price: Decimal = Field(..., ge=0, description="Current stock price")
     previous_close: Decimal = Field(..., ge=0, description="Previous closing price")
@@ -175,7 +214,38 @@ class CurrentPriceResponse(BaseModel):
 
 
 class PriceHistoryItem(BaseModel):
-    """Single price history data item model."""
+    """Single price history data item model representing OHLCV data for one trading day.
+    
+    This model encapsulates the classic Open-High-Low-Close-Volume (OHLCV) data
+    structure that is fundamental to technical analysis and trading decisions.
+    
+    Key components:
+    
+    1. Temporal Context:
+       - Associated 4-digit stock code
+       - Specific trading date
+    
+    2. Price Action Spectrum:
+       - Opening price (first trade of the day)
+       - Intraday high (highest price reached)
+       - Intraday low (lowest price reached)
+       - Closing price (final trade of the day)
+    
+    3. Trading Activity:
+       - Total share volume traded during the day
+    
+    Business validation ensures:
+    - All prices are positive (> 0)
+    - Volume is non-negative (>= 0)
+    - Stock code follows 4-digit format
+    - Dates are properly formatted and parsed
+    - OHLC price relationships are logically consistent
+      (High >= max(Open, Close); Low <= min(Open, Close); High >= Low)
+    
+    Note: While strict OHLC validation is performed at the model level,
+    certain edge cases in real market data (e.g., corporate actions) may
+    require service-layer override capabilities, hence relaxed validation here.
+    """
     
     model_config = {
         "populate_by_name": True,
@@ -263,7 +333,7 @@ class PriceHistoryItem(BaseModel):
         """
         return cls(
             stock_code=price_history.stock_code,
-            date=price_history.date.strftime("%Y-%m-%d"),
+            date=datetime.combine(price_history.date, time.min),
             open=price_history.open_price,
             high=price_history.high_price,
             low=price_history.low_price,
@@ -287,7 +357,50 @@ class PriceHistoryItem(BaseModel):
 
 
 class StockData(BaseModel):
-    """Complete stock data model combining current price and basic info."""
+    """Complete stock data model combining current price and comprehensive market information.
+    
+    This model represents the full suite of stock market data typically displayed
+    to users, including real-time pricing, historical performance indicators,
+    and fundamental company metrics.
+    
+    Key data categories:
+    
+    1. Core Identification:
+       - Unique 4-digit stock code
+       - Full company legal name
+    
+    2. Real-time Pricing:
+       - Current market price
+       - Previous day's closing price
+       - Absolute price change (+/-)
+       - Percentage price change (%)
+    
+    3. Trading Activity:
+       - Current trading volume
+       - Average trading volume (optional)
+    
+    4. Market Capitalization:
+       - Total market value of outstanding shares (optional)
+    
+    5. Daily Range Tracking:
+       - Today's intra-day high/low prices (optional)
+       - 52-week high/low prices (optional)
+    
+    6. Fundamental Metrics:
+       - Price-to-Earnings (P/E) ratio (optional)
+       - Dividend yield percentage (optional)
+    
+    7. Metadata & Timing:
+       - Timestamps for last data update
+       - Market session timing information
+    
+    Validation ensures:
+    - Consistent mathematical relationships between prices
+    - Proper formatting of stock codes (4 digits)
+    - Non-empty, trimmed company names
+    - Positive values where economically sensible
+    - Logical bounds on percentages and ratios
+    """
     
     stock_code: str = Field(..., description="4-digit stock code")
     company_name: str = Field(..., description="Company name")
@@ -439,7 +552,7 @@ class PriceHistoryData(BaseModel):
         history = values.get('history', [])
         start_date = values.get('start_date')
         end_date = values.get('end_date')
-        
+
         if history:
             from datetime import datetime as _dt
             def _to_dt(v):
