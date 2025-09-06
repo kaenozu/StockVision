@@ -7,15 +7,21 @@ from fastapi import FastAPI, HTTPException, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from .stock_storage.database import init_db, close_database, check_database_health, get_database_stats, get_session_scope
-from .middleware.error_handler import setup_error_handlers
+from .middleware.performance import setup_error_handlers, setup_performance_middleware
 from .utils.logging import setup_logging
 from .utils.cache import get_cache_stats
 from .services.stock_service import cleanup_stock_service
 from .config import get_settings
+from .constants import (
+    DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DEV_PORT, FRONTEND_PROD_PORT,
+    CORS_ORIGINS, DOCS_URL, REDOC_URL, OPENAPI_URL,
+    PerformanceThresholds
+)
 
 
 @asynccontextmanager
@@ -50,20 +56,23 @@ app = FastAPI(
     title="Stock Test API",
     version="1.0.0",
     description="株価テスト機能API仕様",
-    servers=[{"url": "http://localhost:8000", "description": "Development server"}],
+    servers=[{"url": f"http://localhost:{DEFAULT_PORT}", "description": "Development server"}],
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    docs_url=DOCS_URL,
+    redoc_url=REDOC_URL,
+    openapi_url=OPENAPI_URL,
+    openapi_tags=[
+        {"name": "Stocks", "description": "株式情報の取得と管理"},
+        {"name": "Watchlist", "description": "ウォッチリストの管理"},
+        {"name": "Health", "description": "アプリケーションとデータベースのヘルスチェック"},
+        {"name": "Root", "description": "ルートエンドポイント"}
+    ]
 )
-
-# Add GZip middleware for response compression (performance optimization)
-app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=6)
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8080"],  # Configure for production
+    allow_origins=CORS_ORIGINS,  # Configure for production
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
     allow_headers=["*"],
@@ -72,9 +81,13 @@ app.add_middleware(
 # Setup error handlers
 setup_error_handlers(app)
 
+# Setup performance middleware
+setup_performance_middleware(app)
+
 # Import and include API routes
 from .api.stocks import router as stocks_router
 from .api.watchlist import router as watchlist_router
+from .api.metrics import router as metrics_router
 
 api_router = APIRouter(prefix="/api")
 
@@ -145,6 +158,7 @@ async def status_check(db: Session = Depends(get_db)):
 
 api_router.include_router(stocks_router)
 api_router.include_router(watchlist_router)
+api_router.include_router(metrics_router)
 
 app.include_router(api_router)
 
@@ -155,12 +169,25 @@ async def root():
     return {"message": "Stock Test API is running", "version": "1.0.0"}
 
 
+@app.get("/openapi.json", include_in_schema=False)
+async def get_openapi_json():
+    """OpenAPIスキーマをJSON形式で返すエンドポイント"""
+    return get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        servers=app.servers,
+        tags=app.openapi_tags,
+    )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "src.main:app",
-        host="0.0.0.0",
-        port=8000,
+        host=DEFAULT_HOST,
+        port=DEFAULT_PORT,
         reload=True,
         log_level="info",
     )

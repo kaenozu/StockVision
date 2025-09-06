@@ -1,0 +1,45 @@
+site_name: StockVision Documentation
+site_description: Documentation for the StockVision stock tracking application
+site_author: kaenozu
+
+repo_url: https://github.com/kaenozu/StockVision
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    primary: blue
+    accent: indigo
+  language: ja
+  font:
+    text: Roboto
+    code: Roboto Mono
+
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - docs/generate_api_docs.py
+  - i18n:
+      default_language: ja
+      languages:
+        ja: 日本語
+        en: English
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.highlight:
+      use_pygments: true
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Architecture:
+    - Overview: architecture.md
+    - API Specification: api_spec.md
+    - Frontend Architecture: frontend_architecture.md
+  - Development Guide: development_guide.md
+  - Testing Guide: testing_guide.md
+  - Component Catalog (Storybook): storybook.md
