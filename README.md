@@ -271,3 +271,8 @@ VITE_API_BASE_URL=http://localhost:8000
 ## 📝 ライセンス
 
 このプロジェクトはMITライセンスの下で公開されています。
+# 📈 オブザーバビリティ
+
+- Prometheusスクレイプ例: `docs/observability/prometheus-scrape.md`
+- Grafanaダッシュボード: `docs/observability/grafana-dashboard.json`
+- Alertmanagerルール例: `docs/observability/alerts.yml`
