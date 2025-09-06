@@ -65,7 +65,33 @@ def get_db():
            summary="ウォッチリスト取得",
            response_model=List[WatchlistResponse],
            responses={
-               200: {"description": "ウォッチリスト"}
+               200: {
+                   "description": "ウォッチリスト",
+                   "content": {
+                       "application/json": {
+                           "example": [
+                               {
+                                   "id": 1,
+                                   "stock_code": "7203",
+                                   "added_at": "2023-10-27T10:00:00Z",
+                                   "notes": "トヨタ自動車",
+                                   "alert_price_high": 2600.00,
+                                   "alert_price_low": 2400.00,
+                                   "is_active": True
+                               },
+                               {
+                                   "id": 2,
+                                   "stock_code": "9984",
+                                   "added_at": "2023-10-27T10:00:00Z",
+                                   "notes": "ソフトバンクグループ",
+                                   "alert_price_high": None,
+                                   "alert_price_low": 1100.00,
+                                   "is_active": True
+                               }
+                           ]
+                       }
+                   }
+               }
            })
 async def get_watchlist(
     active: bool = Query(default=True, description="アクティブなアイテムのみ取得"),
@@ -118,9 +144,42 @@ async def get_watchlist(
             response_model=WatchlistResponse,
             status_code=201,
             responses={
-                201: {"description": "追加成功"},
-                400: {"description": "バリデーションエラー"},
-                409: {"description": "既に存在する銘柄"}
+                201: {
+                    "description": "追加成功",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "id": 3,
+                                "stock_code": "7203",
+                                "added_at": "2023-10-27T10:00:00Z",
+                                "notes": "トヨタ自動車",
+                                "alert_price_high": 2600.00,
+                                "alert_price_low": 2400.00,
+                                "is_active": True
+                            }
+                        }
+                    }
+                },
+                400: {
+                    "description": "バリデーションエラー",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "detail": "Stock code must be exactly 4 digits"
+                            }
+                        }
+                    }
+                },
+                409: {
+                    "description": "既に存在する銘柄",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "detail": "Stock code 7203 is already in the active watchlist"
+                            }
+                        }
+                    }
+                }
             })
 async def add_to_watchlist(
     request: WatchlistCreateRequest,
@@ -217,7 +276,16 @@ async def add_to_watchlist(
               status_code=204,
               responses={
                   204: {"description": "削除成功"},
-                  404: {"description": "アイテムが見つからない"}
+                  404: {
+                      "description": "アイテムが見つからない",
+                      "content": {
+                          "application/json": {
+                              "example": {
+                                  "detail": "Watchlist item with ID 999 not found"
+                              }
+                          }
+                      }
+                  }
               })
 async def remove_from_watchlist(
     id: int = Path(..., description="ウォッチリストアイテムID"),

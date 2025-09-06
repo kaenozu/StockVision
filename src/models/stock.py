@@ -15,7 +15,19 @@ class Base(DeclarativeBase):
 
 
 class Stock(Base):
-    """Stock model representing stock information."""
+    """Stock model representing comprehensive stock information.
+    
+    This model stores detailed information about a stock, including:
+    - Basic identification (stock code, company name)
+    - Current pricing and performance metrics
+    - Historical price data references
+    - Market capitalization
+    - Trading volume
+    - Timestamps for creation and updates
+    
+    The model is designed for efficient querying with indexes on commonly 
+    searched fields like company name, current price, and update timestamps.
+    """
     
     __tablename__ = "stocks"
     
