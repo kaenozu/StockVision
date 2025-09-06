@@ -26,6 +26,8 @@ class TTLCache:
         self.maxsize = maxsize
         self.ttl = ttl
         self._cache: OrderedDict[str, Tuple[Any, float]] = OrderedDict()
+        self._hits = 0
+        self._requests = 0
         
     def _is_expired(self, timestamp: float) -> bool:
         """Check if timestamp is expired."""
@@ -43,6 +45,8 @@ class TTLCache:
     
     def get(self, key: str) -> Optional[Any]:
         """Get value from cache."""
+        # request count
+        self._requests = getattr(self, '_requests', 0) + 1
         if key not in self._cache:
             return None
             
@@ -54,6 +58,8 @@ class TTLCache:
         
         # Move to end (LRU)
         self._cache.move_to_end(key)
+        # hit count
+        self._hits = getattr(self, '_hits', 0) + 1
         return value
     
     def set(self, key: str, value: Any) -> None:
@@ -89,11 +95,15 @@ class TTLCache:
     def stats(self) -> Dict[str, Any]:
         """Get cache statistics."""
         self._cleanup_expired()
+        requests = getattr(self, '_requests', 0)
+        hits = getattr(self, '_hits', 0)
         return {
             'size': len(self._cache),
             'maxsize': self.maxsize,
             'ttl': self.ttl,
-            'hit_ratio': getattr(self, '_hits', 0) / max(getattr(self, '_requests', 1), 1)
+            'requests': requests,
+            'hits': hits,
+            'hit_ratio': (hits / requests) if requests else 0.0,
         }
 
 
