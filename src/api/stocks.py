@@ -49,6 +49,9 @@ def get_db():
                        "application/json": {
                            "example": {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
                                "code": "7203",
                                "name": "トヨタ自動車",
                                "sector": "自動車",
@@ -59,6 +62,7 @@ def get_db():
                                "eps": 165.0,
                                "bps": 1350.0,
                                "last_updated": "2023-10-27T10:00:00Z"
+<<<<<<< HEAD
 =======
                                "stock_code": "7203",
                                "company_name": "トヨタ自動車株式会社",
@@ -78,6 +82,8 @@ def get_db():
                                "last_updated": "2023-10-27T10:00:00Z",
                                "market_time": "open"
 >>>>>>> origin/main
+=======
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
                            }
                        }
                    }
@@ -87,11 +93,7 @@ def get_db():
            })
 @cache_stock_data(ttl=300.0)  # 5分間キャッシュ
 async def get_stock_info(
-    stock_code: str = Path(
-        ...,
-        pattern=r"^[0-9]{4}$",
-        examples={"default": {"summary": "Example", "value": "7203"}},
-    ),
+    stock_code: str = Path(..., pattern=r"^[0-9]{4}$", example="7203"),
     use_real_data: Optional[bool] = Query(
         None, 
         description="Use real Yahoo Finance API (true) or mock data (false). Defaults to environment setting."
@@ -176,11 +178,7 @@ async def get_stock_info(
            })
 @cache_current_price()  # 1分間キャッシュ
 async def get_current_price(
-    stock_code: str = Path(
-        ...,
-        pattern=r"^[0-9]{4}$",
-        examples={"default": {"summary": "Example", "value": "7203"}},
-    ),
+    stock_code: str = Path(..., pattern=r"^[0-9]{4}$", example="7203"),
     use_real_data: Optional[bool] = Query(
         None, 
         description="Use real Yahoo Finance API (true) or mock data (false). Defaults to environment setting."
@@ -245,6 +243,9 @@ async def get_current_price(
                            "example": [
                                {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
                                    "date": "2023-10-27",
                                    "open": 2490.0,
                                    "high": 2510.0,
@@ -259,6 +260,7 @@ async def get_current_price(
                                    "low": 2470.0,
                                    "close": 2490.0,
                                    "volume": 950000
+<<<<<<< HEAD
 =======
                                    "stock_code": "7203",
                                    "date": "2023-10-27",
@@ -277,6 +279,8 @@ async def get_current_price(
                                    "close": 2480.00,
                                    "volume": 900000
 >>>>>>> origin/main
+=======
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
                                }
                            ]
                        }

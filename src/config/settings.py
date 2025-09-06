@@ -56,25 +56,18 @@ class MiddlewareConfig(BaseModel):
     performance_metrics_enabled: bool = Field(default=True, description="Enable Performance Metrics Middleware")
 
 
-class CorsConfig(BaseModel):
-    """CORS configuration."""
-    
-    allow_origins: list[str] = Field(default=["*"], description="Allowed origins for CORS")
-    allow_credentials: bool = Field(default=True, description="Allow credentials for CORS")
-    allow_methods: list[str] = Field(default=["*"], description="Allowed methods for CORS")
-    allow_headers: list[str] = Field(default=["*"], description="Allowed headers for CORS")
-
-
 class AppConfig(BaseModel):
     """Main application configuration."""
     
     debug: bool = Field(default=False, description="Enable debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
-    server_url: str = Field(default="http://localhost:8000", description="Server URL for OpenAPI specification")
     sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
+<<<<<<< HEAD
 <<<<<<< HEAD
     cors: CorsConfig = Field(default_factory=CorsConfig)
 =======
+=======
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
     
     # Redis settings
     redis_host: Optional[str] = Field(default=None, description="Redis server host")
@@ -82,13 +75,17 @@ class AppConfig(BaseModel):
     redis_db: Optional[int] = Field(default=0, description="Redis database number")
     redis_password: Optional[str] = Field(default=None, description="Redis server password")
     
+<<<<<<< HEAD
 >>>>>>> origin/main
+=======
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
     yahoo_finance: YahooFinanceConfig = Field(default_factory=YahooFinanceConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
     
     @classmethod
+<<<<<<< HEAD
 <<<<<<< HEAD
             def from_env(cls) -> "AppConfig":
                 """Create configuration from environment variables."""
@@ -98,6 +95,8 @@ class AppConfig(BaseModel):
                     server_url=os.getenv("SERVER_URL", "http://localhost:8000"),
                     sentry_dsn=os.getenv("SENTRY_DSN"),
 =======
+=======
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
     def from_env(cls) -> "AppConfig":
         """Create configuration from environment variables."""
         return cls(
@@ -111,7 +110,10 @@ class AppConfig(BaseModel):
             redis_db=int(os.getenv("REDIS_DB", "0")),
             redis_password=os.getenv("REDIS_PASSWORD"),
             
+<<<<<<< HEAD
 >>>>>>> origin/main
+=======
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
             yahoo_finance=YahooFinanceConfig(
                 enabled=os.getenv("USE_REAL_YAHOO_API", "false").lower() == "true",
                 max_requests=int(os.getenv("YAHOO_MAX_REQUESTS", "10")),

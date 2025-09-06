@@ -54,7 +54,6 @@ class WatchlistCreateRequest(BaseModel):
     alert_price_low: Optional[Decimal] = Field(None, gt=0, description="安値アラート価格")
     
 
-
 def get_db():
     """Database session dependency."""
     with get_session_scope() as session:
@@ -74,31 +73,18 @@ def get_db():
                                    "id": 1,
                                    "stock_code": "7203",
                                    "added_at": "2023-10-27T10:00:00Z",
-<<<<<<< HEAD
-                                   "notes": "注目銘柄",
-                                   "alert_price_high": 2600.0,
-                                   "alert_price_low": 2400.0,
-=======
                                    "notes": "トヨタ自動車",
                                    "alert_price_high": 2600.00,
                                    "alert_price_low": 2400.00,
->>>>>>> origin/main
                                    "is_active": True
                                },
                                {
                                    "id": 2,
                                    "stock_code": "9984",
-<<<<<<< HEAD
-                                   "added_at": "2023-10-26T15:30:00Z",
-                                   "notes": "急騰銘柄",
-                                   "alert_price_high": None,
-                                   "alert_price_low": None,
-=======
                                    "added_at": "2023-10-27T10:00:00Z",
                                    "notes": "ソフトバンクグループ",
                                    "alert_price_high": None,
                                    "alert_price_low": 1100.00,
->>>>>>> origin/main
                                    "is_active": True
                                }
                            ]
@@ -118,10 +104,6 @@ async def get_watchlist(
     
     Returns:
         List[WatchlistResponse]: ウォッチリストのリスト
-    
-    Examples:
-        - リクエスト: `GET /watchlist`
-        - リクエスト (すべてのアイテム): `GET /watchlist?active=false`
     """
     logger.info(f"Fetching watchlist items (active={active})")
     
@@ -327,9 +309,6 @@ async def remove_from_watchlist(
     
     Raises:
         HTTPException: アイテムが見つからない場合は404
-    
-    Examples:
-        - リクエスト: `DELETE /watchlist/1`
     """
     logger.info(f"Removing watchlist item with ID {id}")
     

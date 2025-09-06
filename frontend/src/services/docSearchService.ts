@@ -1,6 +1,7 @@
 // ドキュメント検索サービス
 // クライアントサイドでドキュメントコンテンツを検索する
 
+// ドキュメントの検索結果を表すインターフェース
 export interface DocSearchResult {
   id: string;
   title: string;

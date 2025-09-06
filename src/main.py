@@ -2,11 +2,9 @@
 FastAPI application entry point for stock tracking application.
 """
 import logging
-import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, APIRouter, Header
 from fastapi.middleware.cors import CORSMiddleware
-from urllib.parse import urlparse
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
@@ -15,19 +13,23 @@ from sqlalchemy import text
 
 from .stock_storage.database import init_db, close_database, check_database_health, get_database_stats, get_session_scope
 <<<<<<< HEAD
+<<<<<<< HEAD
 from .middleware.performance import setup_performance_middleware
 =======
 from .middleware.error_handler import setup_error_handlers
 from .middleware.performance import setup_performance_middleware
 from .middleware.metrics import setup_metrics
 >>>>>>> origin/main
+=======
+from .middleware.performance import setup_performance_middleware
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
 from .utils.logging import setup_logging
 from .utils.cache import get_cache_stats, set_cache_ttls
 from .services.stock_service import cleanup_stock_service
 from .config import get_settings
 from .constants import (
     DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DEV_PORT, FRONTEND_PROD_PORT,
-    DEV_CORS_ORIGINS, PROD_ORIGINS, DOCS_URL, REDOC_URL, OPENAPI_URL,
+    CORS_ORIGINS, DOCS_URL, REDOC_URL, OPENAPI_URL,
     PerformanceThresholds
 )
 
@@ -44,8 +46,6 @@ async def lifespan(app: FastAPI):
         settings = get_settings()
         logger.info(f"Loaded application settings (Yahoo Finance API enabled: {settings.yahoo_finance.enabled})")
         
-        # Middleware is configured at import time below to avoid adding during lifespan
-
         init_db()
         logger.info("Database initialized successfully")
     except Exception as e:
@@ -63,12 +63,16 @@ async def lifespan(app: FastAPI):
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
 import os
 from .config import get_settings
 
 # 環境変数からサーバーURLを取得
 settings = get_settings()
 SERVER_URL = settings.server_url
+<<<<<<< HEAD
 =======
 def _build_openapi_servers() -> list[dict[str, str]]:
     """Generate OpenAPI servers list based on environment.
@@ -96,16 +100,22 @@ def _build_openapi_servers() -> list[dict[str, str]]:
     return servers
 
 >>>>>>> origin/main
+=======
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
 
 app = FastAPI(
     title="Stock Test API",
     version="1.0.0",
     description="株価テスト機能API仕様",
 <<<<<<< HEAD
+<<<<<<< HEAD
     servers=[{"url": SERVER_URL, "description": "Configured server"}],
 =======
     servers=_build_openapi_servers(),
 >>>>>>> origin/main
+=======
+    servers=[{"url": SERVER_URL, "description": "Configured server"}],
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
     lifespan=lifespan,
     docs_url=DOCS_URL,
     redoc_url=REDOC_URL,
@@ -118,10 +128,6 @@ app = FastAPI(
     ]
 )
 
-<<<<<<< HEAD
-# Middleware will be configured below after helper functions are defined
-
-=======
 # Add CORS middleware
 # Add CORS middleware
 app.add_middleware(
@@ -131,8 +137,8 @@ app.add_middleware(
     allow_methods=settings.cors.allow_methods,
     allow_headers=settings.cors.allow_headers,
 )
->>>>>>> origin/main
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 # Setup performance middleware
 setup_performance_middleware(app)
@@ -196,6 +202,10 @@ except Exception:
     # Metrics are optional; never fail app import on metrics issues
     pass
 >>>>>>> origin/main
+=======
+# Setup performance middleware
+setup_performance_middleware(app)
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
 
 # Import and include API routes
 from .api.stocks import router as stocks_router

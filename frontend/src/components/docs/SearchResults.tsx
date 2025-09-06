@@ -108,4 +108,4 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
       </div>
     </div>
   );
-};
+}

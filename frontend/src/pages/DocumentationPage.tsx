@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next'; // i18nをインポート
 import { SearchBar } from '../components/docs/SearchBar';
 import { SearchResults } from '../components/docs/SearchResults';
 import { TableOfContents } from '../components/docs/TableOfContents';
@@ -17,6 +18,7 @@ interface DocPage {
 
 const DocumentationPage: React.FC = () => {
   const { isDark } = useTheme();
+  const { t } = useTranslation(['common', 'docs']); // 翻訳フックを使用
   const { '*': docPath } = useParams<{ '*': string }>();
   const location = useLocation();
   
@@ -55,10 +57,10 @@ const DocumentationPage: React.FC = () => {
             const toc = generateTableOfContents(content);
             setTocItems(toc);
           } else {
-            setError('ドキュメントが見つかりません。');
+            setError(t('document.not_found'));
           }
         } catch (err) {
-          setError('ドキュメントの読み込み中にエラーが発生しました。');
+          setError(t('document.load_error'));
           console.error('Error loading document:', err);
         } finally {
           setIsLoading(false);
@@ -67,22 +69,16 @@ const DocumentationPage: React.FC = () => {
     };
     
     loadDocument();
-  }, [docPath]);
+  }, [docPath, t]); // tを依存関係に追加
   
   // ドキュメントのリストを取得
   useEffect(() => {
     const loadDocList = async () => {
       try {
-        const docs = await getDocMetadataById(''); // 仮の呼び出し、実際にはgetDocMetadata()を使う
         // 仮のデータ
         const docsList: DocPage[] = [
-          { id: 'api-spec', title: 'API仕様', path: '/docs/api_spec.md', category: 'API' },
-          { id: 'architecture', title: 'アーキテクチャ', path: '/docs/architecture.md', category: '設計' },
-          { id: 'development-guide', title: '開発ガイド', path: '/docs/development_guide.md', category: '開発' },
-          { id: 'frontend-architecture', title: 'フロントエンドアーキテクチャ', path: '/docs/frontend_architecture.md', category: '設計' },
-          { id: 'story-book', title: 'Storybook', path: '/docs/storybook.md', category: 'UI' },
-          { id: 'testing-guide', title: 'テストガイド', path: '/docs/testing_guide.md', category: 'テスト' },
-          { id: 'cache-key-improvements', title: 'キャッシュキーの改善', path: '/docs/cache_key_improvements.md', category: 'パフォーマンス' },
+          { id: 'api-spec', title: t('docs:api_spec.title'), path: '/docs/api_spec.md', category: 'API' },
+          { id: 'architecture', title: t('docs:architecture.title'), path: '/docs/architecture.md', category: '設計' },
           // 他のドキュメントも追加
         ];
         setDocPages(docsList);
@@ -92,15 +88,15 @@ const DocumentationPage: React.FC = () => {
     };
     
     loadDocList();
-  }, []);
+  }, [t]); // tを依存関係に追加
   
   // 現在のドキュメントを取得
   const currentDoc = docPath ? docPages.find(doc => doc.path.includes(docPath)) : null;
   
   // パンくずリスト
   const breadcrumbs = [
-    { title: 'ホーム', path: '/' },
-    { title: 'ドキュメント', path: '/docs' },
+    { title: t('common.home'), path: '/' },
+    { title: t('common.documents'), path: '/docs' },
     ...(currentDoc ? [{ title: currentDoc.title, path: `/docs/${currentDoc.id}` }] : [])
   ];
 
@@ -118,7 +114,7 @@ const DocumentationPage: React.FC = () => {
       const results = await searchDocs(query);
       setSearchResults(results);
     } catch (err) {
-      setError('検索中にエラーが発生しました。');
+      setError(t('document.search_error'));
       console.error('Search error:', err);
     } finally {
       setIsLoading(false);
@@ -154,7 +150,7 @@ const DocumentationPage: React.FC = () => {
                 className={`flex items-center space-x-2 ${isDark ? 'hover:text-blue-400' : 'hover:text-blue-600'}`}
               >
                 <FiBook className="text-xl" />
-                <span className="font-semibold">ドキュメント</span>
+                <span className="font-semibold">{t('common.documents')}</span>
               </Link>
               
               <FiChevronRight className={`text-lg ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
@@ -191,7 +187,7 @@ const DocumentationPage: React.FC = () => {
               <div className="hidden md:block w-64">
                 <SearchBar 
                   onSearch={performSearch}
-                  placeholder="ドキュメントを検索..."
+                  placeholder={t('document.search_placeholder')}
                 />
               </div>
               
@@ -202,7 +198,7 @@ const DocumentationPage: React.FC = () => {
                     ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-300' 
                     : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700'
                 }`}
-                aria-label="メニューを開く"
+                aria-label={t('navigation.menu')}
               >
                 {isSidebarOpen ? <FiX className="text-xl" /> : <FiMenu className="text-xl" />}
               </button>
@@ -219,7 +215,7 @@ const DocumentationPage: React.FC = () => {
               isDark ? 'bg-gray-800' : 'bg-white'
             }`}>
               <h2 className={`text-lg font-semibold mb-4 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                ドキュメント
+                {t('common.documents')}
               </h2>
               
               <nav>
@@ -270,7 +266,7 @@ const DocumentationPage: React.FC = () => {
                 >
                   <div className="flex items-center justify-between mb-6">
                     <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                      ドキュメント
+                      {t('common.documents')}
                     </h2>
                     <button
                       onClick={() => setIsSidebarOpen(false)}
@@ -279,7 +275,7 @@ const DocumentationPage: React.FC = () => {
                           ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-300' 
                           : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700'
                       }`}
-                      aria-label="メニューを閉じる"
+                      aria-label={t('navigation.close')}
                     >
                       <FiX className="text-xl" />
                     </button>
@@ -347,7 +343,7 @@ const DocumentationPage: React.FC = () => {
                       </div>
                     ) : error ? (
                       <div className={`p-4 rounded-md ${isDark ? 'bg-red-900 text-red-100' : 'bg-red-100 text-red-900'}`}>
-                        <h2 className="text-xl font-bold mb-2">エラー</h2>
+                        <h2 className="text-xl font-bold mb-2">{t('common.error')}</h2>
                         <p>{error}</p>
                       </div>
                     ) : (
@@ -364,6 +360,9 @@ const DocumentationPage: React.FC = () => {
                   <div className={`rounded-lg shadow p-6 sticky top-24 ${
                     isDark ? 'bg-gray-800' : 'bg-white'
                   }`}>
+                    <h3 className={`text-md font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {t('document.table_of_contents')}
+                    </h3>
                     <TableOfContents items={tocItems} />
                   </div>
                 </div>
@@ -375,7 +374,7 @@ const DocumentationPage: React.FC = () => {
               <div className={`rounded-lg shadow p-6 ${
                 isDark ? 'bg-gray-800' : 'bg-white'
               }`}>
-                <h1 className="text-3xl font-bold mb-6">StockVision ドキュメント</h1>
+                <h1 className="text-3xl font-bold mb-6">{t('document.home')}</h1>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {docPages.map((doc) => (
@@ -411,7 +410,7 @@ const DocumentationPage: React.FC = () => {
                             isDark ? 'text-gray-400' : 'text-gray-600'
                           }`}>
                             {/* ここにドキュメントの概要を表示 */}
-                            詳細な情報を含むドキュメントです。
+                            {t('document.description')}
                           </p>
                         </div>
                       </div>

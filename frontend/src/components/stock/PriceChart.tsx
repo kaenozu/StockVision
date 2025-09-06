@@ -111,10 +111,14 @@ export function PriceChart({
     const closePrices = sortedData.map(item => item.close)
     
 <<<<<<< HEAD
+<<<<<<< HEAD
     const datasets: ChartJSDataset<'line'>[] = []
 =======
     const datasets: ChartDataset<'line', (number | null)[]>[] = []
 >>>>>>> origin/main
+=======
+    const datasets: ChartDataset<'line', (number | null)[]>[] = []
+>>>>>>> 6ac4565fe132f0b07307ce611734dcdda2f9732b
     
     if (chartConfig.chart_type === 'line') {
       // Main price line

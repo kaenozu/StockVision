@@ -7,8 +7,11 @@
 
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useTheme } from '../../contexts/ThemeContext'
+import { useTranslation } from 'react-i18next'
 import { CompactStockSearch } from '../stock/StockSearch'
-import { IconButton } from '../UI/Button'
+import { IconButton } from '../ui/Button'
+import { SUPPORTED_LANGUAGES } from '../../i18n/config'
 
 interface HeaderProps {
   onSearch?: (stockCode: string, useRealData: boolean) => void
@@ -17,7 +20,10 @@ interface HeaderProps {
 export function Header({ onSearch }: HeaderProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { theme, toggleTheme } = useTheme()
+  const { i18n, t } = useTranslation(['common'])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [languageSelectorOpen, setLanguageSelectorOpen] = useState(false)
 
   const handleSearch = (stockCode: string, useRealData: boolean) => {
     // Navigate to stock details page
@@ -26,12 +32,18 @@ export function Header({ onSearch }: HeaderProps) {
     setMobileMenuOpen(false)
   }
 
+  // 言語を変更する関数
+  const changeLanguage = async (lng: string) => {
+    await i18n.changeLanguage(lng)
+    setLanguageSelectorOpen(false) // 言語セレクターを閉じる
+  }
+
   const navigationItems = [
-    { path: '/', label: 'ホーム', icon: '🏠' },
-    { path: '/watchlist', label: 'ウォッチリスト', icon: '⭐' },
-    { path: '/performance', label: 'パフォーマンス', icon: '📊' },
-    { path: '/docs', label: 'ドキュメント', icon: '📚' },
-    { path: '/about', label: 'About', icon: 'ℹ️' }
+    { path: '/', label: t('common.home'), icon: '🏠' },
+    { path: '/watchlist', label: t('common.watchlist'), icon: '⭐' },
+    { path: '/performance', label: t('common.performance'), icon: '📊' },
+    { path: '/docs', label: t('common.documents'), icon: '📚' },
+    { path: '/about', label: t('common.about'), icon: 'ℹ️' }
   ]
 
   const isActive = (path: string) => {
@@ -79,23 +91,81 @@ export function Header({ onSearch }: HeaderProps) {
             ))}
           </nav>
 
-          {/* Desktop Search */}
-          <div className="hidden md:block">
-            <CompactStockSearch 
-              onSearch={handleSearch}
-              className="w-64"
-            />
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
+          {/* Right Side Controls */}
+          <div className="flex items-center space-x-4">
+            {/* Language Selector (Desktop) */}
+            <div className="hidden md:relative">
+              <button
+                onClick={() => setLanguageSelectorOpen(!languageSelectorOpen)}
+                className={`
+                  flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                  ${theme === 'dark' 
+                    ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-800' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+                aria-label={t('common.language')}
+              >
+                <span className="text-lg">🌐</span>
+                <span>{SUPPORTED_LANGUAGES.find(lang => lang.code === i18n.language)?.name || i18n.language}</span>
+              </button>
+              
+              {/* Language Dropdown */}
+              {languageSelectorOpen && (
+                <div className={`
+                  absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-50
+                  ${theme === 'dark' ? 'bg-gray-800 ring-1 ring-gray-700' : 'bg-white ring-1 ring-gray-200'}
+                `}>
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => changeLanguage(lang.code)}
+                      className={`
+                        block w-full text-left px-4 py-2 text-sm transition-colors
+                        ${i18n.language === lang.code
+                          ? theme === 'dark'
+                            ? 'text-blue-400 bg-gray-750'
+                            : 'text-blue-600 bg-blue-50'
+                          : theme === 'dark'
+                            ? 'text-gray-300 hover:bg-gray-700'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      {lang.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Theme Toggle */}
             <IconButton
               variant="ghost"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="メニューを開く"
+              onClick={toggleTheme}
+              aria-label={t('common.theme')}
             >
-              {mobileMenuOpen ? '✕' : '☰'}
+              {theme === 'dark' ? '☀️' : '🌙'}
             </IconButton>
+
+            {/* Desktop Search */}
+            <div className="hidden md:block">
+              <CompactStockSearch 
+                onSearch={handleSearch}
+                className="w-64"
+              />
+            </div>
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden">
+              <IconButton
+                variant="ghost"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="メニューを開く"
+              >
+                {mobileMenuOpen ? '✕' : '☰'}
+              </IconButton>
+            </div>
           </div>
         </div>
 
@@ -122,8 +192,12 @@ export function Header({ onSearch }: HeaderProps) {
                   className={`
                     flex items-center space-x-2 w-full px-3 py-3 rounded-lg text-sm font-medium transition-colors
                     ${isActive(item.path) 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? theme === 'dark' 
+                        ? 'text-blue-400 bg-gray-800' 
+                        : 'text-blue-600 bg-blue-50'
+                      : theme === 'dark'
+                        ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-800'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }
                   `}
                 >
@@ -132,6 +206,32 @@ export function Header({ onSearch }: HeaderProps) {
                 </button>
               ))}
             </nav>
+            
+            {/* Mobile Language Selector */}
+            <div className="px-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {t('common.language')}
+                </span>
+                <select
+                  value={i18n.language}
+                  onChange={(e) => changeLanguage(e.target.value)}
+                  className={`
+                    px-3 py-1 rounded-md text-sm
+                    ${theme === 'dark' 
+                      ? 'bg-gray-800 text-gray-300 border-gray-700' 
+                      : 'bg-white text-gray-700 border-gray-300'
+                    }
+                  `}
+                >
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
         )}
       </div>
