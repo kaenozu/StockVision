@@ -36,6 +36,8 @@ __all__ = [
     "FRONTEND_DEV_PORT",
     "FRONTEND_PROD_PORT",
     "CORS_ORIGINS",
+    "DEV_CORS_ORIGINS",
+    "PROD_ORIGINS",
     "DOCS_URL",
     "REDOC_URL", 
     "OPENAPI_URL",
