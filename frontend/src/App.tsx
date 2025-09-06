@@ -5,6 +5,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import { useTheme } from './contexts/ThemeContext'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Import all original pages
 import SimplifiedHomePage from './pages/StockDashboardInline'
@@ -91,48 +92,50 @@ function Layout({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
-    <Router>
-      <div className="App">
-        <Routes>
-          <Route path="/" element={<SimplifiedHomePage />} />
-          <Route path="/stock/:stockCode" element={<StockDetail />} />
-          <Route path="/recommended-stocks" element={
-            <Layout>
-              <RecommendedStocksPage />
-            </Layout>
-          } />
-          <Route path="/trading-recommendations" element={
-            <Layout>
-              <TradingRecommendationsPage />
-            </Layout>
-          } />
-          <Route path="/settings" element={
-            <Layout>
-              <SettingsPage />
-            </Layout>
-          } />
-          <Route path="*" element={
-            <Layout>
-              <div className="text-center py-12">
-                <div className="text-6xl mb-6">🔍</div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-                  ページが見つかりません
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mb-8">
-                  お探しのページは存在しないか、移動した可能性があります。
-                </p>
-                <Link
-                  to="/"
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  ホームに戻る
-                </Link>
-              </div>
-            </Layout>
-          } />
-        </Routes>
-      </div>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <div className="App">
+          <Routes>
+            <Route path="/" element={<SimplifiedHomePage />} />
+            <Route path="/stock/:stockCode" element={<StockDetail />} />
+            <Route path="/recommended-stocks" element={
+              <Layout>
+                <RecommendedStocksPage />
+              </Layout>
+            } />
+            <Route path="/trading-recommendations" element={
+              <Layout>
+                <TradingRecommendationsPage />
+              </Layout>
+            } />
+            <Route path="/settings" element={
+              <Layout>
+                <SettingsPage />
+              </Layout>
+            } />
+            <Route path="*" element={
+              <Layout>
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-6">🔍</div>
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                    ページが見つかりません
+                  </h1>
+                  <p className="text-gray-600 dark:text-gray-400 mb-8">
+                    お探しのページは存在しないか、移動した可能性があります。
+                  </p>
+                  <Link
+                    to="/"
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                  >
+                    ホームに戻る
+                  </Link>
+                </div>
+              </Layout>
+            } />
+          </Routes>
+        </div>
+      </Router>
+    </ErrorBoundary>
   )
 }
 

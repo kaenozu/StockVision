@@ -12,6 +12,7 @@ import { useWatchlistItem } from '../../hooks/useWatchlist'
 import Button, { IconButton } from '../ui/Button'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import ErrorMessage from '../ui/ErrorMessage'
+import { getErrorMessage } from '../../utils/apiErrorHandler'
 
 interface StockCardProps {
   stockData?: StockData | null
@@ -57,7 +58,7 @@ export function StockCard({
     return (
       <div className={`stock-card ${className}`}>
         <ErrorMessage 
-          error={error} 
+          error={getErrorMessage(error)} 
           onRetry={onRefresh}
           retryText="再読み込み"
         />
@@ -192,7 +193,7 @@ export function StockCard({
         {watchlistItem.hasError && (
           <div className="pt-2">
             <div className="text-sm text-red-600">
-              ウォッチリストの操作に失敗しました
+              {getErrorMessage(watchlistItem.hasError)}
               <button 
                 onClick={watchlistItem.clearError}
                 className="ml-2 text-red-500 underline hover:no-underline"

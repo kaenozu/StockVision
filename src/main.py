@@ -2,6 +2,7 @@
 FastAPI application entry point for stock tracking application.
 """
 import logging
+import sentry_sdk
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, APIRouter, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,6 +30,17 @@ async def lifespan(app: FastAPI):
         # Load settings
         settings = get_settings()
         logger.info(f"Loaded application settings (Yahoo Finance API enabled: {settings.yahoo_finance.enabled})")
+        
+        # Initialize Sentry if DSN is provided
+        if settings.sentry_dsn:
+            sentry_sdk.init(
+                dsn=settings.sentry_dsn,
+                traces_sample_rate=1.0,
+                profiles_sample_rate=1.0,
+            )
+            logger.info("Sentry initialized successfully")
+        else:
+            logger.info("Sentry DSN not provided, skipping initialization")
         
         init_db()
         logger.info("Database initialized successfully")
