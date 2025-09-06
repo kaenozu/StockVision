@@ -1,4 +1,4 @@
-/**
+/** 
  * Main App Component
  * 
  * Root application component with routing, error boundaries,

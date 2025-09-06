@@ -51,6 +51,10 @@ celery==5.3.4
 # Monitoring and metrics (optional)
 prometheus-client==0.19.0
 
+# Error tracking
+sentry-sdk==1.38.0
+
 # Documentation generation
 mkdocs-material==9.5.31
-mkdocs-gen-files"fastapi-cli" 
+mkdocs-gen-files
+fastapi-cli

@@ -3,11 +3,7 @@ FastAPI application entry point for stock tracking application.
 """
 import logging
 from contextlib import asynccontextmanager
-<<<<<<< HEAD
 from fastapi import FastAPI, HTTPException, Depends, APIRouter, Header
-=======
-from fastapi import FastAPI, HTTPException, Depends, APIRouter
->>>>>>> origin/main
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -72,7 +68,6 @@ app = FastAPI(
         {"name": "Root", "description": "ルートエンドポイント"}
     ]
 )
-
 
 # Add CORS middleware
 app.add_middleware(
@@ -217,7 +212,8 @@ async def update_cache_ttls(
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to update TTLs: {e}")
-=======
+
+
 @app.get("/openapi.json", include_in_schema=False)
 async def get_openapi_json():
     """OpenAPIスキーマをJSON形式で返すエンドポイント"""
@@ -229,7 +225,6 @@ async def get_openapi_json():
         servers=app.servers,
         tags=app.openapi_tags,
     )
->>>>>>> origin/main
 
 
 if __name__ == "__main__":
