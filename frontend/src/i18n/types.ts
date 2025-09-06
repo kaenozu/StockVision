@@ -12,6 +12,9 @@ export type LanguageCode = 'ja' | 'en'; // 他の言語コードも追加可能
 // 翻訳キー
 export type TranslationKey = string;
 
+// 翻訳関数の型
+export type TFunction = (key: TranslationKey, options?: Record<string, any>) => string;
+
 // 翻訳辞書
 export interface Translations {
   [key: string]: string | Translations;
@@ -21,7 +24,7 @@ export interface Translations {
 export interface I18nContextProps {
   language: LanguageCode;
   setLanguage: (lang: LanguageCode) => void;
-  t: (key: TranslationKey, options?: Record<string, any>) => string;
+  t: TFunction;
   changeLanguage: (lang: LanguageCode) => Promise<void>;
   languages: SupportedLanguage[];
 }

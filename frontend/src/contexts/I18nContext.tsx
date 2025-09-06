@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, TFunction } from 'react-i18next';
 import { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } from '../i18n/config';
 import { I18nContextProps, SupportedLanguage } from '../i18n/types';
 
@@ -33,7 +33,7 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({ children }) => {
   const value: I18nContextProps = {
     language: language as any, // 型アサーション
     setLanguage: changeLanguage,
-    t,
+    t: t as TFunction, // 型アサーション
     changeLanguage,
     languages: SUPPORTED_LANGUAGES,
   };
