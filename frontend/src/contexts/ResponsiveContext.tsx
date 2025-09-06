@@ -14,7 +14,7 @@ interface ResponsiveContextType {
   isTouch: boolean
 }
 
-const ResponsiveContext = createContext<ResponsiveContextType | undefined>(undefined)
+const ResponsiveContext = createContext<ResponsiveContextType | null>(null)
 
 interface ResponsiveProviderProps {
   children: ReactNode
@@ -135,7 +135,7 @@ export const ResponsiveProvider: React.FC<ResponsiveProviderProps> = ({
 
 export const useResponsive = (): ResponsiveContextType => {
   const context = useContext(ResponsiveContext)
-  if (context === undefined) {
+  if (context === null) {
     throw new Error('useResponsive must be used within a ResponsiveProvider')
   }
   return context

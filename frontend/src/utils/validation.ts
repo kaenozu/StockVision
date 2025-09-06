@@ -160,9 +160,16 @@ export function validateWatchlistForm(data: WatchlistFormData): ValidationResult
     errors.push(stockCodeValidation.error_message || '無効な銘柄コード')
   }
 
-  // Validate alert price
-  if (data.alert_price !== null && data.alert_price !== '') {
-    const priceValidation = validatePrice(data.alert_price)
+  // Validate alert prices (high/low)
+  if (data.alert_price_high !== null && data.alert_price_high !== undefined && data.alert_price_high !== '') {
+    const priceValidation = validatePrice(data.alert_price_high)
+    if (!priceValidation.is_valid) {
+      errors.push(...priceValidation.errors)
+    }
+    warnings.push(...priceValidation.warnings)
+  }
+  if (data.alert_price_low !== null && data.alert_price_low !== undefined && data.alert_price_low !== '') {
+    const priceValidation = validatePrice(data.alert_price_low)
     if (!priceValidation.is_valid) {
       errors.push(...priceValidation.errors)
     }
@@ -194,13 +201,16 @@ export function validateAddWatchlistRequest(data: AddWatchlistRequest): Validati
     errors.push(stockCodeValidation.error_message || '無効な銘柄コード')
   }
 
-  // Validate alert price
-  if (data.alert_price !== null && data.alert_price !== undefined) {
-    const priceValidation = validatePrice(data.alert_price)
-    if (!priceValidation.is_valid) {
-      errors.push(...priceValidation.errors)
-    }
-    warnings.push(...priceValidation.warnings)
+  // Validate alert prices (high/low)
+  if (data.alert_price_high !== null && data.alert_price_high !== undefined) {
+    const pv = validatePrice(data.alert_price_high)
+    if (!pv.is_valid) errors.push(...pv.errors)
+    warnings.push(...pv.warnings)
+  }
+  if (data.alert_price_low !== null && data.alert_price_low !== undefined) {
+    const pv = validatePrice(data.alert_price_low)
+    if (!pv.is_valid) errors.push(...pv.errors)
+    warnings.push(...pv.warnings)
   }
 
   // Validate notes
