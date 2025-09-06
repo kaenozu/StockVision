@@ -620,7 +620,6 @@ class PriceHistoryData(BaseModel):
         Returns:
             Sorted list of price history items
         """
-        from datetime import datetime as _dt\n        def _to_dt(v):\n            if isinstance(v, _dt):\n                return v\n            if isinstance(v, date):\n                return _dt(v.year, v.month, v.day)\n            return _dt.strptime(v, "%Y-%m-%d")\n        return sorted(self.history, key=lambda x: _to_dt(x.date).date(), reverse=not ascending)
         from datetime import datetime as _dt
         def _to_dt(v):
             if isinstance(v, _dt):
@@ -640,9 +639,6 @@ class PriceHistoryData(BaseModel):
         Returns:
             New PriceHistoryData with filtered history
         """
-        filtered_history = [
-            item for item in self.history
-            from datetime import datetime as _dt\n        if start_date <= (_dt(item.date.year, item.date.month, item.date.day).date() if isinstance(item.date, date) else (_dt.strptime(item.date, "%Y-%m-%d").date() if isinstance(item.date, str) else item.date.date())) <= end_date
         from datetime import datetime as _dt
         filtered_history = [
             item for item in self.history
