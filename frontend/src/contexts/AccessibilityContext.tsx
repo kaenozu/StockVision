@@ -183,81 +183,6 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     root.classList.toggle('focus-mode', focusMode)
   }, [highContrast, largeText, fontSize, reducedMotion, focusMode])
 
-  // Listen for system preference changes
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const highContrastQuery = window.matchMedia('(prefers-contrast: high)')
-
-    const handleMotionChange = (e: MediaQueryListEvent) => {
-      if (localStorage.getItem(`${storagePrefix}-reduced-motion`) === null) {
-        setReducedMotionState(e.matches)
-      }
-    }
-
-    const handleContrastChange = (e: MediaQueryListEvent) => {
-      if (localStorage.getItem(`${storagePrefix}-high-contrast`) === null) {
-        setHighContrastState(e.matches)
-      }
-    }
-
-    reducedMotionQuery.addEventListener('change', handleMotionChange)
-    highContrastQuery.addEventListener('change', handleContrastChange)
-
-    return () => {
-      reducedMotionQuery.removeEventListener('change', handleMotionChange)
-      highContrastQuery.removeEventListener('change', handleContrastChange)
-    }
-  }, [storagePrefix])
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    if (!enableKeyboardShortcuts || typeof window === 'undefined') return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Focus mode toggle (Alt+F)
-      if (e.altKey && e.key === 'f') {
-        e.preventDefault()
-        setFocusMode(!focusMode)
-      }
-      
-      // High contrast toggle (Alt+H)
-      if (e.altKey && e.key === 'h') {
-        e.preventDefault()
-        setHighContrast(!highContrast)
-      }
-      
-      // Reduced motion toggle (Alt+M)
-      if (e.altKey && e.key === 'm') {
-        e.preventDefault()
-        setReducedMotion(!reducedMotion)
-      }
-      
-      // Font size controls (Ctrl + Plus/Minus)
-      if (e.ctrlKey && e.key === '=') {
-        e.preventDefault()
-        const sizes = ['small', 'medium', 'large', 'extra-large']
-        const currentIndex = sizes.indexOf(fontSize)
-        if (currentIndex < sizes.length - 1) {
-          setFontSize(sizes[currentIndex + 1] as any)
-        }
-      }
-      
-      if (e.ctrlKey && e.key === '-') {
-        e.preventDefault()
-        const sizes = ['small', 'medium', 'large', 'extra-large']
-        const currentIndex = sizes.indexOf(fontSize)
-        if (currentIndex > 0) {
-          setFontSize(sizes[currentIndex - 1] as any)
-        }
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [enableKeyboardShortcuts, focusMode, highContrast, reducedMotion, fontSize])
-
   // Persistent storage for settings
   const setFocusMode = useCallback((enabled: boolean) => {
     setFocusModeState(enabled)
@@ -327,6 +252,81 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
   const clearAnnouncements = useCallback(() => {
     setAnnouncements([])
   }, [])
+
+  // Listen for system preference changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const highContrastQuery = window.matchMedia('(prefers-contrast: high)')
+
+    const handleMotionChange = (e: MediaQueryListEvent) => {
+      if (localStorage.getItem(`${storagePrefix}-reduced-motion`) === null) {
+        setReducedMotionState(e.matches)
+      }
+    }
+
+    const handleContrastChange = (e: MediaQueryListEvent) => {
+      if (localStorage.getItem(`${storagePrefix}-high-contrast`) === null) {
+        setHighContrastState(e.matches)
+      }
+    }
+
+    reducedMotionQuery.addEventListener('change', handleMotionChange)
+    highContrastQuery.addEventListener('change', handleContrastChange)
+
+    return () => {
+      reducedMotionQuery.removeEventListener('change', handleMotionChange)
+      highContrastQuery.removeEventListener('change', handleContrastChange)
+    }
+  }, [storagePrefix])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!enableKeyboardShortcuts || typeof window === 'undefined') return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Focus mode toggle (Alt+F)
+      if (e.altKey && e.key === 'f') {
+        e.preventDefault()
+        setFocusMode(!focusMode)
+      }
+      
+      // High contrast toggle (Alt+H)
+      if (e.altKey && e.key === 'h') {
+        e.preventDefault()
+        setHighContrast(!highContrast)
+      }
+      
+      // Reduced motion toggle (Alt+M)
+      if (e.altKey && e.key === 'm') {
+        e.preventDefault()
+        setReducedMotion(!reducedMotion)
+      }
+      
+      // Font size controls (Ctrl + Plus/Minus)
+      if (e.ctrlKey && e.key === '=') {
+        e.preventDefault()
+        const sizes = ['small', 'medium', 'large', 'extra-large']
+        const currentIndex = sizes.indexOf(fontSize)
+        if (currentIndex < sizes.length - 1) {
+          setFontSize(sizes[currentIndex + 1] as 'small' | 'medium' | 'large' | 'extra-large')
+        }
+      }
+      
+      if (e.ctrlKey && e.key === '-') {
+        e.preventDefault()
+        const sizes = ['small', 'medium', 'large', 'extra-large']
+        const currentIndex = sizes.indexOf(fontSize)
+        if (currentIndex > 0) {
+          setFontSize(sizes[currentIndex - 1] as 'small' | 'medium' | 'large' | 'extra-large')
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [enableKeyboardShortcuts, focusMode, highContrast, reducedMotion, fontSize, setFocusMode, setFontSize, setHighContrast, setReducedMotion])
 
   const value: AccessibilityContextType = {
     focusMode,

@@ -13,7 +13,7 @@ import {
 } from '../types/stock'
 import { stockApi, ValidationError } from '../services/stockApi'
 import { validateAddWatchlistRequest } from '../utils/validation'
-import { formatErrorMessage } from '../utils/formatters'
+// import { formatErrorMessage } from '../utils/formatters'
 import { getErrorMessage } from '../utils/apiErrorHandler'
 
 /**

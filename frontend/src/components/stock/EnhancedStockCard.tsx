@@ -122,32 +122,36 @@ export const EnhancedStockCard: React.FC<EnhancedStockCardProps> = ({
           announce(newFavoriteState ? 'Added to favorites' : 'Removed from favorites')
         }
         break
-      case 'ArrowDown':
+      case 'ArrowDown': {
         e.preventDefault()
         // Navigate to next card
         const nextElement = (e.currentTarget as HTMLElement).nextElementSibling as HTMLElement
         if (nextElement) nextElement.focus()
         break
-      case 'ArrowUp':
+      }
+      case 'ArrowUp': {
         e.preventDefault()
         // Navigate to previous card
         const prevElement = (e.currentTarget as HTMLElement).previousElementSibling as HTMLElement
         if (prevElement) prevElement.focus()
         break
-      case 'Home':
+      }
+      case 'Home': {
         e.preventDefault()
         // Navigate to first card
         const parent = (e.currentTarget as HTMLElement).parentElement
         const firstChild = parent?.firstElementChild as HTMLElement
         if (firstChild) firstChild.focus()
         break
-      case 'End':
+      }
+      case 'End': {
         e.preventDefault()
         // Navigate to last card
         const parentEnd = (e.currentTarget as HTMLElement).parentElement
         const lastChild = parentEnd?.lastElementChild as HTMLElement
         if (lastChild) lastChild.focus()
         break
+      }
     }
   }, [stock, onClick, onToggleFavorite, localFavorite, announce, accessibility])
 

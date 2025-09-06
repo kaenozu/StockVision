@@ -1,5 +1,5 @@
 import React from 'react'
-import { useTheme } from '../../contexts/ThemeContext'
+// import { useTheme } from '../../contexts/ThemeContext'
 import { useAccessibility } from '../../contexts/AccessibilityContext'
 
 export type IndicatorType = 'gain' | 'loss' | 'neutral' | 'unknown'
@@ -29,7 +29,6 @@ const VisualIndicator: React.FC<VisualIndicatorProps> = ({
   animated = true,
   'data-testid': testId = 'visual-indicator'
 }) => {
-  const { actualTheme } = useTheme()
   const { reducedMotion, highContrast } = useAccessibility()
 
   // Size classes mapping
@@ -140,7 +139,7 @@ const VisualIndicator: React.FC<VisualIndicatorProps> = ({
           />
         )
 
-      case 'text':
+      case 'text': {
         const symbols = {
           gain: '▲',
           loss: '▼',
@@ -152,6 +151,7 @@ const VisualIndicator: React.FC<VisualIndicatorProps> = ({
             {symbols[type]}
           </span>
         )
+      }
 
       default:
         return null

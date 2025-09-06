@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
 
 export type ThemeType = 'light' | 'dark' | 'system'
 
@@ -100,14 +100,14 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     setThemeState(newTheme)
   }
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setThemeState(current => {
       if (current === 'light') return 'dark'
       if (current === 'dark') return 'light'
       // If system, toggle based on current actual theme
       return actualTheme === 'light' ? 'dark' : 'light'
     })
-  }
+  }, [actualTheme])
 
   const resetTheme = () => {
     setThemeState('system')

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 
 // シンプルなモックAPI
 const mockApi = {
-  getCurrentPrice: async (code: string) => {
+  getCurrentPrice: async (_code: string) => {
     await new Promise(resolve => setTimeout(resolve, 500))
     const basePrice = 1000 + Math.random() * 5000
     const change = (Math.random() - 0.5) * 200

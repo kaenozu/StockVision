@@ -5,8 +5,8 @@ import { SearchBar } from '../components/docs/SearchBar';
 import { SearchResults } from '../components/docs/SearchResults';
 import { TableOfContents } from '../components/docs/TableOfContents';
 import { searchDocs, DocSearchResult } from '../services/docSearchService';
-import { loadDocContent, getDocMetadataById, generateTableOfContents, DocMetadata } from '../services/docLoaderService';
-import { FiBook, FiHome, FiChevronRight, FiMenu, FiX } from 'react-icons/fi';
+import { fetchDocContent, getDocMetadataById, generateTableOfContents, DocMetadata } from '../services/docLoaderService';
+import { FiBook, FiChevronRight, FiMenu, FiX } from 'react-icons/fi';
 import { Link, useParams, useLocation } from 'react-router-dom';
 
 interface DocPage {
@@ -22,12 +22,12 @@ const DocumentationPage: React.FC = () => {
   const { '*': docPath } = useParams<{ '*': string }>();
   const location = useLocation();
   
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<DocSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [docContent, setDocContent] = useState<string>('');
-  const [docMetadata, setDocMetadata] = useState<DocMetadata | null>(null);
+  const [, setDocMetadata] = useState<DocMetadata | null>(null);
   const [tocItems, setTocItems] = useState<{ level: number; title: string; id: string }[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
@@ -50,7 +50,7 @@ const DocumentationPage: React.FC = () => {
             setDocMetadata(docs);
             
             // ドキュメントのコンテンツを読み込む
-            const content = await loadDocContent(docs.path);
+            const content = await fetchDocContent(docs.path);
             setDocContent(content);
             
             // 目次を生成
