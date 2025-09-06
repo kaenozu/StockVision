@@ -211,17 +211,16 @@ def setup_performance_middleware(app: FastAPI):
     """
     Set up all performance optimization middleware.
     """
+    # Add custom performance middleware
+    # Order is important: CacheControlMiddleware -> GZipMiddleware -> PerformanceMetricsMiddleware
+    app.add_middleware(CacheControlMiddleware)
     # Add GZip compression (built-in FastAPI middleware)
     app.add_middleware(
         GZipMiddleware,
         minimum_size=PerformanceThresholds.COMPRESSION_MIN_SIZE,
         compresslevel=PerformanceThresholds.COMPRESSION_LEVEL  # Balance between compression ratio and CPU usage
     )
-    
-    # Add custom performance middleware
     app.add_middleware(PerformanceMetricsMiddleware)
-    app.add_middleware(ResponseCompressionMiddleware)
-    app.add_middleware(CacheControlMiddleware)
 
 
 # Utility functions for manual performance optimization
