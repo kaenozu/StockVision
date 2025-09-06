@@ -333,6 +333,10 @@ class PerformanceMetricsMiddleware(BaseHTTPMiddleware):
 def setup_performance_middleware(app: FastAPI):
     """
     Set up all performance optimization middleware.
+    
+    Important: Middleware is applied in reverse order of registration.
+    The last middleware added becomes the first to process requests.
+    Response processing happens in the reverse order.
     """
     middleware_config = get_middleware_config()
     
