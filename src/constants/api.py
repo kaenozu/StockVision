@@ -32,11 +32,18 @@ HEALTH_ENDPOINT = "/health"
 STATUS_ENDPOINT = "/status"
 
 # Server configuration
+import os
+
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8000
 DEVELOPMENT_HOST = "localhost"
 FRONTEND_DEV_PORT = 3000
 FRONTEND_PROD_PORT = 8080
+
+# Environment-aware server configuration
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+API_HOST = os.getenv("API_HOST", "localhost")
+API_PORT = int(os.getenv("API_PORT", str(DEFAULT_PORT)))
 
 # CORS origins
 # 環境変数から本番用オリジンを読み込み（カンマ区切り）
