@@ -1,6 +1,6 @@
 import React from 'react'
 import { useAccessibility } from '../contexts/AccessibilityContext'
-import { useTheme } from '../contexts/ThemeContext'
+// import { useTheme } from '../contexts/ThemeContext'
 
 interface AccessibilityPanelProps {
   isOpen: boolean

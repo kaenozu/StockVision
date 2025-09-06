@@ -13,7 +13,7 @@ export type LanguageCode = 'ja' | 'en'; // 他の言語コードも追加可能
 export type TranslationKey = string;
 
 // 翻訳関数の型
-export type TFunction = (key: TranslationKey, options?: Record<string, any>) => string;
+export type TFunction = (key: TranslationKey, options?: Record<string, unknown>) => string;
 
 // 翻訳辞書
 export interface Translations {
