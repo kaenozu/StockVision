@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "spell-check": "cspell \"**/*.md\"",
+    "link-check": "hyperlink docs/**/*.md"
+  },
+  "devDependencies": {
+    "cspell": "^9.2.1",
+    "hyperlink": "^5.0.4"
+  }
+}
