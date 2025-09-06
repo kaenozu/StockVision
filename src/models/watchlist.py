@@ -12,7 +12,28 @@ from .stock import Base
 
 
 class Watchlist(Base):
-    """Watchlist model representing user's stock watchlist items."""
+    """Watchlist model representing user's personalized stock watchlist items.
+    
+    This model allows users to track specific stocks of interest and set
+    price alerts. Each watchlist item can have:
+    - Custom notes for personal reference
+    - High and low price alert thresholds
+    - Active/inactive status for easy management
+    
+    Key features:
+    - User-friendly alert system with customizable price thresholds
+    - Flexible note-taking capability (up to 500 characters)
+    - Activation/deactivation without permanent deletion
+    - Automatic timestamping of when items are added
+    - Efficient querying with indexes on stock code, status, and alerts
+    - Relationship to core Stock model for rich data integration
+    
+    Business rules:
+    - Alert high price must be > alert low price (if both are set)
+    - Notes are limited to 500 characters
+    - Stock codes must follow 4-digit format
+    - Alert prices must be positive if set
+    """
     
     __tablename__ = "watchlist"
     

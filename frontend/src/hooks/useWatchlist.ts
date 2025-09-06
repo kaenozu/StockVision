@@ -14,6 +14,7 @@ import {
 import { stockApi, ValidationError } from '../services/stockApi'
 import { validateAddWatchlistRequest } from '../utils/validation'
 import { formatErrorMessage } from '../utils/formatters'
+import { getErrorMessage } from '../utils/apiErrorHandler'
 
 /**
  * Watchlist state management hook
@@ -56,7 +57,7 @@ export function useWatchlist(autoFetch: boolean = true) {
       setState({
         data: null,
         status: 'error',
-        error: formatErrorMessage(error)
+        error: getErrorMessage(error)
       })
     }
   }, [])
@@ -339,7 +340,7 @@ export function useWatchlistBulk() {
         results.successful++
       } catch (error) {
         results.failed++
-        results.errors.push(`${requests[i].stock_code}: ${formatErrorMessage(error)}`)
+        results.errors.push(`${requests[i].stock_code}: ${getErrorMessage(error)}`)
       }
 
       setBulkState(prev => ({ ...prev, processed: i + 1 }))
@@ -373,7 +374,7 @@ export function useWatchlistBulk() {
         results.successful++
       } catch (error) {
         results.failed++
-        results.errors.push(`${stockCodes[i]}: ${formatErrorMessage(error)}`)
+        results.errors.push(`${stockCodes[i]}: ${getErrorMessage(error)}`)
       }
 
       setBulkState(prev => ({ ...prev, processed: i + 1 }))

@@ -5,12 +5,13 @@ export type ThemeType = 'light' | 'dark' | 'system'
 interface ThemeContextType {
   theme: ThemeType
   actualTheme: 'light' | 'dark'
+  isDark: boolean
   setTheme: (theme: ThemeType) => void
   toggleTheme: () => void
   resetTheme: () => void
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
+const ThemeContext = createContext<ThemeContextType | null>(null)
 
 interface ThemeProviderProps {
   children: ReactNode
@@ -135,6 +136,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const value: ThemeContextType = {
     theme,
     actualTheme,
+    isDark: actualTheme === 'dark',
     setTheme,
     toggleTheme,
     resetTheme
@@ -149,7 +151,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext)
-  if (context === undefined) {
+  if (context === null) {
     throw new Error('useTheme must be used within a ThemeProvider')
   }
   return context

@@ -21,12 +21,12 @@ jobs:
         
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
-        
-    - name: Run backend tests
+
+    - name: Run backend tests (unit + smoke)
       run: |
-        cd src && python -m pytest ../tests/ -v || true
+        pytest -q tests/unit tests/integration/test_api_smoke.py --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=0
         
   test-frontend:
     runs-on: ubuntu-latest
@@ -56,6 +56,25 @@ jobs:
       run: |
         cd frontend
         npm run test:run || true
+        
+    - name: Install Playwright browsers
+      run: |
+        cd frontend
+        npx playwright install --with-deps
+        
+    - name: Run E2E tests
+      run: |
+        cd frontend
+        npx playwright test
+        
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: e2e-test-results
+        path: |
+          frontend/test-results/
+          frontend/playwright-report/
         
     - name: Build frontend
       run: |

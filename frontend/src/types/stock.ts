@@ -180,23 +180,34 @@ export interface AsyncState<T> {
   error: string | null
 }
 
-// Chart data interfaces for Chart.js integration
-export interface ChartDataPoint {
-  x: string | number
-  y: number
+// Performance metrics interfaces
+export interface MetricsSummary {
+  total_requests: number;
+  slow_requests_count: number;
+  average_response_time: number;
+  request_rate_per_second: number;
+  status_code_distribution: Record<string, number>;
+  top_slow_endpoints: Array<{ endpoint: string; average_time: number }>;
+  endpoint_stats: Record<string, any>;
+  error_rate: number;
+  uptime: number;
 }
 
-export interface ChartDataset {
-  label: string
-  data: ChartDataPoint[]
-  borderColor: string
-  backgroundColor: string
-  fill?: boolean
+export interface SlowRequest {
+  timestamp: number;
+  method: string;
+  path: string;
+  process_time: number;
+  status_code: number;
+  user_agent: string;
+  client_ip: string;
 }
 
-export interface ChartData {
-  labels: string[]
-  datasets: ChartDataset[]
+export interface EndpointStat {
+  count: number;
+  average_time: number;
+  min_time: number;
+  max_time: number;
 }
 
 // Price formatting utilities

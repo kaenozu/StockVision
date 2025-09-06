@@ -12,7 +12,27 @@ from .stock import Base
 
 
 class PriceHistory(Base):
-    """Price History model representing historical stock price data."""
+    """Price History model representing detailed historical stock price data.
+    
+    This model stores daily Open-High-Low-Close (OHLC) price data for stocks,
+    along with trading volumes. Each record represents a single trading day
+    for a specific stock.
+    
+    Key features:
+    - Stores OHLC prices with high precision (2 decimal places)
+    - Tracks trading volume for each day
+    - Optionally stores adjusted closing prices
+    - Maintains foreign key relationship to Stock model
+    - Includes business rule validations for price consistency
+    - Optimized for time-series queries with date and stock code indexes
+    
+    Business rules enforced:
+    - High price >= max(Open, Close)
+    - Low price <= min(Open, Close)
+    - High price >= Low price
+    - All prices must be positive
+    - Volume must be non-negative
+    """
     
     __tablename__ = "price_history"
     
