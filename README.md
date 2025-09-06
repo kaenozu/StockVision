@@ -138,6 +138,18 @@ curl -X DELETE http://localhost:8000/watchlist/1
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
+本番環境などで公開URLが異なる場合は、以下の環境変数でOpenAPIの`servers`を設定できます。
+
+- `API_PUBLIC_URL`: 公開APIのベースURL（例: `https://api.stockvision.example.com`）
+- `API_ADDITIONAL_SERVER_URLS`: 追加サーバーURL（カンマ区切り）
+
+`.env` 例:
+
+```
+API_PUBLIC_URL=https://api.stockvision.example.com
+API_ADDITIONAL_SERVER_URLS=https://staging.api.stockvision.example.com, https://dev.api.stockvision.example.com
+```
+
 ## テスト実行
 
 ```bash

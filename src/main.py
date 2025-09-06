@@ -2,6 +2,7 @@
 FastAPI application entry point for stock tracking application.
 """
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +12,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from .stock_storage.database import init_db, close_database, check_database_health, get_database_stats, get_session_scope
-from .middleware.performance import setup_error_handlers, setup_performance_middleware
+from .middleware.error_handler import setup_error_handlers
+from .middleware.performance import setup_performance_middleware
 from .utils.logging import setup_logging
 from .utils.cache import get_cache_stats
 from .services.stock_service import cleanup_stock_service
@@ -35,6 +37,30 @@ async def lifespan(app: FastAPI):
         settings = get_settings()
         logger.info(f"Loaded application settings (Yahoo Finance API enabled: {settings.yahoo_finance.enabled})")
         
+        if settings.middleware_cors_enabled:
+            app.add_middleware(
+                CORSMiddleware,
+                allow_origins=CORS_ORIGINS,  # Configure for production
+                allow_credentials=True,
+                allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
+                allow_headers=["*"],
+            )
+            logger.info("CORS middleware enabled.")
+        else:
+            logger.info("CORS middleware disabled.")
+
+        if settings.middleware_error_handling_enabled:
+            setup_error_handlers(app)
+            logger.info("Error handling middleware enabled.")
+        else:
+            logger.info("Error handling middleware disabled.")
+
+        if settings.middleware_performance_enabled:
+            setup_performance_middleware(app)
+            logger.info("Performance middleware enabled.")
+        else:
+            logger.info("Performance middleware disabled.")
+
         init_db()
         logger.info("Database initialized successfully")
     except Exception as e:
@@ -51,11 +77,37 @@ async def lifespan(app: FastAPI):
     logger.info("Stock Test API shutdown complete")
 
 
+def _build_openapi_servers() -> list[dict[str, str]]:
+    """Generate OpenAPI servers list based on environment.
+
+    Priority:
+    1. API_PUBLIC_URL if provided (intended for production/public URL)
+    2. API_ADDITIONAL_SERVER_URLS (comma-separated list)
+    3. Fallback to localhost development URL
+    """
+    servers: list[dict[str, str]] = []
+
+    public_url = os.getenv("API_PUBLIC_URL", "").strip()
+    if public_url:
+        servers.append({"url": public_url, "description": "Production server"})
+
+    additional_urls = os.getenv("API_ADDITIONAL_SERVER_URLS", "")
+    for raw in additional_urls.split(","):
+        url = raw.strip()
+        if url:
+            servers.append({"url": url, "description": "Additional server"})
+
+    if not servers:
+        servers.append({"url": f"http://localhost:{DEFAULT_PORT}", "description": "Development server"})
+
+    return servers
+
+
 app = FastAPI(
     title="Stock Test API",
     version="1.0.0",
     description="株価テスト機能API仕様",
-    servers=[{"url": f"http://localhost:{DEFAULT_PORT}", "description": "Development server"}],
+    servers=_build_openapi_servers(),
     lifespan=lifespan,
     docs_url=DOCS_URL,
     redoc_url=REDOC_URL,
@@ -63,20 +115,11 @@ app = FastAPI(
 )
 
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS,  # Configure for production
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
-    allow_headers=["*"],
-)
+        
 
-# Setup error handlers
-setup_error_handlers(app)
 
-# Setup performance middleware
-setup_performance_middleware(app)
+
+
 
 # Import and include API routes
 from .api.stocks import router as stocks_router
