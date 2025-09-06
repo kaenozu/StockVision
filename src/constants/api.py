@@ -30,17 +30,36 @@ HEALTH_ENDPOINT = "/health"
 STATUS_ENDPOINT = "/status"
 
 # Server configuration
+import os
+
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8000
 DEVELOPMENT_HOST = "localhost"
 FRONTEND_DEV_PORT = 3000
 FRONTEND_PROD_PORT = 8080
 
-# CORS origins
-CORS_ORIGINS = [
-    f"http://{DEVELOPMENT_HOST}:{FRONTEND_DEV_PORT}",
-    f"http://{DEVELOPMENT_HOST}:{FRONTEND_PROD_PORT}"
-]
+# Environment-aware server configuration
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+API_HOST = os.getenv("API_HOST", "localhost")
+API_PORT = int(os.getenv("API_PORT", str(DEFAULT_PORT)))
+
+# CORS origins - support both environment variables and defaults
+def get_cors_origins():
+    """Get CORS origins based on environment configuration."""
+    cors_origins_env = os.getenv("CORS_ORIGINS")
+    if cors_origins_env:
+        return [origin.strip() for origin in cors_origins_env.split(",")]
+    
+    # Default CORS origins for development
+    return [
+        f"http://{DEVELOPMENT_HOST}:{FRONTEND_DEV_PORT}",
+        f"http://{DEVELOPMENT_HOST}:{FRONTEND_PROD_PORT}",
+        # Additional common local development URLs
+        f"http://127.0.0.1:{FRONTEND_DEV_PORT}",
+        f"http://127.0.0.1:{FRONTEND_PROD_PORT}"
+    ]
+
+CORS_ORIGINS = get_cors_origins()
 
 # OpenAPI documentation
 DOCS_URL = "/docs"

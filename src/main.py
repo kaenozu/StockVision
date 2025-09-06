@@ -17,7 +17,8 @@ from .utils.cache import get_cache_stats
 from .services.stock_service import cleanup_stock_service
 from .config import get_settings
 from .constants import (
-    DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DEV_PORT, FRONTEND_PROD_PORT,
+    DEFAULT_HOST, DEFAULT_PORT, API_HOST, API_PORT, ENVIRONMENT,
+    FRONTEND_DEV_PORT, FRONTEND_PROD_PORT,
     CORS_ORIGINS, DOCS_URL, REDOC_URL, OPENAPI_URL,
     PerformanceThresholds
 )
@@ -51,11 +52,27 @@ async def lifespan(app: FastAPI):
     logger.info("Stock Test API shutdown complete")
 
 
+def get_openapi_servers():
+    """Get OpenAPI server configuration based on environment."""
+    if ENVIRONMENT == "production":
+        # In production, use environment-specific URLs
+        return [
+            {"url": f"http://{API_HOST}:{API_PORT}", "description": "Production server"},
+            {"url": f"https://{API_HOST}", "description": "Production HTTPS server"}
+        ]
+    else:
+        # Development/staging servers
+        return [
+            {"url": f"http://{API_HOST}:{API_PORT}", "description": "Development server"},
+            {"url": f"http://localhost:{DEFAULT_PORT}", "description": "Local development server"},
+            {"url": f"http://127.0.0.1:{DEFAULT_PORT}", "description": "Local loopback server"}
+        ]
+
 app = FastAPI(
     title="Stock Test API",
     version="1.0.0",
     description="株価テスト機能API仕様",
-    servers=[{"url": f"http://localhost:{DEFAULT_PORT}", "description": "Development server"}],
+    servers=get_openapi_servers(),
     lifespan=lifespan,
     docs_url=DOCS_URL,
     redoc_url=REDOC_URL,
