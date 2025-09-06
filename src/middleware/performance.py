@@ -125,59 +125,6 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
         return f'"{hashlib.sha256(content).hexdigest()}"'
 
 
-class ResponseCompressionMiddleware(BaseHTTPMiddleware):
-    """
-    Advanced compression middleware with content-type aware compression.
-    """
-    
-    # Content types that should be compressed
-    COMPRESSIBLE_TYPES = {
-        "application/json",
-        "application/javascript",
-        "text/html",
-        "text/css",
-        "text/plain",
-        "text/xml",
-        "application/xml",
-        "application/rss+xml",
-        "application/atom+xml",
-        "image/svg+xml"
-    }
-    
-    # Minimum size to compress (bytes)
-    MIN_SIZE = PerformanceThresholds.COMPRESSION_MIN_SIZE
-    
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        response = await call_next(request)
-        
-        # Check if compression is appropriate
-        if not self._should_compress(request, response):
-            return response
-        
-        # Compression is handled by GZipMiddleware, just add headers
-        response.headers["Vary"] = "Accept-Encoding"
-        
-        return response
-    
-    def _should_compress(self, request: Request, response: Response) -> bool:
-        """Determine if response should be compressed."""
-        # Check if client accepts gzip
-        accept_encoding = request.headers.get("accept-encoding", "")
-        if "gzip" not in accept_encoding:
-            return False
-        
-        # Check content type
-        content_type = response.headers.get("content-type", "").split(";")[0]
-        if content_type not in self.COMPRESSIBLE_TYPES:
-            return False
-        
-        # Check content length
-        content_length = response.headers.get("content-length")
-        if content_length and int(content_length) < self.MIN_SIZE:
-            return False
-        
-        return True
-
 
 class PerformanceMetricsMiddleware(BaseHTTPMiddleware):
     """
@@ -210,18 +157,25 @@ class PerformanceMetricsMiddleware(BaseHTTPMiddleware):
 def setup_performance_middleware(app: FastAPI):
     """
     Set up all performance optimization middleware.
+    
+    Important: Middleware is applied in reverse order of registration.
+    The last middleware added becomes the first to process requests.
+    Response processing happens in the reverse order.
     """
-    # Add GZip compression (built-in FastAPI middleware)
+    # 1. Cache control and ETag generation - must be applied to uncompressed content
+    app.add_middleware(CacheControlMiddleware)
+    
+    # 2. GZip compression - compresses the response after cache headers are set
     app.add_middleware(
         GZipMiddleware,
         minimum_size=PerformanceThresholds.COMPRESSION_MIN_SIZE,
-        compresslevel=PerformanceThresholds.COMPRESSION_LEVEL  # Balance between compression ratio and CPU usage
+        compresslevel=PerformanceThresholds.COMPRESSION_LEVEL
     )
     
-    # Add custom performance middleware
+    # 3. Performance metrics - measures total processing time including compression
     app.add_middleware(PerformanceMetricsMiddleware)
-    app.add_middleware(ResponseCompressionMiddleware)
-    app.add_middleware(CacheControlMiddleware)
+    
+    # Note: ResponseCompressionMiddleware removed as it's redundant with GZipMiddleware
 
 
 # Utility functions for manual performance optimization
