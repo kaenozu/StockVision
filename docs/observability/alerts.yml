@@ -1,0 +1,41 @@
+groups:
+  - name: stockvision-backend
+    interval: 30s
+    rules:
+      - alert: HighHttpErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.05
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "High HTTP 5xx error rate (>5% for 10m)"
+
+      - alert: SlowHttpLatencyP90
+        expr: |
+          histogram_quantile(0.9, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 0.8
+        for: 10m
+        labels:
+          severity: warn
+        annotations:
+          summary: "HTTP p90 latency > 800ms"
+
+      - alert: ExternalApiErrors
+        expr: |
+          sum(rate(external_api_requests_total{status=~"error|invalid"}[5m])) > 0
+        for: 15m
+        labels:
+          severity: warn
+        annotations:
+          summary: "External API errors observed for 15m"
+
+      - alert: DbSlowQueries
+        expr: |
+          histogram_quantile(0.9, sum(rate(db_query_duration_seconds_bucket[5m])) by (le)) > 0.05
+        for: 15m
+        labels:
+          severity: warn
+        annotations:
+          summary: "DB p90 query latency > 50ms for 15m"
+

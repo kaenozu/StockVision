@@ -42,6 +42,7 @@ export function StockCard({
 
   // Use current price data if available, otherwise fall back to stock data
   const displayData = currentPrice || stockData
+  const companyName = stockData?.company_name || ''
   const marketStatus = currentPrice?.market_status
 
   if (loading) {
@@ -107,7 +108,7 @@ export function StockCard({
             )}
           </div>
           <p className={`text-gray-600 truncate ${compact ? 'text-sm' : 'text-base'}`}>
-            {displayData.company_name}
+            {companyName}
           </p>
         </div>
 
@@ -160,7 +161,7 @@ export function StockCard({
             </span>
           </div>
           
-          {!compact && (
+          {!compact && typeof displayData.previous_close === 'number' && (
             <div className="text-sm text-gray-500">
               前日比: {formatPrice(displayData.previous_close)}
             </div>
@@ -176,10 +177,10 @@ export function StockCard({
                   <span>アラート価格:</span>
                   <span className="font-medium">
                     {watchlistItem.item.alert_price_high !== null && (
-                      <span className="text-green-600">⬆️ {formatPrice(watchlistItem.item.alert_price_high)} </span>
+                      <span className="text-green-600">⬆️ {formatPrice(watchlistItem.item.alert_price_high as number)} </span>
                     )}
                     {watchlistItem.item.alert_price_low !== null && (
-                      <span className="text-red-600">⬇️ {formatPrice(watchlistItem.item.alert_price_low)}</span>
+                      <span className="text-red-600">⬇️ {formatPrice(watchlistItem.item.alert_price_low as number)}</span>
                     )}
                   </span>
                 </div>
