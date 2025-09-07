@@ -104,7 +104,7 @@ export class StockApiClient {
     // Setup request interceptor
     this.client.interceptors.request.use(
       (config) => {
-        const fullUrl = config.baseURL + config.url
+        const fullUrl = (config.baseURL || '') + (config.url || '')
         console.log(`[StockAPI] ${config.method?.toUpperCase()} ${fullUrl}`)
         console.log(`[StockAPI] Base URL: ${config.baseURL}`)
         console.log(`[StockAPI] Request URL: ${config.url}`)
@@ -135,7 +135,7 @@ export class StockApiClient {
         url: error.config?.url,
         baseURL: error.config?.baseURL,
         method: error.config?.method,
-        fullURL: error.config?.baseURL + error.config?.url
+        fullURL: (error.config?.baseURL || '') + (error.config?.url || '')
       },
       request: error.request ? 'Request was made' : 'Request was not made',
       response: error.response ? {
@@ -633,7 +633,7 @@ export class StockApiClient {
         break
       default:
         realisticBasePrice = 2500 // Default realistic price
-        compunknownName = stockData.compunknown_name
+        compunknownName = stockData.company_name
         break
     }
     

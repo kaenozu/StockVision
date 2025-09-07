@@ -54,6 +54,7 @@ export interface WatchlistItemAPI {
 // Request interface for adding to watchlist
 export interface AddWatchlistRequest {
   stock_code: string
+  alert_price?: number | null     // Legacy alert price
   alert_price_high?: number | null
   alert_price_low?: number | null
   notes?: string | null
@@ -64,6 +65,7 @@ export interface WatchlistItem extends WatchlistItemAPI {
   id?: string             // Local ID for React keys
   isLoading?: boolean     // UI loading state
   hasError?: boolean      // UI error state
+  alert_price?: number    // Legacy alert price for backward compatibility
   alert_price_high?: number | null // High alert price
   alert_price_low?: number | null  // Low alert price
 }
@@ -87,10 +89,12 @@ export interface APIError {
   code: number;
   message: string;
   type?: string;
+  error_type?: string;    // Additional error type field
+  detail?: string;        // Alternative to details
+  details?: any;
   request_id?: string;
   timestamp?: string;
   path?: string;
-  details?: any;
 }
 
 // Generic API response wrapper

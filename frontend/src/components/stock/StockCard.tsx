@@ -5,7 +5,7 @@
  * market status, and action buttons. Supports loading and error states.
  */
 
-import React from 'react'
+import React, { memo, useMemo, useCallback } from 'react'
 import { StockData, CurrentPriceResponse } from '../../types/stock'
 import { formatPrice, formatPriceChange, formatPercentageChange, formatMarketStatus } from '../../utils/formatters'
 import { useWatchlistItem } from '../../hooks/useWatchlist'

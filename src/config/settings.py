@@ -9,6 +9,14 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from functools import lru_cache
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv is optional
+    pass
+
 
 class YahooFinanceConfig(BaseModel):
     """Yahoo Finance API configuration."""
