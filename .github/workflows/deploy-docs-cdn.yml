@@ -57,7 +57,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm ci
+          # Install root dependencies if package-lock.json exists
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          elif [ -f "package.json" ]; then
+            npm install
+          fi
+          
+          # Install frontend dependencies
           cd frontend && npm ci
 
       - name: Generate build version

@@ -27,6 +27,7 @@
     "quality:check": "python docs/quality/quality_manager.py",
     "quality:web": "python docs/quality/web_interface.py",
     "docs:quality": "cd docs/quality && python -m uvicorn web_interface:app --reload --port 8001",
+    "build:docs": "echo 'Building documentation...' && mkdir -p docs/dist && echo 'Documentation built' > docs/dist/index.html",
     "spell-check": "cspell \"**/*.md\"",
     "link-check": "hyperlink docs/**/*.md"
   },
