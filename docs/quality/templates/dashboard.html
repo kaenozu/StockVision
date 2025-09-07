@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Quality Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .quality-excellent { color: #28a745; }
+        .quality-good { color: #17a2b8; }
+        .quality-fair { color: #ffc107; }
+        .quality-poor { color: #fd7e14; }
+        .quality-critical { color: #dc3545; }
+        
+        .metric-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid #007bff;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .analysis-area {
+            min-height: 300px;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .drop-zone {
+            border: 2px dashed #007bff;
+            background: #e3f2fd;
+        }
+        
+        .issue-severity-excellent { border-left: 4px solid #28a745; }
+        .issue-severity-good { border-left: 4px solid #17a2b8; }
+        .issue-severity-fair { border-left: 4px solid #ffc107; }
+        .issue-severity-poor { border-left: 4px solid #fd7e14; }
+        .issue-severity-critical { border-left: 4px solid #dc3545; }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-file-check me-2"></i>
+                Document Quality Manager
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#dashboard" onclick="showSection('dashboard')">
+                            <i class="fas fa-tachometer-alt me-1"></i>ダッシュボード
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#analyze" onclick="showSection('analyze')">
+                            <i class="fas fa-search me-1"></i>分析
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#reports" onclick="showSection('reports')">
+                            <i class="fas fa-chart-bar me-1"></i>レポート
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#settings" onclick="showSection('settings')">
+                            <i class="fas fa-cog me-1"></i>設定
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- ダッシュボードセクション -->
+        <div id="dashboard-section" class="content-section">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h2><i class="fas fa-tachometer-alt me-2"></i>品質管理ダッシュボード</h2>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-file-alt fa-2x text-primary mb-2"></i>
+                            <h5 class="card-title">総ドキュメント数</h5>
+                            <h3 class="text-primary" id="total-docs">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-star fa-2x text-success mb-2"></i>
+                            <h5 class="card-title">平均品質スコア</h5>
+                            <h3 class="text-success" id="avg-score">0.0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                            <h5 class="card-title">総問題数</h5>
+                            <h3 class="text-warning" id="total-issues">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-trend-up fa-2x text-info mb-2"></i>
+                            <h5 class="card-title">改善中ファイル</h5>
+                            <h3 class="text-info" id="improving-files">0</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-pie me-2"></i>品質レベル分布</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="qualityDistributionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-list-ul me-2"></i>最新の問題カテゴリ</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="common-issues-list">
+                                <p class="text-muted">データを読み込み中...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分析セクション -->
+        <div id="analyze-section" class="content-section" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h2><i class="fas fa-search me-2"></i>ドキュメント分析</h2>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-edit me-2"></i>テキスト分析</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="file-path" class="form-label">ファイルパス</label>
+                                <input type="text" class="form-control" id="file-path" placeholder="document.md">
+                            </div>
+                            <div class="mb-3">
+                                <label for="content-input" class="form-label">ドキュメント内容</label>
+                                <textarea class="form-control" id="content-input" rows="15" 
+                                         placeholder="ここにドキュメントの内容を入力してください..."></textarea>
+                            </div>
+                            <button class="btn btn-primary" onclick="analyzeContent()">
+                                <i class="fas fa-play me-1"></i>分析実行
+                            </button>
+                            <button class="btn btn-secondary ms-2" onclick="clearContent()">
+                                <i class="fas fa-trash me-1"></i>クリア
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-upload me-2"></i>ファイルアップロード</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="analysis-area d-flex align-items-center justify-content-center" 
+                                 id="drop-zone"
+                                 ondrop="dropHandler(event)" 
+                                 ondragover="dragOverHandler(event)"
+                                 ondragenter="dragEnterHandler(event)"
+                                 ondragleave="dragLeaveHandler(event)">
+                                <div class="text-center">
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted mb-3">ファイルをドラッグ&ドロップするか、クリックして選択</p>
+                                    <input type="file" class="form-control" id="file-input" 
+                                           accept=".md,.txt,.rst" onchange="handleFileSelect(event)">
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-success" onclick="analyzeDirectory()">
+                                    <i class="fas fa-folder me-1"></i>ディレクトリ分析
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 分析結果 -->
+            <div class="row mt-4" id="analysis-results" style="display: none;">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5><i class="fas fa-chart-line me-2"></i>分析結果</h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="exportResults()">
+                                <i class="fas fa-download me-1"></i>エクスポート
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6>品質メトリクス</h6>
+                                    <div id="quality-metrics"></div>
+                                </div>
+                                <div class="col-md-8">
+                                    <h6>検出された問題</h6>
+                                    <div id="quality-issues"></div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <h6>改善提案</h6>
+                                <div id="quality-suggestions"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- レポートセクション -->
+        <div id="reports-section" class="content-section" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h2><i class="fas fa-chart-bar me-2"></i>分析レポート履歴</h2>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>レポート名</th>
+                                    <th>作成日時</th>
+                                    <th>ファイル数</th>
+                                    <th>平均スコア</th>
+                                    <th>問題数</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reports-table">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">
+                                        レポートを読み込み中...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 設定セクション -->
+        <div id="settings-section" class="content-section" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h2><i class="fas fa-cog me-2"></i>品質チェック設定</h2>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <form id="settings-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>基本設定</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">最小単語数</label>
+                                    <input type="number" class="form-control" id="min-word-count" value="100">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">最大文長</label>
+                                    <input type="number" class="form-control" id="max-sentence-length" value="25">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">最小可読性スコア</label>
+                                    <input type="number" class="form-control" id="min-readability-score" value="60">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>高度な設定</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">最大段落長</label>
+                                    <input type="number" class="form-control" id="max-paragraph-length" value="5">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">禁止単語</label>
+                                    <input type="text" class="form-control" id="forbidden-words" 
+                                           value="TODO,FIXME,hack,workaround">
+                                    <div class="form-text">カンマ区切りで入力</div>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="spelling-check" checked>
+                                    <label class="form-check-label">スペルチェック</label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="grammar-check" checked>
+                                    <label class="form-check-label">文法チェック</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                            <i class="fas fa-save me-1"></i>設定保存
+                        </button>
+                        <button type="button" class="btn btn-secondary ms-2" onclick="resetSettings()">
+                            <i class="fas fa-undo me-1"></i>リセット
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ローディングオーバーレイ -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="text-center text-white">
+            <div class="spinner-border mb-3" role="status"></div>
+            <div>分析中...</div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        let currentAnalysisResult = null;
+        let qualityChart = null;
+        
+        // セクション切り替え
+        function showSection(sectionName) {
+            const sections = document.querySelectorAll('.content-section');
+            sections.forEach(section => section.style.display = 'none');
+            document.getElementById(`${sectionName}-section`).style.display = 'block';
+            
+            // ナビゲーションのアクティブ状態を更新
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => link.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // セクション固有の初期化
+            if (sectionName === 'dashboard') {
+                loadDashboardData();
+            } else if (sectionName === 'reports') {
+                loadReports();
+            } else if (sectionName === 'settings') {
+                loadSettings();
+            }
+        }
+        
+        // ダッシュボードデータ読み込み
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/reports');
+                const data = await response.json();
+                
+                if (data.reports && data.reports.length > 0) {
+                    // サマリー統計を計算
+                    const totalDocs = data.reports.reduce((sum, report) => 
+                        sum + (report.summary?.total_files || 0), 0);
+                    const avgScore = data.reports.reduce((sum, report) => 
+                        sum + (report.summary?.average_score || 0), 0) / data.reports.length;
+                    const totalIssues = data.reports.reduce((sum, report) => 
+                        sum + (report.summary?.total_issues || 0), 0);
+                    const improvingFiles = data.reports.reduce((sum, report) => 
+                        sum + (report.summary?.trends?.improving_files || 0), 0);
+                    
+                    // メトリクス更新
+                    document.getElementById('total-docs').textContent = totalDocs;
+                    document.getElementById('avg-score').textContent = avgScore.toFixed(1);
+                    document.getElementById('total-issues').textContent = totalIssues;
+                    document.getElementById('improving-files').textContent = improvingFiles;
+                    
+                    // チャートを更新
+                    updateDashboardCharts(data.reports);
+                } else {
+                    // デフォルト値を表示
+                    document.getElementById('total-docs').textContent = '0';
+                    document.getElementById('avg-score').textContent = '0.0';
+                    document.getElementById('total-issues').textContent = '0';
+                    document.getElementById('improving-files').textContent = '0';
+                }
+            } catch (error) {
+                console.error('Dashboard data loading error:', error);
+            }
+        }
+        
+        // ダッシュボードチャート更新
+        function updateDashboardCharts(reports) {
+            // 品質レベル分布チャート
+            const qualityLevels = ['excellent', 'good', 'fair', 'poor', 'critical'];
+            const distribution = qualityLevels.reduce((acc, level) => {
+                acc[level] = 0;
+                reports.forEach(report => {
+                    const levelData = report.summary?.quality_distribution;
+                    if (levelData && levelData[level]) {
+                        acc[level] += levelData[level];
+                    }
+                });
+                return acc;
+            }, {});
+            
+            const ctx = document.getElementById('qualityDistributionChart').getContext('2d');
+            if (qualityChart) {
+                qualityChart.destroy();
+            }
+            
+            qualityChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['優秀', '良好', '普通', '悪い', '重大'],
+                    datasets: [{
+                        data: [
+                            distribution.excellent,
+                            distribution.good,
+                            distribution.fair,
+                            distribution.poor,
+                            distribution.critical
+                        ],
+                        backgroundColor: [
+                            '#28a745',
+                            '#17a2b8',
+                            '#ffc107',
+                            '#fd7e14',
+                            '#dc3545'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+            
+            // 共通問題リスト
+            const commonIssuesContainer = document.getElementById('common-issues-list');
+            const allIssues = {};
+            reports.forEach(report => {
+                const issues = report.summary?.most_common_issues || [];
+                issues.forEach(([category, count]) => {
+                    allIssues[category] = (allIssues[category] || 0) + count;
+                });
+            });
+            
+            const sortedIssues = Object.entries(allIssues)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 5);
+            
+            commonIssuesContainer.innerHTML = '';
+            if (sortedIssues.length > 0) {
+                sortedIssues.forEach(([category, count]) => {
+                    const item = document.createElement('div');
+                    item.className = 'mb-2';
+                    item.innerHTML = `
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">${category}</span>
+                            <span class="badge bg-warning">${count}</span>
+                        </div>
+                    `;
+                    commonIssuesContainer.appendChild(item);
+                });
+            } else {
+                commonIssuesContainer.innerHTML = '<p class="text-muted">問題データがありません</p>';
+            }
+        }
+        
+        // テキスト分析
+        async function analyzeContent() {
+            const content = document.getElementById('content-input').value;
+            const filePath = document.getElementById('file-path').value || 'untitled.md';
+            
+            if (!content.trim()) {
+                alert('分析するコンテンツを入力してください');
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        file_path: filePath
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    currentAnalysisResult = result.report;
+                    displayAnalysisResult(result.report);
+                } else {
+                    alert('分析に失敗しました: ' + (result.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Analysis error:', error);
+                alert('分析中にエラーが発生しました');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // ファイル分析
+        async function analyzeFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            showLoading();
+            
+            try {
+                const response = await fetch('/api/analyze-file', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    currentAnalysisResult = result.report;
+                    displayAnalysisResult(result.report);
+                    document.getElementById('file-path').value = result.filename || '';
+                } else {
+                    alert('分析に失敗しました: ' + (result.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('File analysis error:', error);
+                alert('ファイル分析中にエラーが発生しました');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 分析結果表示
+        function displayAnalysisResult(report) {
+            document.getElementById('analysis-results').style.display = 'block';
+            
+            // メトリクス表示
+            const metrics = report.metrics;
+            const metricsContainer = document.getElementById('quality-metrics');
+            metricsContainer.innerHTML = `
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>総合スコア:</span>
+                        <span class="fw-bold quality-${metrics.quality_level}">${metrics.overall_score.toFixed(1)}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>可読性スコア:</span>
+                        <span>${metrics.readability_score.toFixed(1)}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>単語数:</span>
+                        <span>${metrics.word_count}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>文数:</span>
+                        <span>${metrics.sentence_count}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>平均文長:</span>
+                        <span>${metrics.avg_sentence_length.toFixed(1)}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>品質レベル:</span>
+                        <span class="fw-bold quality-${metrics.quality_level}">
+                            ${getQualityLevelText(metrics.quality_level)}
+                        </span>
+                    </div>
+                </div>
+            `;
+            
+            // 問題表示
+            const issuesContainer = document.getElementById('quality-issues');
+            if (report.issues && report.issues.length > 0) {
+                issuesContainer.innerHTML = report.issues.map(issue => `
+                    <div class="mb-2 p-2 border-start issue-severity-${issue.severity}">
+                        <div class="fw-bold">${issue.message}</div>
+                        <small class="text-muted">
+                            カテゴリ: ${issue.category} | 重要度: ${issue.severity}
+                            ${issue.line_number ? ` | 行: ${issue.line_number}` : ''}
+                        </small>
+                        ${issue.suggestion ? `<div class="text-info small mt-1"><i class="fas fa-lightbulb me-1"></i>${issue.suggestion}</div>` : ''}
+                    </div>
+                `).join('');
+            } else {
+                issuesContainer.innerHTML = '<p class="text-success">問題は検出されませんでした！</p>';
+            }
+            
+            // 改善提案表示
+            const suggestionsContainer = document.getElementById('quality-suggestions');
+            if (report.suggestions && report.suggestions.length > 0) {
+                suggestionsContainer.innerHTML = report.suggestions.map(suggestion => `
+                    <div class="mb-1">
+                        <i class="fas fa-arrow-right text-primary me-2"></i>${suggestion}
+                    </div>
+                `).join('');
+            } else {
+                suggestionsContainer.innerHTML = '<p class="text-muted">改善提案はありません</p>';
+            }
+        }
+        
+        // 品質レベルテキスト取得
+        function getQualityLevelText(level) {
+            const levelTexts = {
+                'excellent': '優秀',
+                'good': '良好',
+                'fair': '普通',
+                'poor': '悪い',
+                'critical': '重大'
+            };
+            return levelTexts[level] || level;
+        }
+        
+        // ファイル選択処理
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                analyzeFile(file);
+            }
+        }
+        
+        // ドラッグ&ドロップ処理
+        function dragOverHandler(ev) {
+            ev.preventDefault();
+        }
+        
+        function dragEnterHandler(ev) {
+            ev.preventDefault();
+            document.getElementById('drop-zone').classList.add('drop-zone');
+        }
+        
+        function dragLeaveHandler(ev) {
+            ev.preventDefault();
+            if (ev.target === document.getElementById('drop-zone')) {
+                document.getElementById('drop-zone').classList.remove('drop-zone');
+            }
+        }
+        
+        function dropHandler(ev) {
+            ev.preventDefault();
+            document.getElementById('drop-zone').classList.remove('drop-zone');
+            
+            const files = ev.dataTransfer.files;
+            if (files.length > 0) {
+                analyzeFile(files[0]);
+            }
+        }
+        
+        // ディレクトリ分析
+        function analyzeDirectory() {
+            const directoryPath = prompt('分析するディレクトリパスを入力してください:');
+            if (!directoryPath) return;
+            
+            showLoading();
+            
+            fetch('/api/analyze-directory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    directory_path: directoryPath,
+                    file_patterns: ['*.md', '*.rst', '*.txt']
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                hideLoading();
+                if (result.status === 'started') {
+                    alert('ディレクトリ分析を開始しました。結果はレポートセクションで確認できます。');
+                } else {
+                    alert('分析の開始に失敗しました: ' + (result.detail || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Directory analysis error:', error);
+                alert('ディレクトリ分析中にエラーが発生しました');
+            });
+        }
+        
+        // コンテンツクリア
+        function clearContent() {
+            document.getElementById('content-input').value = '';
+            document.getElementById('file-path').value = '';
+            document.getElementById('analysis-results').style.display = 'none';
+            currentAnalysisResult = null;
+        }
+        
+        // 結果エクスポート
+        function exportResults() {
+            if (!currentAnalysisResult) {
+                alert('エクスポートする結果がありません');
+                return;
+            }
+            
+            const data = JSON.stringify(currentAnalysisResult, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'quality_report.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // レポート読み込み
+        async function loadReports() {
+            try {
+                const response = await fetch('/api/reports');
+                const data = await response.json();
+                
+                const tableBody = document.getElementById('reports-table');
+                
+                if (data.reports && data.reports.length > 0) {
+                    tableBody.innerHTML = data.reports.map(report => `
+                        <tr>
+                            <td>${report.name}</td>
+                            <td>${new Date(report.created * 1000).toLocaleString()}</td>
+                            <td>${report.summary?.total_files || 0}</td>
+                            <td>
+                                <span class="quality-${getQualityLevelFromScore(report.summary?.average_score || 0)}">
+                                    ${(report.summary?.average_score || 0).toFixed(1)}
+                                </span>
+                            </td>
+                            <td>${report.summary?.total_issues || 0}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="viewReport('${report.id}')">
+                                    <i class="fas fa-eye me-1"></i>詳細
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">
+                                まだレポートがありません
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('Reports loading error:', error);
+                document.getElementById('reports-table').innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-danger">
+                            レポートの読み込みに失敗しました
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        
+        // スコアから品質レベル取得
+        function getQualityLevelFromScore(score) {
+            if (score >= 90) return 'excellent';
+            if (score >= 75) return 'good';
+            if (score >= 60) return 'fair';
+            if (score >= 40) return 'poor';
+            return 'critical';
+        }
+        
+        // レポート詳細表示
+        async function viewReport(reportId) {
+            try {
+                const response = await fetch(`/api/reports/${reportId}`);
+                const data = await response.json();
+                
+                // モーダルまたは新しいページでレポート詳細を表示
+                // 簡単のため、JSONデータをアラートで表示
+                const summary = JSON.stringify(data.summary, null, 2);
+                alert('レポート詳細:\n\n' + summary);
+            } catch (error) {
+                console.error('Report detail loading error:', error);
+                alert('レポート詳細の読み込みに失敗しました');
+            }
+        }
+        
+        // 設定読み込み
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/rules');
+                const data = await response.json();
+                
+                if (data.rules) {
+                    const rules = data.rules;
+                    document.getElementById('min-word-count').value = rules.min_word_count || 100;
+                    document.getElementById('max-sentence-length').value = rules.max_sentence_length || 25;
+                    document.getElementById('min-readability-score').value = rules.min_readability_score || 60;
+                    document.getElementById('max-paragraph-length').value = rules.max_paragraph_length || 5;
+                    document.getElementById('forbidden-words').value = (rules.forbidden_words || []).join(',');
+                    document.getElementById('spelling-check').checked = rules.spelling_check || false;
+                    document.getElementById('grammar-check').checked = rules.grammar_check || false;
+                }
+            } catch (error) {
+                console.error('Settings loading error:', error);
+            }
+        }
+        
+        // 設定保存
+        async function saveSettings() {
+            const rules = {
+                min_word_count: parseInt(document.getElementById('min-word-count').value),
+                max_sentence_length: parseInt(document.getElementById('max-sentence-length').value),
+                min_readability_score: parseInt(document.getElementById('min-readability-score').value),
+                max_paragraph_length: parseInt(document.getElementById('max-paragraph-length').value),
+                forbidden_words: document.getElementById('forbidden-words').value.split(',').map(s => s.trim()),
+                spelling_check: document.getElementById('spelling-check').checked,
+                grammar_check: document.getElementById('grammar-check').checked
+            };
+            
+            try {
+                const response = await fetch('/api/rules', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ rules })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert('設定を保存しました');
+                } else {
+                    alert('設定の保存に失敗しました: ' + (result.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Settings save error:', error);
+                alert('設定保存中にエラーが発生しました');
+            }
+        }
+        
+        // 設定リセット
+        function resetSettings() {
+            if (confirm('設定をデフォルトに戻しますか？')) {
+                document.getElementById('min-word-count').value = 100;
+                document.getElementById('max-sentence-length').value = 25;
+                document.getElementById('min-readability-score').value = 60;
+                document.getElementById('max-paragraph-length').value = 5;
+                document.getElementById('forbidden-words').value = 'TODO,FIXME,hack,workaround';
+                document.getElementById('spelling-check').checked = true;
+                document.getElementById('grammar-check').checked = true;
+            }
+        }
+        
+        // ローディング表示/非表示
+        function showLoading() {
+            document.getElementById('loading-overlay').style.display = 'flex';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 最初のナビゲーション項目をアクティブに
+            document.querySelector('.nav-link').classList.add('active');
+            // ダッシュボードを表示
+            loadDashboardData();
+        });
+    </script>
+</body>
+</html>

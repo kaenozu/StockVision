@@ -1,0 +1,281 @@
+{
+  "base_url": "https://docs.stockvision.com",
+  "platforms": [
+    {
+      "platform": "vercel",
+      "project_name": "stockvision-docs",
+      "build_command": "npm run build",
+      "output_directory": "dist",
+      "custom_domain": "docs.stockvision.com",
+      "ssl_enabled": true,
+      "cdn_provider": "cloudflare",
+      "environment_variables": {
+        "NODE_ENV": "production",
+        "NEXT_PUBLIC_API_URL": "https://api.stockvision.com"
+      },
+      "cache_settings": {
+        "static_files": 31536000,
+        "html_files": 3600,
+        "api_responses": 300
+      }
+    },
+    {
+      "platform": "netlify",
+      "project_name": "stockvision-docs-backup",
+      "build_command": "npm run build:static",
+      "output_directory": "public",
+      "custom_domain": "docs-backup.stockvision.com",
+      "ssl_enabled": true,
+      "environment_variables": {
+        "NODE_ENV": "production",
+        "GATSBY_API_URL": "https://api.stockvision.com"
+      },
+      "cache_settings": {
+        "max_age": 86400,
+        "stale_while_revalidate": 3600
+      }
+    },
+    {
+      "platform": "aws_s3",
+      "project_name": "stockvision-docs-s3",
+      "output_directory": "build",
+      "custom_domain": "s3-docs.stockvision.com",
+      "ssl_enabled": true,
+      "cdn_provider": "aws_cloudfront",
+      "cache_settings": {
+        "default_ttl": 86400,
+        "max_ttl": 31536000,
+        "min_ttl": 0
+      }
+    },
+    {
+      "platform": "github_pages",
+      "project_name": "stockvision/docs",
+      "output_directory": "docs",
+      "custom_domain": "github-docs.stockvision.com",
+      "ssl_enabled": true
+    }
+  ],
+  "pages_metadata": [
+    {
+      "path": "/",
+      "title": "StockVision Documentation - Real-time Stock Market Analysis",
+      "description": "Complete documentation for StockVision, the AI-powered stock market analysis platform. Learn about APIs, features, and implementation guides.",
+      "og_title": "StockVision Documentation",
+      "og_description": "AI-powered stock market analysis and prediction platform documentation",
+      "og_image": "https://docs.stockvision.com/images/og-image.png",
+      "twitter_title": "StockVision Documentation",
+      "type": "website",
+      "priority": 1.0,
+      "changefreq": "weekly",
+      "last_modified": "2024-01-15T10:00:00Z"
+    },
+    {
+      "path": "/getting-started",
+      "title": "Getting Started - StockVision Documentation",
+      "description": "Quick start guide for StockVision. Learn how to set up and start using our stock market analysis platform.",
+      "og_title": "Getting Started with StockVision",
+      "og_description": "Quick start guide for the StockVision platform",
+      "type": "article",
+      "priority": 0.9,
+      "changefreq": "monthly",
+      "author": "StockVision Team"
+    },
+    {
+      "path": "/api/reference",
+      "title": "API Reference - StockVision Documentation",
+      "description": "Complete API reference for StockVision endpoints, authentication, and data formats.",
+      "og_title": "StockVision API Reference",
+      "og_description": "Comprehensive API documentation for developers",
+      "type": "article",
+      "priority": 0.8,
+      "changefreq": "weekly",
+      "author": "Development Team"
+    },
+    {
+      "path": "/mobile/setup",
+      "title": "Mobile App Setup - StockVision Documentation",
+      "description": "Set up and configure the StockVision mobile app for iOS and Android devices.",
+      "og_title": "StockVision Mobile Setup",
+      "og_description": "Mobile app configuration and setup guide",
+      "type": "article",
+      "priority": 0.7,
+      "changefreq": "monthly"
+    },
+    {
+      "path": "/web/dashboard",
+      "title": "Web Dashboard Guide - StockVision Documentation",
+      "description": "Learn how to use the StockVision web dashboard for comprehensive stock market analysis.",
+      "og_title": "StockVision Web Dashboard",
+      "og_description": "Web dashboard features and usage guide",
+      "type": "article",
+      "priority": 0.7,
+      "changefreq": "monthly"
+    },
+    {
+      "path": "/ml/predictions",
+      "title": "AI Predictions - StockVision Documentation",
+      "description": "Understand how StockVision's machine learning algorithms provide accurate stock price predictions.",
+      "og_title": "StockVision AI Predictions",
+      "og_description": "Machine learning powered stock predictions",
+      "type": "article",
+      "priority": 0.8,
+      "changefreq": "weekly"
+    },
+    {
+      "path": "/integrations/webhooks",
+      "title": "Webhooks Integration - StockVision Documentation",
+      "description": "Set up real-time webhooks to receive stock market data and alerts from StockVision.",
+      "og_title": "StockVision Webhooks",
+      "og_description": "Real-time webhook integration guide",
+      "type": "article",
+      "priority": 0.6,
+      "changefreq": "monthly"
+    },
+    {
+      "path": "/security/authentication",
+      "title": "Authentication & Security - StockVision Documentation",
+      "description": "Security best practices and authentication methods for StockVision platform access.",
+      "og_title": "StockVision Security Guide",
+      "og_description": "Authentication and security implementation",
+      "type": "article",
+      "priority": 0.6,
+      "changefreq": "monthly"
+    },
+    {
+      "path": "/troubleshooting",
+      "title": "Troubleshooting - StockVision Documentation",
+      "description": "Common issues and solutions for StockVision platform users and developers.",
+      "og_title": "StockVision Troubleshooting",
+      "og_description": "Common problems and their solutions",
+      "type": "article",
+      "priority": 0.5,
+      "changefreq": "monthly"
+    },
+    {
+      "path": "/changelog",
+      "title": "Changelog - StockVision Documentation",
+      "description": "Latest updates, features, and improvements to the StockVision platform.",
+      "og_title": "StockVision Changelog",
+      "og_description": "Platform updates and release notes",
+      "type": "article",
+      "priority": 0.4,
+      "changefreq": "weekly"
+    }
+  ],
+  "cdn_settings": {
+    "cloudflare": {
+      "email": "${CLOUDFLARE_EMAIL}",
+      "api_token": "${CLOUDFLARE_API_TOKEN}",
+      "zone_id": "${CLOUDFLARE_ZONE_ID}",
+      "cache_rules": {
+        "*.html": {
+          "cache_level": "standard",
+          "ttl": 3600
+        },
+        "*.css,*.js,*.png,*.jpg,*.svg": {
+          "cache_level": "aggressive", 
+          "ttl": 31536000
+        },
+        "/api/*": {
+          "cache_level": "bypass"
+        }
+      }
+    },
+    "aws_cloudfront": {
+      "access_key_id": "${AWS_ACCESS_KEY_ID}",
+      "secret_access_key": "${AWS_SECRET_ACCESS_KEY}",
+      "region": "us-east-1",
+      "price_class": "PriceClass_100",
+      "cache_behaviors": [
+        {
+          "path_pattern": "*.css",
+          "target_origin_id": "docs-origin",
+          "viewer_protocol_policy": "redirect-to-https",
+          "min_ttl": 31536000,
+          "default_ttl": 31536000,
+          "max_ttl": 31536000
+        },
+        {
+          "path_pattern": "*.js",
+          "target_origin_id": "docs-origin",
+          "viewer_protocol_policy": "redirect-to-https",
+          "min_ttl": 31536000,
+          "default_ttl": 31536000,
+          "max_ttl": 31536000
+        },
+        {
+          "path_pattern": "*.html",
+          "target_origin_id": "docs-origin",
+          "viewer_protocol_policy": "redirect-to-https",
+          "min_ttl": 0,
+          "default_ttl": 3600,
+          "max_ttl": 86400
+        }
+      ]
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "check_interval": 300,
+    "performance_budget": {
+      "lighthouse_score": 90,
+      "page_load_time": 2.0,
+      "first_contentful_paint": 1.0,
+      "largest_contentful_paint": 2.5,
+      "cumulative_layout_shift": 0.1,
+      "first_input_delay": 100
+    },
+    "uptime_checks": [
+      "https://docs.stockvision.com",
+      "https://docs.stockvision.com/api/reference",
+      "https://docs.stockvision.com/getting-started"
+    ],
+    "alerts": {
+      "email": "ops@stockvision.com",
+      "slack_webhook": "${SLACK_WEBHOOK_URL}",
+      "discord_webhook": "${DISCORD_WEBHOOK_URL}"
+    }
+  },
+  "seo": {
+    "sitemap_enabled": true,
+    "robots_txt_enabled": true,
+    "structured_data_enabled": true,
+    "open_graph_enabled": true,
+    "twitter_cards_enabled": true,
+    "canonical_urls_enabled": true,
+    "meta_optimization_enabled": true,
+    "disallowed_paths": [
+      "/admin/",
+      "/api/",
+      "/.well-known/",
+      "/temp/",
+      "/cache/"
+    ]
+  },
+  "build_optimization": {
+    "minify_html": true,
+    "minify_css": true,
+    "minify_js": true,
+    "compress_images": true,
+    "generate_webp": true,
+    "tree_shaking": true,
+    "code_splitting": true,
+    "service_worker": true,
+    "pwa_enabled": true
+  },
+  "security": {
+    "https_redirect": true,
+    "hsts_enabled": true,
+    "content_security_policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:",
+    "x_frame_options": "DENY",
+    "x_content_type_options": "nosniff",
+    "referrer_policy": "strict-origin-when-cross-origin"
+  },
+  "analytics": {
+    "google_analytics": "${GOOGLE_ANALYTICS_ID}",
+    "google_search_console": true,
+    "hotjar": "${HOTJAR_ID}",
+    "custom_events_enabled": true
+  }
+}

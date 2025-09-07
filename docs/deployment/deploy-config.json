@@ -1,0 +1,218 @@
+{
+  "environments": {
+    "development": {
+      "cdn": {
+        "provider": "local",
+        "outputDir": "./docs/dist",
+        "baseUrl": "http://localhost:3000/docs",
+        "caching": {
+          "ttl": 0,
+          "browserTTL": 0,
+          "edgeTTL": 0
+        }
+      }
+    },
+    "staging": {
+      "cdn": {
+        "provider": "aws-cloudfront",
+        "region": "us-east-1",
+        "bucket": "stockvision-docs-staging",
+        "domain": "docs-staging.stockvision.dev",
+        "distributionId": "${CLOUDFRONT_STAGING_DISTRIBUTION_ID}",
+        "caching": {
+          "ttl": 300,
+          "browserTTL": 300,
+          "edgeTTL": 300
+        },
+        "headers": {
+          "Cache-Control": "public, max-age=300",
+          "X-Content-Type-Options": "nosniff",
+          "X-Frame-Options": "DENY",
+          "X-XSS-Protection": "1; mode=block"
+        }
+      },
+      "deployment": {
+        "versioning": true,
+        "invalidateCache": true,
+        "compression": true,
+        "parallel": true,
+        "maxConcurrency": 5
+      }
+    },
+    "production": {
+      "cdn": {
+        "provider": "aws-cloudfront",
+        "region": "us-east-1",
+        "bucket": "stockvision-docs-production",
+        "domain": "docs.stockvision.dev",
+        "distributionId": "${CLOUDFRONT_PRODUCTION_DISTRIBUTION_ID}",
+        "caching": {
+          "ttl": 86400,
+          "browserTTL": 3600,
+          "edgeTTL": 86400
+        },
+        "headers": {
+          "Cache-Control": "public, max-age=3600",
+          "X-Content-Type-Options": "nosniff",
+          "X-Frame-Options": "DENY",
+          "X-XSS-Protection": "1; mode=block",
+          "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+          "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.stockvision.dev"
+        }
+      },
+      "deployment": {
+        "versioning": true,
+        "invalidateCache": true,
+        "compression": true,
+        "compressionLevel": 9,
+        "parallel": true,
+        "maxConcurrency": 10
+      },
+      "backup": {
+        "enabled": true,
+        "retention": 30,
+        "provider": "aws-s3",
+        "bucket": "stockvision-docs-backups"
+      }
+    }
+  },
+  "multiCDN": {
+    "enabled": true,
+    "providers": [
+      {
+        "name": "cloudflare",
+        "provider": "cloudflare",
+        "domain": "cf-docs.stockvision.dev",
+        "zoneId": "${CLOUDFLARE_ZONE_ID}",
+        "priority": 2
+      },
+      {
+        "name": "azure",
+        "provider": "azure-cdn",
+        "domain": "az-docs.stockvision.dev",
+        "resourceGroup": "stockvision-docs",
+        "priority": 3
+      },
+      {
+        "name": "gcp",
+        "provider": "gcp-cloud-storage",
+        "domain": "gcp-docs.stockvision.dev",
+        "bucket": "stockvision-docs-gcp",
+        "priority": 4
+      }
+    ]
+  },
+  "build": {
+    "outputDir": "./docs/dist",
+    "tempDir": "./docs/.tmp",
+    "commands": {
+      "build": "npm run build:docs",
+      "optimize": "npm run optimize:assets",
+      "validate": "npm run validate:docs"
+    },
+    "include": [
+      "**/*.html",
+      "**/*.css",
+      "**/*.js",
+      "**/*.json",
+      "**/*.svg",
+      "**/*.png",
+      "**/*.jpg",
+      "**/*.jpeg",
+      "**/*.gif",
+      "**/*.woff",
+      "**/*.woff2",
+      "**/*.ttf",
+      "**/*.pdf",
+      "sitemap.xml",
+      "robots.txt",
+      "manifest.json"
+    ],
+    "exclude": [
+      "node_modules/**",
+      ".git/**",
+      "*.log",
+      ".env*",
+      "*.tmp",
+      "*.cache",
+      ".DS_Store",
+      "Thumbs.db"
+    ]
+  },
+  "optimization": {
+    "images": {
+      "enabled": true,
+      "formats": ["webp", "avif"],
+      "quality": 85,
+      "progressive": true
+    },
+    "compression": {
+      "enabled": true,
+      "level": 9,
+      "threshold": 1024,
+      "algorithms": ["gzip", "brotli"]
+    },
+    "minification": {
+      "html": true,
+      "css": true,
+      "js": true,
+      "json": true
+    },
+    "bundling": {
+      "enabled": true,
+      "splitChunks": true,
+      "treeshaking": true
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "healthChecks": [
+      "https://docs.stockvision.dev/",
+      "https://docs.stockvision.dev/api/",
+      "https://docs.stockvision.dev/search/",
+      "https://docs.stockvision.dev/sitemap.xml"
+    ],
+    "performance": {
+      "lighthouse": true,
+      "webvitals": true,
+      "thresholds": {
+        "fcp": 1.5,
+        "lcp": 2.5,
+        "cls": 0.1,
+        "fid": 100
+      }
+    },
+    "alerts": {
+      "slack": "${SLACK_WEBHOOK_URL}",
+      "email": "devops@stockvision.dev"
+    }
+  },
+  "security": {
+    "ssl": {
+      "enabled": true,
+      "hsts": true,
+      "redirect": true
+    },
+    "headers": {
+      "xFrameOptions": "DENY",
+      "xContentTypeOptions": "nosniff",
+      "xXssProtection": "1; mode=block",
+      "referrerPolicy": "strict-origin-when-cross-origin"
+    },
+    "csp": {
+      "enabled": true,
+      "reportOnly": false,
+      "directives": {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", "'unsafe-inline'"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "img-src": ["'self'", "data:", "https:"],
+        "connect-src": ["'self'", "https://api.stockvision.dev"],
+        "font-src": ["'self'"],
+        "object-src": ["'none'"],
+        "base-uri": ["'self'"],
+        "form-action": ["'self'"]
+      }
+    }
+  }
+}

@@ -7,6 +7,7 @@ export interface SearchDocument {
   id: string
   title: string
   content: string
+  excerpt: string
   url: string
   type: 'documentation' | 'api' | 'tutorial' | 'example'
   category: string
@@ -45,6 +46,11 @@ export interface SearchQuery {
     page: number
     size: number
   }
+}
+
+export interface FacetData {
+  value: string
+  count: number
 }
 
 export interface SearchIndex {
@@ -225,10 +231,10 @@ export class DocumentSearchEngine {
    * Get facets for filters
    */
   getFacets(): {
-    types: Array<{ value: string; count: number }>
-    categories: Array<{ value: string; count: number }>
-    tags: Array<{ value: string; count: number }>
-    languages: Array<{ value: string; count: number }>
+    types: FacetData[]
+    categories: FacetData[]
+    tags: FacetData[]
+    languages: FacetData[]
   } {
     const facets = {
       types: new Map<string, number>(),

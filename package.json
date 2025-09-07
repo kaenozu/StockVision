@@ -1,10 +1,89 @@
 {
+  "name": "stockvision",
+  "version": "1.0.0",
+  "description": "Real-time stock market analysis and predictions platform",
+  "main": "index.js",
   "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "python -m uvicorn src.main:app --reload --port 8080",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:mobile": "cd mobile && npm start",
+    "build": "npm run build:frontend && npm run build:mobile",
+    "build:frontend": "cd frontend && npm run build",
+    "build:mobile": "cd mobile && npm run build:web",
+    "test": "npm run test:frontend && npm run test:mobile",
+    "test:frontend": "cd frontend && npm test",
+    "test:mobile": "cd mobile && npm test",
+    "lint": "npm run lint:frontend && npm run lint:mobile",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:mobile": "cd mobile && npm run lint",
+    "type-check": "npm run type-check:frontend && npm run type-check:mobile",
+    "type-check:frontend": "cd frontend && npm run type-check",
+    "type-check:mobile": "cd mobile && npm run type-check",
+    "storybook": "storybook dev -p 6006",
+    "storybook:build": "storybook build -o storybook-static",
+    "storybook:serve": "npx serve storybook-static -p 6007",
+    "chromatic": "chromatic --project-token=$CHROMATIC_PROJECT_TOKEN",
+    "quality:check": "python docs/quality/quality_manager.py",
+    "quality:web": "python docs/quality/web_interface.py",
+    "docs:quality": "cd docs/quality && python -m uvicorn web_interface:app --reload --port 8001",
     "spell-check": "cspell \"**/*.md\"",
     "link-check": "hyperlink docs/**/*.md"
   },
+  "keywords": [
+    "stock",
+    "finance",
+    "real-time",
+    "prediction",
+    "machine-learning",
+    "react",
+    "react-native",
+    "typescript"
+  ],
+  "author": "StockVision Team",
+  "license": "MIT",
   "devDependencies": {
+    "@storybook/addon-a11y": "^7.6.3",
+    "@storybook/addon-backgrounds": "^7.6.3",
+    "@storybook/addon-controls": "^7.6.3",
+    "@storybook/addon-design-tokens": "^0.2.7",
+    "@storybook/addon-docs": "^7.6.3",
+    "@storybook/addon-essentials": "^7.6.3",
+    "@storybook/addon-interactions": "^7.6.3",
+    "@storybook/addon-links": "^7.6.3",
+    "@storybook/addon-measure": "^7.6.3",
+    "@storybook/addon-onboarding": "^1.0.10",
+    "@storybook/addon-outline": "^7.6.3",
+    "@storybook/addon-storysource": "^7.6.3",
+    "@storybook/addon-toolbars": "^7.6.3",
+    "@storybook/addon-viewport": "^7.6.3",
+    "@storybook/blocks": "^7.6.3",
+    "@storybook/react": "^7.6.3",
+    "@storybook/react-vite": "^7.6.3",
+    "@storybook/test": "^7.6.3",
+    "@chromatic-com/storybook": "^1.9.0",
+    "chromatic": "^10.1.0",
+    "concurrently": "^8.2.2",
+    "storybook": "^7.6.3",
+    "storybook-dark-mode": "^3.0.3",
+    "vite": "^5.0.8",
     "cspell": "^9.2.1",
     "hyperlink": "^5.0.4"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stockvision/stockvision.git"
+  },
+  "bugs": {
+    "url": "https://github.com/stockvision/stockvision/issues"
+  },
+  "homepage": "https://stockvision.com",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
   }
 }

@@ -5,9 +5,10 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { DocumentSearchEngine, SearchQuery, SearchResult, SearchDocument } from './search-engine'
+import { ElasticsearchSearchEngine } from './elasticsearch-search-engine'
 
 interface SearchUIProps {
-  searchEngine: DocumentSearchEngine
+  searchEngine: DocumentSearchEngine | ElasticsearchSearchEngine
   onDocumentSelect?: (document: SearchDocument) => void
   placeholder?: string
   className?: string
@@ -44,7 +45,19 @@ export const SearchUI: React.FC<SearchUIProps> = ({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   // Get facets for filters
-  const facets = useMemo(() => searchEngine.getFacets(), [searchEngine])
+  const [facets, setFacets] = useState({ types: [], categories: [], tags: [], languages: [] })
+  
+  useEffect(() => {
+    const loadFacets = async () => {
+      try {
+        const facetData = await searchEngine.getFacets()
+        setFacets(facetData)
+      } catch (error) {
+        console.error('Failed to load facets:', error)
+      }
+    }
+    loadFacets()
+  }, [searchEngine])
 
   // Debounced search function
   const debouncedSearch = useCallback(
@@ -76,7 +89,7 @@ export const SearchUI: React.FC<SearchUIProps> = ({
           }
         }
 
-        const searchResults = searchEngine.search(searchParams)
+        const searchResults = await searchEngine.search(searchParams)
         setResults(searchResults)
       } catch (error) {
         console.error('Search error:', error)
@@ -95,8 +108,12 @@ export const SearchUI: React.FC<SearchUIProps> = ({
     
     if (value.length >= 2) {
       // Get suggestions
-      const newSuggestions = searchEngine.getSuggestions(value)
-      setSuggestions(newSuggestions)
+      searchEngine.getSuggestions(value)
+        .then(newSuggestions => setSuggestions(newSuggestions))
+        .catch(error => {
+          console.error('Failed to get suggestions:', error)
+          setSuggestions([])
+        })
       
       // Perform search
       debouncedSearch(value, filters)

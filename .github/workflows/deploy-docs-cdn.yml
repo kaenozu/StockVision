@@ -1,0 +1,395 @@
+name: Deploy Documentation to CDN
+
+on:
+  push:
+    branches: [main, develop]
+    paths: ['docs/**', 'frontend/docs/**']
+  pull_request:
+    branches: [main]
+    paths: ['docs/**', 'frontend/docs/**']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      invalidate_cache:
+        description: 'Invalidate CDN cache'
+        required: false
+        default: true
+        type: boolean
+      force_rebuild:
+        description: 'Force rebuild all documentation'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  DOCS_DIR: './docs'
+  BUILD_DIR: './docs/dist'
+
+jobs:
+  # Build documentation
+  build:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    outputs:
+      build-version: ${{ steps.version.outputs.version }}
+      files-count: ${{ steps.build.outputs.files-count }}
+      build-size: ${{ steps.build.outputs.build-size }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd frontend && npm ci
+
+      - name: Generate build version
+        id: version
+        run: |
+          VERSION="v$(date +'%Y%m%d')-$(git rev-parse --short HEAD)"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "BUILD_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Build documentation
+        id: build
+        run: |
+          # Build main documentation
+          npm run build:docs
+          
+          # Build frontend documentation
+          cd frontend
+          npm run build:docs
+          cd ..
+          
+          # Copy frontend docs to main docs directory
+          cp -r frontend/docs/dist/* ${{ env.BUILD_DIR }}/
+          
+          # Generate statistics
+          FILES_COUNT=$(find ${{ env.BUILD_DIR }} -type f | wc -l)
+          BUILD_SIZE=$(du -sh ${{ env.BUILD_DIR }} | cut -f1)
+          
+          echo "files-count=$FILES_COUNT" >> $GITHUB_OUTPUT
+          echo "build-size=$BUILD_SIZE" >> $GITHUB_OUTPUT
+          
+          echo "📊 Build completed:"
+          echo "   Files: $FILES_COUNT"
+          echo "   Size: $BUILD_SIZE"
+
+      - name: Optimize assets
+        run: |
+          # Install optimization tools
+          npm install -g imagemin-cli svgo
+          
+          # Optimize images
+          find ${{ env.BUILD_DIR }} -name "*.png" -exec imagemin {} --plugin=imagemin-pngquant --out-dir={} \;
+          find ${{ env.BUILD_DIR }} -name "*.jpg" -exec imagemin {} --plugin=imagemin-mozjpeg --out-dir={} \;
+          find ${{ env.BUILD_DIR }} -name "*.svg" -exec svgo {} \;
+          
+          # Generate gzip versions for pre-compression
+          find ${{ env.BUILD_DIR }} -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.json" \) \
+            -exec gzip -9 -c {} \; -exec mv {}.gz {}.gz \;
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-build-${{ steps.version.outputs.version }}
+          path: ${{ env.BUILD_DIR }}
+          retention-days: 7
+
+  # Deploy to staging
+  deploy-staging:
+    name: Deploy to Staging CDN
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop' || github.event.inputs.environment == 'staging'
+    environment:
+      name: staging
+      url: https://docs-staging.stockvision.dev
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation-build-${{ needs.build.outputs.build-version }}
+          path: ${{ env.BUILD_DIR }}
+
+      - name: Deploy to CloudFront (Staging)
+        run: |
+          node -e "
+          const { CDNDeployer } = require('./docs/deployment/cdn-deployer.ts');
+          
+          const deployer = new CDNDeployer({
+            provider: 'aws-cloudfront',
+            accessKey: process.env.AWS_ACCESS_KEY_ID,
+            secretKey: process.env.AWS_SECRET_ACCESS_KEY,
+            region: 'us-east-1',
+            bucket: 'stockvision-docs-staging',
+            distributionId: process.env.CLOUDFRONT_STAGING_DISTRIBUTION_ID,
+            domain: 'docs-staging.stockvision.dev',
+            caching: {
+              ttl: 300,
+              browserTTL: 300,
+              edgeTTL: 300
+            }
+          }, {
+            outputDir: '${{ env.BUILD_DIR }}',
+            versioning: true,
+            invalidateCache: ${{ github.event.inputs.invalidate_cache || 'true' }},
+            parallel: true,
+            maxConcurrency: 5
+          });
+          
+          deployer.deploy().then(result => {
+            console.log('Staging deployment result:', result);
+            if (!result.success) process.exit(1);
+          }).catch(error => {
+            console.error('Staging deployment failed:', error);
+            process.exit(1);
+          });
+          "
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          CLOUDFRONT_STAGING_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_STAGING_DISTRIBUTION_ID }}
+
+      - name: Run deployment tests
+        run: |
+          # Test staging deployment
+          sleep 30 # Wait for CDN propagation
+          
+          curl -f https://docs-staging.stockvision.dev/ || exit 1
+          curl -f https://docs-staging.stockvision.dev/api/ || exit 1
+          
+          echo "✅ Staging deployment tests passed"
+
+  # Deploy to production
+  deploy-production:
+    name: Deploy to Production CDN
+    runs-on: ubuntu-latest
+    needs: [build, deploy-staging]
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'production'
+    environment:
+      name: production
+      url: https://docs.stockvision.dev
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation-build-${{ needs.build.outputs.build-version }}
+          path: ${{ env.BUILD_DIR }}
+
+      - name: Deploy to CloudFront (Production)
+        run: |
+          node -e "
+          const { CDNDeployer } = require('./docs/deployment/cdn-deployer.ts');
+          
+          const deployer = new CDNDeployer({
+            provider: 'aws-cloudfront',
+            accessKey: process.env.AWS_ACCESS_KEY_ID,
+            secretKey: process.env.AWS_SECRET_ACCESS_KEY,
+            region: 'us-east-1',
+            bucket: 'stockvision-docs-production',
+            distributionId: process.env.CLOUDFRONT_PRODUCTION_DISTRIBUTION_ID,
+            domain: 'docs.stockvision.dev',
+            caching: {
+              ttl: 86400,
+              browserTTL: 3600,
+              edgeTTL: 86400
+            },
+            headers: {
+              'Cache-Control': 'public, max-age=3600',
+              'X-Content-Type-Options': 'nosniff',
+              'X-Frame-Options': 'DENY',
+              'X-XSS-Protection': '1; mode=block',
+              'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+            }
+          }, {
+            outputDir: '${{ env.BUILD_DIR }}',
+            versioning: true,
+            invalidateCache: ${{ github.event.inputs.invalidate_cache || 'true' }},
+            parallel: true,
+            maxConcurrency: 10
+          });
+          
+          deployer.deploy().then(result => {
+            console.log('Production deployment result:', result);
+            if (!result.success) process.exit(1);
+          }).catch(error => {
+            console.error('Production deployment failed:', error);
+            process.exit(1);
+          });
+          "
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          CLOUDFRONT_PRODUCTION_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_PRODUCTION_DISTRIBUTION_ID }}
+
+      - name: Run production tests
+        run: |
+          # Test production deployment
+          sleep 60 # Wait for CDN propagation
+          
+          curl -f https://docs.stockvision.dev/ || exit 1
+          curl -f https://docs.stockvision.dev/api/ || exit 1
+          curl -f https://docs.stockvision.dev/search/ || exit 1
+          
+          echo "✅ Production deployment tests passed"
+
+      - name: Update search index
+        run: |
+          # Trigger search index update
+          curl -X POST "https://api.stockvision.dev/docs/search/reindex" \
+            -H "Authorization: Bearer ${{ secrets.API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "source": "https://docs.stockvision.dev",
+              "version": "${{ needs.build.outputs.build-version }}"
+            }'
+
+  # Deploy to multiple CDNs
+  deploy-multi-cdn:
+    name: Deploy to Multiple CDNs
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event.inputs.environment == 'production' && github.ref == 'refs/heads/main'
+    
+    strategy:
+      matrix:
+        cdn: [cloudflare, azure]
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation-build-${{ needs.build.outputs.build-version }}
+          path: ${{ env.BUILD_DIR }}
+
+      - name: Deploy to ${{ matrix.cdn }}
+        run: |
+          case "${{ matrix.cdn }}" in
+            cloudflare)
+              PROVIDER="cloudflare"
+              ACCESS_KEY="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+              ZONE_ID="${{ secrets.CLOUDFLARE_ZONE_ID }}"
+              DOMAIN="cf-docs.stockvision.dev"
+              ;;
+            azure)
+              PROVIDER="azure-cdn"
+              ACCESS_KEY="${{ secrets.AZURE_ACCESS_KEY }}"
+              BUCKET="stockvision-docs"
+              DOMAIN="az-docs.stockvision.dev"
+              ;;
+          esac
+          
+          node -e "
+          const { CDNDeployer } = require('./docs/deployment/cdn-deployer.ts');
+          
+          const config = {
+            provider: '$PROVIDER',
+            accessKey: '$ACCESS_KEY',
+            zoneId: '$ZONE_ID',
+            bucket: '$BUCKET',
+            domain: '$DOMAIN'
+          };
+          
+          const deployer = new CDNDeployer(config, {
+            outputDir: '${{ env.BUILD_DIR }}',
+            versioning: false,
+            invalidateCache: true,
+            parallel: true
+          });
+          
+          deployer.deploy().then(result => {
+            console.log('${{ matrix.cdn }} deployment result:', result);
+            if (!result.success) process.exit(1);
+          }).catch(error => {
+            console.error('${{ matrix.cdn }} deployment failed:', error);
+            process.exit(1);
+          });
+          "
+
+  # Notify deployment status
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [build, deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+      - name: Notify success
+        if: needs.deploy-production.result == 'success'
+        run: |
+          curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "text": "📚 Documentation deployed successfully!",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "Version", "value": "${{ needs.build.outputs.build-version }}", "short": true},
+                  {"title": "Files", "value": "${{ needs.build.outputs.files-count }}", "short": true},
+                  {"title": "Size", "value": "${{ needs.build.outputs.build-size }}", "short": true},
+                  {"title": "URL", "value": "https://docs.stockvision.dev", "short": false}
+                ]
+              }]
+            }'
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "text": "❌ Documentation deployment failed!",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  {"title": "Workflow", "value": "${{ github.workflow }}", "short": true},
+                  {"title": "Commit", "value": "${{ github.sha }}", "short": true},
+                  {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
+                  {"title": "URL", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+                ]
+              }]
+            }'
