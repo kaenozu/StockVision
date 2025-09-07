@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings, should_use_real_data, get_yahoo_finance_config, get_cache_config
 from ..stock_api.data_models import StockData, CurrentPrice, PriceHistoryData
+from ..stock_api.yahoo_client import YahooFinanceClient
 from ..models.stock import Stock
 from ..models.price_history import PriceHistory
 from .cache import CacheManager
