@@ -3,6 +3,8 @@
  * Handles multilingual support for documentation
  */
 
+import { TranslationServiceFactory, TranslationProvider, TranslationServiceConfigs } from './services/translation-service-factory'
+
 export interface Translation {
   key: string
   value: string
@@ -35,16 +37,37 @@ export interface TranslationConfig {
   translationsPath: string
   outputPath: string
   autoTranslate: boolean
-  translationService?: 'google' | 'deepl' | 'azure'
+  translationService?: TranslationProvider
+  serviceConfigs?: TranslationServiceConfigs
+  preferredProvider?: TranslationProvider
+  fallbackProviders?: TranslationProvider[]
 }
 
 export class TranslationManager {
   private translations = new Map<string, Map<string, Translation>>()
   private documents = new Map<string, DocumentTranslation>()
   private config: TranslationConfig
+  private translationServiceFactory: TranslationServiceFactory | null = null
 
   constructor(config: TranslationConfig) {
     this.config = config
+    this.initializeTranslationServices()
+  }
+
+  /**
+   * Initialize translation services
+   */
+  private initializeTranslationServices(): void {
+    if (this.config.serviceConfigs && Object.keys(this.config.serviceConfigs).length > 0) {
+      this.translationServiceFactory = new TranslationServiceFactory(
+        this.config.serviceConfigs,
+        {
+          preferredProvider: this.config.preferredProvider || this.config.translationService,
+          fallbackOrder: this.config.fallbackProviders || ['google', 'deepl', 'azure'],
+          autoFallback: true
+        }
+      )
+    }
   }
 
   /**
@@ -271,17 +294,25 @@ export class TranslationManager {
     fromLang: string,
     toLang: string
   ): Promise<string> {
-    // Placeholder for actual translation service integration
-    // This would integrate with Google Translate, DeepL, or Azure Translator
+    if (this.translationServiceFactory) {
+      try {
+        const { result } = await this.translationServiceFactory.translateWithFallback(
+          text,
+          toLang,
+          { sourceLanguage: fromLang }
+        )
+        return result.translatedText
+      } catch (error) {
+        console.warn('Translation service failed:', error.message)
+      }
+    }
     
+    // Legacy fallback methods
     if (this.config.translationService === 'google') {
-      // Google Translate integration
       return await this.googleTranslate(text, fromLang, toLang)
     } else if (this.config.translationService === 'deepl') {
-      // DeepL integration
       return await this.deeplTranslate(text, fromLang, toLang)
     } else if (this.config.translationService === 'azure') {
-      // Azure Translator integration
       return await this.azureTranslate(text, fromLang, toLang)
     }
     
@@ -411,6 +442,117 @@ export class TranslationManager {
     // Would use a library like 'xlsx' or 'exceljs'
     console.log('XLSX export not implemented yet')
   }
+
+  /**
+   * Get translation service factory
+   */
+  getTranslationServiceFactory(): TranslationServiceFactory | null {
+    return this.translationServiceFactory
+  }
+
+  /**
+   * Update translation service configuration
+   */
+  updateServiceConfig(provider: TranslationProvider, config: any): void {
+    if (this.translationServiceFactory) {
+      this.translationServiceFactory.updateServiceConfig(provider, config)
+    } else {
+      throw new Error('Translation services not initialized')
+    }
+  }
+
+  /**
+   * Batch translate using configured services
+   */
+  async batchTranslateTexts(
+    texts: string[],
+    fromLanguage: string,
+    toLanguage: string
+  ): Promise<string[]> {
+    if (this.translationServiceFactory) {
+      try {
+        const { results } = await this.translationServiceFactory.batchTranslateWithFallback(
+          texts,
+          toLanguage,
+          { sourceLanguage: fromLanguage }
+        )
+        return results.map(r => r.translatedText)
+      } catch (error) {
+        console.warn('Batch translation failed:', error.message)
+      }
+    }
+
+    // Fallback to individual translations
+    const translations: string[] = []
+    for (const text of texts) {
+      try {
+        const translated = await this.translateText(text, fromLanguage, toLanguage)
+        translations.push(translated)
+      } catch (error) {
+        console.warn(`Failed to translate "${text}":`, error)
+        translations.push(`[FAILED] ${text}`)
+      }
+    }
+    
+    return translations
+  }
+
+  /**
+   * Detect language of text
+   */
+  async detectLanguage(text: string): Promise<{ language: string; confidence: number }> {
+    if (this.translationServiceFactory) {
+      try {
+        const { result } = await this.translationServiceFactory.detectLanguageWithFallback(text)
+        return result
+      } catch (error) {
+        console.warn('Language detection failed:', error.message)
+      }
+    }
+
+    // Fallback to simple heuristic
+    return { language: 'unknown', confidence: 0.0 }
+  }
+
+  /**
+   * Get health status of translation services
+   */
+  async getServicesHealthStatus(): Promise<Record<TranslationProvider, boolean>> {
+    if (this.translationServiceFactory) {
+      return await this.translationServiceFactory.healthCheck()
+    }
+    return {} as Record<TranslationProvider, boolean>
+  }
+
+  /**
+   * Get usage statistics for translation services
+   */
+  async getUsageStatistics(): Promise<Record<TranslationProvider, any>> {
+    if (this.translationServiceFactory) {
+      return await this.translationServiceFactory.getUsageStatistics()
+    }
+    return {} as Record<TranslationProvider, any>
+  }
+
+  /**
+   * Get all supported languages from all services
+   */
+  async getAllServiceSupportedLanguages(): Promise<Record<TranslationProvider, string[]>> {
+    if (this.translationServiceFactory) {
+      return await this.translationServiceFactory.getAllSupportedLanguages()
+    }
+    return {} as Record<TranslationProvider, string[]>
+  }
+
+  /**
+   * Get common supported languages across all configured services
+   */
+  async getCommonSupportedLanguages(): Promise<string[]> {
+    if (this.translationServiceFactory) {
+      return await this.translationServiceFactory.getCommonSupportedLanguages()
+    }
+    return this.config.supportedLanguages
+  }
 }
 
 // Default configuration
@@ -421,5 +563,13 @@ export const defaultTranslationConfig: TranslationConfig = {
   translationsPath: './docs/i18n/translations',
   outputPath: './docs/dist/i18n',
   autoTranslate: false,
-  translationService: 'google'
+  translationService: 'google',
+  preferredProvider: 'google',
+  fallbackProviders: ['google', 'deepl', 'azure'],
+  serviceConfigs: {
+    // Service configurations should be provided by the user
+    // google: { apiKey: 'your-key', projectId: 'your-project' },
+    // deepl: { apiKey: 'your-key' },
+    // azure: { subscriptionKey: 'your-key', region: 'your-region' }
+  }
 }
