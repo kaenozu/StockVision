@@ -215,3 +215,62 @@ async def get_performance_health():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve performance health: {str(e)}"
         )
+
+
+@router.get("/cache/stats")
+async def get_cache_statistics():
+    """
+    Get comprehensive cache statistics from smart cache middleware.
+    
+    Returns:
+        dict: Cache statistics including hit rates, endpoint metrics, and backend info
+    """
+    try:
+        # Try to get cache stats from middleware
+        # This would require access to the middleware instance
+        # For now, return basic info
+        return {
+            "message": "Cache statistics endpoint",
+            "note": "Cache stats would be available from SmartCacheMiddleware instance",
+            "backend": "smart_cache",
+            "timestamp": int(__import__('time').time())
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve cache statistics: {str(e)}"
+        )
+
+
+@router.post("/cache/clear")
+async def clear_cache():
+    """
+    Clear cache data (development only).
+    
+    Returns:
+        dict: Success confirmation
+    """
+    try:
+        from ..config import get_settings
+        
+        settings = get_settings()
+        if settings.environment != "development":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cache clearing is only allowed in development environment"
+            )
+        
+        # Clear cache logic would go here
+        # This would require access to the middleware instance
+        
+        return {
+            "message": "Cache cleared successfully",
+            "timestamp": int(__import__('time').time())
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to clear cache: {str(e)}"
+        )

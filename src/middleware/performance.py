@@ -401,11 +401,32 @@ def setup_performance_middleware(app: FastAPI):
     
     # 1. Cache Control Middleware (最内層 - アプリに最も近い)
     if middleware_config.cache_control_enabled:
-        app.add_middleware(CacheControlMiddleware)
+        # Import the new smart cache middleware
+        from .smart_cache import SmartCacheMiddleware
+        import os
+        
+        # Use smart cache with optional Redis support
+        redis_url = os.getenv('REDIS_URL')
+        app.add_middleware(
+            SmartCacheMiddleware,
+            redis_url=redis_url,
+            enable_redis=bool(redis_url),
+            stats_interval=300,  # 5 minutes
+            excluded_paths={'/health', '/live', '/status', '/metrics', '/docs', '/redoc', '/openapi.json'}
+        )
     
     # 2. Response Compression Middleware (中間層)  
     if middleware_config.response_compression_enabled:
-        app.add_middleware(ResponseCompressionMiddleware)
+        # Import the new advanced compression middleware
+        from .compression import SmartCompressionMiddleware
+        
+        # Use smart compression with adaptive levels and Brotli support
+        app.add_middleware(
+            SmartCompressionMiddleware,
+            minimum_size=500,
+            maximum_size=50 * 1024 * 1024,  # 50MB
+            exclude_paths={'/health', '/metrics', '/live', '/static'}
+        )
     
     # 3. Performance Metrics Middleware (最外層 - 全体測定)
     if middleware_config.performance_metrics_enabled:

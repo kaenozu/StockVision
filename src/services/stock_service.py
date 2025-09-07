@@ -1,189 +1,35 @@
 """
-Hybrid stock service that provides both mock and real Yahoo Finance data.
+Refactored hybrid stock service using provider pattern.
 
-This service intelligently chooses between mock data and real Yahoo Finance API
-based on configuration settings and query parameters, with comprehensive caching support.
+This service uses a provider-based architecture to manage different data sources
+with intelligent fallback mechanisms and comprehensive caching support.
 """
 import asyncio
 import logging
-import time
-from datetime import date, datetime, timedelta
-from decimal import Decimal
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from ..config import get_settings, should_use_real_data, get_yahoo_finance_config, get_cache_config
-from ..stock_api.yahoo_client import YahooFinanceClient, YahooFinanceError, StockNotFoundError
-from ..stock_api.data_models import StockData, CurrentPrice, PriceHistoryData, PriceHistoryItem
+from ..stock_api.data_models import StockData, CurrentPrice, PriceHistoryData
 from ..models.stock import Stock
 from ..models.price_history import PriceHistory
-from ..utils.cache_key_generator import generate_stock_cache_key
+from .cache import CacheManager
+from .data_providers import (
+    BaseDataProvider, DataProviderError, DataNotFoundError,
+    YahooFinanceProvider, MockDataProvider, DatabaseProvider
+)
 
 logger = logging.getLogger(__name__)
 
 
-class CacheManager:
-    """Simple in-memory cache for Yahoo Finance API responses."""
-    
-    def __init__(self):
-        self._cache: Dict[str, Dict[str, Any]] = {}
-        self._lock = asyncio.Lock()
-    
-    def _get_cache_key(self, operation: str, stock_code: str, **kwargs) -> str:
-        """Generate robust cache key for operation using improved key generation."""
-        # Use the new robust cache key generator
-        return generate_stock_cache_key(operation, stock_code, **kwargs)
-    
-    async def get(self, operation: str, stock_code: str, ttl: int = 300, **kwargs) -> Optional[Any]:
-        """Get cached data if available and not expired."""
-        async with self._lock:
-            cache_key = self._get_cache_key(operation, stock_code, **kwargs)
-            
-            if cache_key not in self._cache:
-                return None
-            
-            cached_data = self._cache[cache_key]
-            
-            # Check if expired
-            if time.time() - cached_data["timestamp"] > ttl:
-                del self._cache[cache_key]
-                return None
-            
-            logger.debug(f"Cache hit for {cache_key}")
-            return cached_data["data"]
-    
-    async def set(self, operation: str, stock_code: str, data: Any, **kwargs) -> None:
-        """Cache data with timestamp."""
-        async with self._lock:
-            cache_key = self._get_cache_key(operation, stock_code, **kwargs)
-            
-            self._cache[cache_key] = {
-                "data": data,
-                "timestamp": time.time()
-            }
-            logger.debug(f"Cached data for {cache_key}")
-    
-    async def clear(self) -> None:
-        """Clear all cached data."""
-        async with self._lock:
-            self._cache.clear()
-            logger.info("Cache cleared")
-    
-    def get_stats(self) -> Dict[str, Any]:
-        """Get cache statistics."""
-        return {
-            "entries": len(self._cache),
-            "size_bytes": len(str(self._cache).encode('utf-8'))
-        }
+# Move CacheManager to cache_manager.py
 
 
-class MockDataGenerator:
-    """Generator for realistic mock stock data."""
+# Move MockDataGenerator to mock_provider.py
     
-    @staticmethod
-    def generate_stock_data(stock_code: str) -> StockData:
-        """Generate deterministic mock stock data based on stock code."""
-        import hashlib
-        
-        # Use stock code as seed for consistent data generation
-        seed = int(hashlib.md5(stock_code.encode()).hexdigest()[:8], 16)
-        import random
-        random.seed(seed)
-        
-        # Generate consistent base price based on stock code
-        known_stocks = {
-            '7203': 2800,  # Toyota
-            '6758': 12500, # Sony
-            '9984': 8200,  # SoftBank
-            '7974': 24000, # Nintendo
-            '6503': 1650,  # Mitsubishi Electric
-            '8001': 4800,  # Itochu
-        }
-        
-        base_price = Decimal(str(known_stocks.get(stock_code, 2500)))
-        # Add small variation
-        current_price = base_price + Decimal(str(random.uniform(-100, 100)))
-        previous_close = base_price + Decimal(str(random.uniform(-50, 50)))
-        price_change = current_price - previous_close
-        price_change_pct = (price_change / previous_close) * 100 if previous_close > 0 else Decimal('0')
-        
-        # Reset random seed to avoid affecting other operations
-        import time
-        random.seed(int(time.time()))
-        
-        return StockData(
-            stock_code=stock_code,
-            company_name=f"Mock Company {stock_code}",
-            current_price=current_price,
-            previous_close=previous_close,
-            price_change=price_change,
-            price_change_pct=price_change_pct,
-            volume=random.randint(100000, 10000000),
-            market_cap=current_price * Decimal(str(random.randint(1000000, 100000000))),
-            day_high=current_price * Decimal('1.05'),
-            day_low=current_price * Decimal('0.95'),
-            year_high=current_price * Decimal('1.3'),
-            year_low=current_price * Decimal('0.7'),
-            avg_volume=random.randint(500000, 5000000),
-            pe_ratio=Decimal(str(random.uniform(10, 30))) if random.choice([True, False]) else None,
-            dividend_yield=Decimal(str(random.uniform(1, 5))) if random.choice([True, False]) else None,
-            last_updated=datetime.utcnow()
-        )
     
-    @staticmethod
-    def generate_current_price(stock_code: str) -> CurrentPrice:
-        """Generate mock current price data."""
-        stock_data = MockDataGenerator.generate_stock_data(stock_code)
-        return stock_data.to_current_price()
     
-    @staticmethod
-    def generate_price_history(stock_code: str, days: int = 30) -> PriceHistoryData:
-        """Generate mock price history data."""
-        import random
-        
-        history_items = []
-        base_price = 1000.0
-        current_date = date.today()
-        
-        for i in range(days):
-            daily_change = random.uniform(-5, 5)  # -5% to +5%
-            open_price = Decimal(str(base_price * (1 + daily_change / 100)))
-            high_price = open_price * Decimal(str(1 + random.uniform(0, 0.05)))
-            low_price = open_price * Decimal(str(1 - random.uniform(0, 0.05)))
-            close_price = Decimal(str(random.uniform(float(low_price), float(high_price))))
-            volume = random.randint(50000, 5000000)
-            
-            history_item = PriceHistoryItem(
-                stock_code=stock_code,
-                date=current_date.strftime("%Y-%m-%d"),
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume
-            )
-            
-            history_items.append(history_item)
-            current_date = current_date - timedelta(days=1)
-            base_price = float(close_price)  # Next day's base price
-        
-        # Sort by date descending (most recent first)
-        from datetime import datetime as _dt
-        def _to_dt(v):
-            if isinstance(v, _dt):
-                return v
-            if isinstance(v, date):
-                return _dt(v.year, v.month, v.day)
-            return _dt.strptime(v, "%Y-%m-%d")
-
-        history_items.sort(key=lambda x: _to_dt(x.date), reverse=True)
-
-        return PriceHistoryData(
-            stock_code=stock_code,
-            history=history_items,
-            start_date=min(_to_dt(item.date).date() for item in history_items),
-            end_date=max(_to_dt(item.date).date() for item in history_items)
-        )
 
 
 class HybridStockService:
