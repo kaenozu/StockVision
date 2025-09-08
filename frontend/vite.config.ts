@@ -11,12 +11,25 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
   },
   server: {
-    port: 3000,
+    port: 3002,
     host: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('[vite] proxy error:', err)
+          })
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('[vite] Proxying request:', req.method, req.url, '-> http://localhost:8000' + req.url)
+          })
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('[vite] Received response:', proxyRes.statusCode, 'for', req.url)
+          })
+        }
       }
     }
   },

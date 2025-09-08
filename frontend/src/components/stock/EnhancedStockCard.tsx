@@ -1,207 +1,215 @@
-import React from 'react'
-import { StockData, CurrentPriceResponse } from '../../types/stock'
-import { useAccessibility, useFocusManagement } from '../../contexts/AccessibilityContext'
+import React, { useState, useCallback, useEffect } from 'react'
+import { useTheme } from '../../contexts/ThemeContext'
 import { useResponsive } from '../../contexts/ResponsiveContext'
-import { formatPrice } from '../../utils/formatters'
-import { useWatchlistItem } from '../../hooks/useWatchlist'
+import { useAccessibility } from '../../contexts/AccessibilityContext'
+import PriceDisplay from '../enhanced/PriceDisplay'
+import VisualIndicator from '../enhanced/VisualIndicator'
+import LoadingState from '../enhanced/LoadingState'
 
-// Import our new UI components
-import VisualIndicator, { TrendDirection, PriceChangeIndicator, TrendIndicator } from '../UI/VisualIndicator'
-import PriceDisplay, { PriceWithChange, CompactPriceDisplay } from '../UI/PriceDisplay'
-import LoadingState, { CardSkeleton, OverlayLoader } from '../UI/LoadingState'
-import Button from '../ui/Button'
+interface StockData {
+  stock_code: string
+  company_name: string
+  current_price: number
+  previous_close?: number
+  price_change?: number
+  percentage_change?: number
+  volume?: number
+  market_cap?: number
+  updated_at?: string
+}
 
-export interface EnhancedStockCardProps {
-  stockCode?: string
-  name?: string
-  price?: number
-  previousPrice?: number
-  priceChange?: number
-  priceChangePercent?: number
-  marketStatus?: string
+interface EnhancedStockCardProps {
+  stock?: StockData | null
   loading?: boolean
-  error?: string | null
-  onRefresh?: () => void
-  onViewDetails?: () => void
-  onClick?: () => void
-  
-  // Legacy support
-  stockData?: StockData | null
-  currentPrice?: CurrentPriceResponse | null
-  
-  // UI customization
-  variant?: 'default' | 'compact' | 'detailed'
-  showWatchlistControls?: boolean
-  responsive?: boolean
-  
-  // Accessibility
+  error?: string
+  size?: 'compact' | 'normal' | 'expanded'
+  onToggleFavorite?: (stockCode: string, isFavorite: boolean) => void
+  isFavorite?: boolean
+  onClick?: (stock: StockData) => void
+  onRetry?: () => void
+  className?: string
+  dateFormatter?: (date: string) => string
   accessibility?: {
     ariaLabel?: string
     keyboardNavigation?: boolean
-    announceChanges?: boolean
   }
-  
-  className?: string
   'data-testid'?: string
 }
 
 export const EnhancedStockCard: React.FC<EnhancedStockCardProps> = ({
-  stockCode: propStockCode,
-  name: propName,
-  price: propPrice,
-  previousPrice: propPreviousPrice,
-  priceChange: propPriceChange,
-  priceChangePercent: propPriceChangePercent,
-  marketStatus: propMarketStatus,
+  stock,
   loading = false,
-  error = null,
-  onRefresh,
-  onViewDetails,
+  error,
+  size = 'normal',
+  onToggleFavorite,
+  isFavorite = false,
   onClick,
-  
-  // Legacy support
-  stockData,
-  currentPrice,
-  
-  // UI customization
-  variant = 'default',
-  showWatchlistControls = true,
-  responsive = true,
-  
-  // Accessibility
-  accessibility = {},
-  
+  onRetry,
   className = '',
-  'data-testid': testId,
-  ...props
+  dateFormatter,
+  accessibility,
+  'data-testid': testId = 'stock-card'
 }) => {
-  const { announce, reducedMotion } = useAccessibility()
-  const { breakpoint, isMobile } = useResponsive()
-  const { keyboardNavigation } = useFocusManagement()
+  const { actualTheme } = useTheme()
+  const { isMobile, isTablet, isDesktop } = useResponsive()
+  const { 
+    focusMode, 
+    reducedMotion, 
+    highContrast,
+    keyboardNavigation,
+    announce
+  } = useAccessibility()
 
-  // Data resolution - prefer props over legacy data
-  const displayData = React.useMemo(() => {
-    // Use props first, then currentPrice, then stockData
-    const resolvedStockCode = propStockCode || currentPrice?.stock_code || stockData?.stock_code || ''
-    const resolvedName = propName || stockData?.company_name || ''
-    const resolvedPrice = propPrice ?? currentPrice?.current_price ?? stockData?.current_price ?? 0
-    const resolvedPreviousPrice = propPreviousPrice ?? currentPrice?.previous_close ?? stockData?.previous_close
-    const resolvedPriceChange = propPriceChange ?? currentPrice?.price_change ?? stockData?.price_change
-    const resolvedPriceChangePercent = propPriceChangePercent ?? currentPrice?.price_change_pct ?? stockData?.price_change_pct
-    const resolvedMarketStatus = propMarketStatus || currentPrice?.market_status
+  const [isHovered, setIsHovered] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
+  const [localFavorite, setLocalFavorite] = useState(isFavorite)
 
-    return {
-      stockCode: resolvedStockCode,
-      name: resolvedName,
-      price: resolvedPrice,
-      previousPrice: resolvedPreviousPrice,
-      priceChange: resolvedPriceChange,
-      priceChangePercent: resolvedPriceChangePercent,
-      marketStatus: resolvedMarketStatus
-    }
-  }, [propStockCode, propName, propPrice, propPreviousPrice, propPriceChange, propPriceChangePercent, propMarketStatus, currentPrice, stockData])
+  useEffect(() => {
+    setLocalFavorite(isFavorite)
+  }, [isFavorite])
 
-  const watchlistItem = useWatchlistItem(displayData.stockCode)
+  // Determine responsive layout
+  const layout = isMobile ? 'vertical' : 'horizontal'
+  const cardSize = isMobile ? 'compact' : size
 
-  // Calculate trend for visual indicator
-  const trend: TrendDirection = React.useMemo(() => {
-    if (displayData.priceChange === undefined || displayData.priceChange === null) return 'neutral'
-    if (displayData.priceChange > 0) return 'up'
-    if (displayData.priceChange < 0) return 'down'
-    return 'neutral'
-  }, [displayData.priceChange])
-
-  // Responsive size adjustments
-  const getResponsiveProps = () => {
-    if (!responsive) return {}
-    
-    switch (breakpoint) {
-      case 'xs':
-      case 'sm':
-        return {
-          priceSize: 'md' as const,
-          indicatorSize: 'sm' as const,
-          showDetails: false,
-          compactLayout: true
-        }
-      case 'md':
-        return {
-          priceSize: 'lg' as const,
-          indicatorSize: 'md' as const,
-          showDetails: variant !== 'compact',
-          compactLayout: false
-        }
-      default:
-        return {
-          priceSize: 'lg' as const,
-          indicatorSize: 'md' as const,
-          showDetails: true,
-          compactLayout: false
-        }
-    }
+  // Size-based classes
+  const sizeClasses = {
+    compact: 'p-3 text-sm',
+    normal: isDesktop ? 'p-6' : isTablet ? 'p-4' : 'p-3',
+    expanded: 'p-8'
   }
 
-  const responsiveProps = getResponsiveProps()
+  // Theme classes
+  const themeClasses = actualTheme === 'dark'
+    ? 'dark:bg-secondary-800 dark:text-white dark:border-secondary-700'
+    : 'bg-white text-secondary-900 border-secondary-200'
 
-  // Accessibility label generation
-  const getAccessibilityLabel = () => {
-    if (accessibility.ariaLabel) return accessibility.ariaLabel
-    
-    const changeText = trend === 'up' ? '上昇' : trend === 'down' ? '下落' : '変化なし'
-    const priceText = displayData.price ? `${displayData.price}円` : ''
-    const changeAmount = displayData.priceChange ? `${Math.abs(displayData.priceChange)}円` : ''
-    const changePercent = displayData.priceChangePercent ? `${Math.abs(displayData.priceChangePercent).toFixed(2)}パーセント` : ''
-    
-    return `${displayData.name} ${displayData.stockCode} 現在価格${priceText} ${changeText}${changeAmount ? ` ${changeAmount}` : ''}${changePercent ? ` ${changePercent}` : ''}`
-  }
+  // High contrast classes
+  const contrastClasses = highContrast
+    ? 'high-contrast border-2'
+    : 'border'
 
-  // Handle keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!accessibility.keyboardNavigation) return
-    
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      if (onClick) {
-        onClick()
-      } else if (onViewDetails) {
-        onViewDetails()
+  // Focus classes
+  const focusClasses = focusMode || keyboardNavigation
+    ? 'focus-mode focus:outline-focus focus:ring-2'
+    : ''
+
+  // Animation classes
+  const animationClasses = !reducedMotion
+    ? 'transition-all duration-300 hover:shadow-medium hover:scale-102'
+    : 'motion-reduce:transition-none motion-reduce:transform-none'
+
+  // Handle keyboard interaction
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!accessibility?.keyboardNavigation) return
+
+    switch (e.key) {
+      case 'Enter':
+      case ' ':
+        e.preventDefault()
+        if (onClick && stock) {
+          onClick(stock)
+          announce(`Selected ${stock.company_name}`)
+        }
+        break
+      case 'f':
+      case 'F':
+        e.preventDefault()
+        if (onToggleFavorite && stock) {
+          const newFavoriteState = !localFavorite
+          setLocalFavorite(newFavoriteState)
+          onToggleFavorite(stock.stock_code, newFavoriteState)
+          announce(newFavoriteState ? 'Added to favorites' : 'Removed from favorites')
+        }
+        break
+      case 'ArrowDown': {
+        e.preventDefault()
+        // Navigate to next card
+        const nextElement = (e.currentTarget as HTMLElement).nextElementSibling as HTMLElement
+        if (nextElement) nextElement.focus()
+        break
+      }
+      case 'ArrowUp': {
+        e.preventDefault()
+        // Navigate to previous card
+        const prevElement = (e.currentTarget as HTMLElement).previousElementSibling as HTMLElement
+        if (prevElement) prevElement.focus()
+        break
+      }
+      case 'Home': {
+        e.preventDefault()
+        // Navigate to first card
+        const parent = (e.currentTarget as HTMLElement).parentElement
+        const firstChild = parent?.firstElementChild as HTMLElement
+        if (firstChild) firstChild.focus()
+        break
+      }
+      case 'End': {
+        e.preventDefault()
+        // Navigate to last card
+        const parentEnd = (e.currentTarget as HTMLElement).parentElement
+        const lastChild = parentEnd?.lastElementChild as HTMLElement
+        if (lastChild) lastChild.focus()
+        break
       }
     }
-    
-    if (e.key === 'r' && e.ctrlKey && onRefresh) {
-      e.preventDefault()
-      onRefresh()
-    }
+  }, [stock, onClick, onToggleFavorite, localFavorite, announce, accessibility])
+
+  // Format market cap
+  const formatMarketCap = (value: number) => {
+    if (value >= 1e12) return `¥${(value / 1e12).toFixed(1)}T`
+    if (value >= 1e9) return `¥${(value / 1e9).toFixed(1)}B`
+    if (value >= 1e6) return `¥${(value / 1e6).toFixed(1)}M`
+    return `¥${value.toLocaleString()}`
   }
 
-  // Announce price changes
-  React.useEffect(() => {
-    if (accessibility.announceChanges && displayData.priceChange !== undefined && displayData.priceChange !== 0) {
-      const changeText = trend === 'up' ? '上昇' : '下落'
-      announce(`${displayData.name}の価格が${changeText}しました`, 'polite')
-    }
-  }, [displayData.priceChange, trend, displayData.name, accessibility.announceChanges, announce])
+  // Format volume
+  const formatVolume = (value: number) => {
+    if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`
+    if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`
+    if (value >= 1e3) return `${(value / 1e3).toFixed(1)}K`
+    return value.toLocaleString()
+  }
 
-  // Container classes
-  const containerClasses = [
-    'enhanced-stock-card',
-    'bg-white dark:bg-gray-800',
-    'border border-gray-200 dark:border-gray-700',
-    'rounded-lg shadow-sm hover:shadow-md',
-    'transition-all duration-200 ease-in-out',
-    onClick ? 'cursor-pointer' : '',
-    keyboardNavigation ? 'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2' : '',
-    !reducedMotion ? 'hover:scale-[1.02]' : '',
-    responsive && isMobile ? 'mx-2' : '',
-    variant === 'compact' ? 'p-3' : responsiveProps.compactLayout ? 'p-4' : 'p-6',
-    className
-  ].filter(Boolean).join(' ')
+  // Format date
+  const formatDate = (date: string) => {
+    if (dateFormatter) return dateFormatter(date)
+    
+    const dateObj = new Date(date)
+    const now = new Date()
+    const diffMs = now.getTime() - dateObj.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`
+    
+    return dateObj.toLocaleString('ja-JP', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // Generate ARIA label
+  const getAriaLabel = () => {
+    if (accessibility?.ariaLabel) return accessibility.ariaLabel
+    if (!stock) return 'Stock card'
+    
+    const priceChange = stock.price_change
+    const changeText = priceChange && priceChange > 0 ? 'up' :
+                      priceChange && priceChange < 0 ? 'down' :
+                      'unchanged'
+    
+    return `${stock.company_name}, stock code ${stock.stock_code}, current price ${stock.current_price} yen, ${changeText} ${Math.abs(priceChange || 0)} yen`
+  }
 
   // Loading state
   if (loading) {
     return (
-      <div className={containerClasses} data-testid={testId}>
-        <CardSkeleton />
+      <div className={`rounded-lg ${sizeClasses[cardSize]} ${themeClasses} ${className}`}>
+        <LoadingState type="skeleton" variant="stock-card" />
       </div>
     )
   }
@@ -209,221 +217,179 @@ export const EnhancedStockCard: React.FC<EnhancedStockCardProps> = ({
   // Error state
   if (error) {
     return (
-      <div className={containerClasses} data-testid={testId}>
-        <LoadingState
-          error={error}
-          retry={onRefresh}
-          size="md"
-          className="py-8"
-        />
+      <div 
+        className={`rounded-lg ${sizeClasses[cardSize]} ${themeClasses} ${className}`}
+        data-testid="error-state"
+      >
+        <div className="text-loss-600 dark:text-loss-400">{error}</div>
+        {onRetry && (
+          <button
+            className="mt-2 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+            onClick={onRetry}
+            data-testid="retry-button"
+          >
+            Retry
+          </button>
+        )}
       </div>
     )
   }
 
   // No data state
-  if (!displayData.stockCode) {
+  if (!stock) {
     return (
-      <div className={containerClasses} data-testid={testId}>
-        <div className="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400">
-          <svg className="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <p>株式データがありません</p>
-        </div>
+      <div 
+        className={`rounded-lg ${sizeClasses[cardSize]} ${themeClasses} ${className}`}
+        data-testid={testId}
+      >
+        <div className="text-secondary-500">No data available</div>
       </div>
     )
   }
 
-  const handleWatchlistToggle = async () => {
-    try {
-      await watchlistItem.toggleWatchlist()
-    } catch (error) {
-      console.error('Failed to toggle watchlist:', error)
-    }
-  }
+  const indicatorType = stock.price_change && stock.price_change > 0 ? 'gain' :
+                       stock.price_change && stock.price_change < 0 ? 'loss' :
+                       'neutral'
 
   return (
-    <div
-      className={containerClasses}
-      onClick={onClick}
-      onKeyDown={handleKeyDown}
-      tabIndex={accessibility.keyboardNavigation ? 0 : undefined}
-      role={onClick ? 'button' : 'article'}
-      aria-label={getAccessibilityLabel()}
+    <article
+      className={`
+        rounded-lg shadow-sm cursor-pointer
+        ${layout === 'vertical' ? 'flex-col' : 'flex-row'} flex
+        ${sizeClasses[cardSize]}
+        ${themeClasses}
+        ${contrastClasses}
+        ${focusClasses}
+        ${animationClasses}
+        ${isHovered ? 'shadow-medium scale-102' : ''}
+        ${isFocused ? 'ring-2 ring-primary-500' : ''}
+        ${className}
+      `}
       data-testid={testId}
-      {...props}
+      role="article"
+      aria-label={getAriaLabel()}
+      tabIndex={accessibility?.keyboardNavigation || focusMode ? 0 : -1}
+      onClick={() => onClick && onClick(stock)}
+      onKeyDown={handleKeyDown}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
     >
-      <OverlayLoader loading={watchlistItem.isAdding || watchlistItem.isRemoving}>
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className={`font-bold text-gray-900 dark:text-gray-100 ${
-                variant === 'compact' || responsiveProps.compactLayout ? 'text-lg' : 'text-xl'
-              }`}>
-                {displayData.stockCode}
-              </h3>
-              
-              {/* Market Status */}
-              {displayData.marketStatus && (
-                <TrendIndicator
-                  trend={displayData.marketStatus === 'open' ? 'up' : 'neutral'}
-                  label={`市場状態: ${displayData.marketStatus}`}
-                  size="sm"
-                />
-              )}
-              
-              {/* Main Trend Indicator */}
-              <VisualIndicator
-                trend={trend}
-                value={displayData.price}
-                previousValue={displayData.previousPrice}
-                size={responsiveProps.indicatorSize}
-                variant="subtle"
-                showPercentage={false}
-                animate={!reducedMotion}
-              />
-            </div>
-            
-            <p className={`text-gray-600 dark:text-gray-400 truncate ${
-              variant === 'compact' || responsiveProps.compactLayout ? 'text-sm' : 'text-base'
-            }`}>
-              {displayData.name}
+      {/* Header */}
+      <div className={`flex-1 ${layout === 'vertical' ? 'mb-3' : ''}`}>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h3 className="font-semibold text-lg">
+              {stock.company_name}
+            </h3>
+            <p className="text-secondary-600 dark:text-secondary-400 text-sm">
+              {stock.stock_code}
             </p>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            {onRefresh && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onRefresh(); }}
-                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                aria-label="データを更新"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-            )}
-            
-            {showWatchlistControls && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleWatchlistToggle(); }}
-                className={`p-2 rounded-md transition-colors ${
-                  watchlistItem.isInWatchlist
-                    ? 'text-yellow-500 hover:text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-                aria-label={watchlistItem.isInWatchlist ? 'ウォッチリストから削除' : 'ウォッチリストに追加'}
-              >
-                <svg className="w-4 h-4" fill={watchlistItem.isInWatchlist ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Price Display */}
-        <div className="space-y-3">
-          {displayData.previousPrice !== undefined ? (
-            <PriceWithChange
-              price={displayData.price}
-              previousPrice={displayData.previousPrice}
-              currency="JPY"
-              size={responsiveProps.priceSize}
-              showPercent={true}
-            />
-          ) : (
-            <PriceDisplay
-              price={displayData.price}
-              currency="JPY"
-              size={responsiveProps.priceSize}
-            />
-          )}
-
-          {/* Price Change Indicator */}
-          {displayData.previousPrice !== undefined && (
-            <div className="flex items-center gap-3">
-              <PriceChangeIndicator
-                currentPrice={displayData.price}
-                previousPrice={displayData.previousPrice}
-                showPercentage={true}
-                size={responsiveProps.indicatorSize}
-              />
-              
-              {!responsiveProps.compactLayout && displayData.previousPrice && (
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  前日終値: {formatPrice(displayData.previousPrice)}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Watchlist Information */}
-        {showWatchlistControls && watchlistItem.isInWatchlist && watchlistItem.item && responsiveProps.showDetails && (
-          <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-            <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-              {watchlistItem.item.alert_price && (
-                <div className="flex justify-between items-center">
-                  <span>アラート価格:</span>
-                  <CompactPriceDisplay
-                    price={watchlistItem.item.alert_price}
-                    currency="JPY"
-                  />
-                </div>
-              )}
-              {watchlistItem.item.notes && (
-                <div>
-                  <span className="text-gray-500 dark:text-gray-500">メモ: </span>
-                  <span>{watchlistItem.item.notes}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Error State */}
-        {watchlistItem.hasError && (
-          <div className="pt-3 mt-3 border-t border-red-200 dark:border-red-800">
-            <div className="text-sm text-red-600 dark:text-red-400 flex items-center justify-between">
-              <span>ウォッチリストの操作に失敗しました</span>
-              <button 
-                onClick={(e) => { e.stopPropagation(); watchlistItem.clearError(); }}
-                className="text-red-500 hover:text-red-700 underline hover:no-underline"
-              >
-                閉じる
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Action Button */}
-        {!responsiveProps.compactLayout && onViewDetails && (
-          <div className="mt-6">
-            <Button
-              variant="outline"
-              fullWidth
-              onClick={(e) => { e.stopPropagation(); onViewDetails(); }}
-              className="text-sm"
+          
+          {/* Favorite button */}
+          {onToggleFavorite && (
+            <button
+              className={`
+                ${isMobile ? 'h-12 w-12' : 'h-8 w-8'}
+                flex items-center justify-center
+                rounded-full hover:bg-secondary-100 dark:hover:bg-secondary-700
+                transition-colors
+                ${localFavorite ? 'text-yellow-500' : 'text-secondary-400'}
+              `}
+              onClick={(e) => {
+                e.stopPropagation()
+                const newState = !localFavorite
+                setLocalFavorite(newState)
+                onToggleFavorite(stock.stock_code, newState)
+              }}
+              aria-label={localFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              data-testid="favorite-button"
             >
-              詳細を見る
-            </Button>
-          </div>
-        )}
-      </OverlayLoader>
-    </div>
+              {localFavorite ? '★' : '☆'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Price Display */}
+      <div className={`${layout === 'vertical' ? 'mb-3' : 'ml-auto'}`}>
+        <PriceDisplay
+          currentPrice={stock.current_price}
+          previousPrice={stock.previous_close}
+          currency="JPY"
+          size={isMobile ? 'sm' : 'md'}
+          layout={layout}
+          showPercentage={!isMobile || cardSize !== 'compact'}
+        />
+      </div>
+
+      {/* Additional Info */}
+      {isDesktop && cardSize !== 'compact' && (
+        <div 
+          className="flex items-center gap-4 text-sm text-secondary-600 dark:text-secondary-400 mt-3"
+          data-testid="stock-additional-info"
+        >
+          {stock.volume !== undefined && (
+            <div className="flex items-center gap-1" data-testid="volume-indicator">
+              <span className="font-medium">Vol:</span>
+              <span>{formatVolume(stock.volume)}</span>
+            </div>
+          )}
+          
+          {stock.market_cap !== undefined && (
+            <div className="flex items-center gap-1" data-testid="market-cap">
+              <span className="font-medium">Cap:</span>
+              <span>{formatMarketCap(stock.market_cap)}</span>
+            </div>
+          )}
+          
+          {stock.updated_at && (
+            <div 
+              className="ml-auto text-xs"
+              aria-label={`Updated ${formatDate(stock.updated_at)}`}
+              data-testid="updated-time"
+            >
+              {formatDate(stock.updated_at)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mobile volume indicator */}
+      {isMobile && stock.volume !== undefined && (
+        <div 
+          className="text-xs text-secondary-500 dark:text-secondary-400 mt-2"
+          data-testid="volume-indicator"
+        >
+          Vol: {formatVolume(stock.volume)}
+        </div>
+      )}
+
+      {/* Visual indicator for price change */}
+      {cardSize === 'compact' && (
+        <VisualIndicator
+          type={indicatorType}
+          size="sm"
+          variant="arrow"
+          data-testid="visual-indicator"
+        />
+      )}
+    </article>
   )
 }
 
-// Preset components
-export const CompactEnhancedStockCard: React.FC<Omit<EnhancedStockCardProps, 'variant'>> = (props) => {
-  return <EnhancedStockCard {...props} variant="compact" />
+// Also export as StockCard for compatibility
+export const StockCard = EnhancedStockCard
+
+// Export compact and detailed versions for DemoPage
+export const CompactEnhancedStockCard: React.FC<EnhancedStockCardProps> = (props) => {
+  return <EnhancedStockCard {...props} size="compact" />
 }
 
-export const DetailedEnhancedStockCard: React.FC<Omit<EnhancedStockCardProps, 'variant'>> = (props) => {
-  return <EnhancedStockCard {...props} variant="detailed" />
+export const DetailedEnhancedStockCard: React.FC<EnhancedStockCardProps> = (props) => {
+  return <EnhancedStockCard {...props} size="expanded" />
 }
 
 export default EnhancedStockCard

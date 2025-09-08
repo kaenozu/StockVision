@@ -14,9 +14,10 @@ import StockCard from '../components/stock/StockCard'
 import PriceChart from '../components/stock/PriceChart'
 import { TechnicalChart } from '../components/stock/TechnicalChart'
 import MLPredictionCard from '../components/ml/MLPredictionCard'
-import Button, { IconButton } from '../components/ui/Button'
-import LoadingSpinner from '../components/ui/LoadingSpinner'
-import ErrorMessage from '../components/ui/ErrorMessage'
+import TradingRecommendation from '../components/trading/TradingRecommendation'
+import Button, { IconButton } from '../components/UI/Button'
+import LoadingSpinner from '../components/UI/LoadingSpinner'
+import ErrorMessage from '../components/UI/ErrorMessage'
 import { ChartConfig, ChartTimeframe } from '../types/stock'
 import { formatPrice, formatTimestamp } from '../utils/formatters'
 import { useTheme } from '../contexts/ThemeContext'
@@ -208,7 +209,7 @@ export function StockDetailPage() {
       {stockInfo.isReady && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Stock Card */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
             <StockCard
               stockData={stockInfo.stockData}
               currentPrice={stockInfo.currentPrice}
@@ -227,6 +228,14 @@ export function StockDetailPage() {
                 }}
               />
             </div>
+
+            {/* Trading Recommendation */}
+            {stockInfo.currentPrice && (
+              <TradingRecommendation
+                stockCode={stockCode}
+                currentPrice={stockInfo.currentPrice.price}
+              />
+            )}
 
             {/* Additional Info */}
             <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">

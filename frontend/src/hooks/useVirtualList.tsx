@@ -1,5 +1,5 @@
-/* eslint-disable */
-import { useEffect, useState, useMemo } from 'react'
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import React, { useEffect, useState, useMemo } from 'react'
 
 interface VirtualListOptions {
   itemHeight: number

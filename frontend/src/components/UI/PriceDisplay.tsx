@@ -41,7 +41,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
   const { isMobile } = useResponsive()
 
   // Currency formatting configurations
-  const currencyConfig = {
+  const currencyConfig = React.useMemo(() => ({
     JPY: {
       symbol: '¥',
       locale: 'ja-JP',
@@ -63,7 +63,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }
-  }
+  }), [])
 
   // Size configurations
   const sizeConfig = {
@@ -111,7 +111,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
       const formattedValue = value.toFixed(config.maximumFractionDigits)
       return showCurrency ? `${config.symbol}${formattedValue}` : formattedValue
     }
-  }, [currency, showCurrency]) // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currency, showCurrency, currencyConfig])
 
   // Calculate price change
   const priceChange = React.useMemo(() => {

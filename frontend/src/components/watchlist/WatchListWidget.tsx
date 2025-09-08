@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { stockApi } from '../../services/stockApi'
 import { useTheme } from '../../contexts/ThemeContext'
 
-import { useToastActions } from '../ui/Toast'
-import { Skeleton } from '../ui/Skeleton'
+import { useToastActions } from '../../hooks/useToastActions'
+import { Skeleton } from '../UI/Skeleton'
 
 interface WatchListItem {
   id: number

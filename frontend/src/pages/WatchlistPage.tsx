@@ -11,16 +11,21 @@ import { useWatchlist } from '../hooks/useWatchlist'
 import { useCurrentPrice } from '../hooks/useStock'
 import { WatchlistItem } from '../types/stock'
 import { formatPrice, formatPriceChange, formatPercentageChange, formatTimestamp } from '../utils/formatters'
-import Button, { IconButton } from '../components/ui/Button'
-import LoadingSpinner, { LoadingSkeleton } from '../components/ui/LoadingSpinner'
-import { EmptyStateMessage, InlineErrorMessage } from '../components/ui/ErrorMessage'
+import Button, { IconButton } from '../components/UI/Button'
+import LoadingSpinner, { LoadingSkeleton } from '../components/UI/LoadingSpinner'
+import { EmptyStateMessage, InlineErrorMessage } from '../components/UI/ErrorMessage'
 import StockSearch from '../components/stock/StockSearch'
+import { EditWatchlistItemModal } from '../components/watchlist/EditWatchlistItemModal'
 
 export function WatchlistPage() {
   const navigate = useNavigate()
   const watchlist = useWatchlist()
   const [showAddForm, setShowAddForm] = useState(false)
   const [addLoading, setAddLoading] = useState(false)
+  
+  // Edit modal state
+  const [editingItem, setEditingItem] = useState<WatchlistItem | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleAddToWatchlist = async (stockCode: string) => {
     setAddLoading(true)
@@ -44,6 +49,39 @@ export function WatchlistPage() {
 
   const handleStockClick = (stockCode: string) => {
     navigate(`/stock/${stockCode}`)
+  }
+  
+  const handleEditItemClick = (item: WatchlistItem) => {
+    setEditingItem(item)
+  }
+  
+  const handleCloseEditModal = () => {
+    setEditingItem(null)
+  }
+  
+  const handleSaveEditItem = async (
+    stockCode: string, 
+    alertPriceHigh: number | null, 
+    alertPriceLow: number | null,
+    notes: string | null
+  ) => {
+    setIsSaving(true)
+    try {
+      // Update the item in the watchlist
+      // Since there's no direct update API, we'll remove and re-add
+      await watchlist.removeFromWatchlist(stockCode)
+      await watchlist.addToWatchlist({ 
+        stock_code: stockCode, 
+        alert_price_high: alertPriceHigh,
+        alert_price_low: alertPriceLow,
+        notes 
+      })
+    } catch (error) {
+      console.error('Failed to update watchlist item:', error)
+      throw error
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (watchlist.isLoading) {
@@ -220,6 +258,7 @@ export function WatchlistPage() {
                       item={item}
                       onStockClick={handleStockClick}
                       onRemove={handleRemoveFromWatchlist}
+                      onEdit={handleEditItemClick}
                     />
                   ))}
                 </tbody>
@@ -235,10 +274,22 @@ export function WatchlistPage() {
                 item={item}
                 onStockClick={handleStockClick}
                 onRemove={handleRemoveFromWatchlist}
+                onEdit={handleEditItemClick}
               />
             ))}
           </div>
         </div>
+      )}
+
+      {/* Edit Watchlist Item Modal */}
+      {editingItem && (
+        <EditWatchlistItemModal
+          item={editingItem}
+          isOpen={!!editingItem}
+          onClose={handleCloseEditModal}
+          onSave={handleSaveEditItem}
+          isSaving={isSaving}
+        />
       )}
     </div>
   )
@@ -250,11 +301,13 @@ export function WatchlistPage() {
 function WatchlistTableRow({
   item,
   onStockClick,
-  onRemove
+  onRemove,
+  onEdit
 }: {
   item: WatchlistItem
   onStockClick: (stockCode: string) => void
   onRemove: (stockCode: string) => void
+  onEdit: (item: WatchlistItem) => void
 }) {
   const currentPrice = useCurrentPrice(item.stock_code, false)
 
@@ -301,14 +354,23 @@ function WatchlistTableRow({
       </td>
       
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {item.alert_price ? (
-          <div className="flex items-center">
-            <span className="text-yellow-600 mr-1">🚨</span>
-            {formatPrice(item.alert_price)}
-          </div>
-        ) : (
-          <span className="text-gray-400">—</span>
-        )}
+        <div className="flex flex-col">
+          {item.alert_price_high !== null && (
+            <div className="flex items-center text-green-600">
+              <span className="mr-1">⬆️</span>
+              {formatPrice(item.alert_price_high)}
+            </div>
+          )}
+          {item.alert_price_low !== null && (
+            <div className="flex items-center text-red-600">
+              <span className="mr-1">⬇️</span>
+              {formatPrice(item.alert_price_low)}
+            </div>
+          )}
+          {item.alert_price_high === null && item.alert_price_low === null && (
+            <span className="text-gray-400">—</span>
+          )}
+        </div>
       </td>
       
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -316,17 +378,30 @@ function WatchlistTableRow({
       </td>
       
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-        <IconButton
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation()
-            onRemove(item.stock_code)
-          }}
-          tooltip="削除"
-        >
-          🗑️
-        </IconButton>
+        <div className="flex items-center justify-end space-x-2">
+          <IconButton
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(item)
+            }}
+            tooltip="編集"
+          >
+            ✏️
+          </IconButton>
+          <IconButton
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemove(item.stock_code)
+            }}
+            tooltip="削除"
+          >
+            🗑️
+          </IconButton>
+        </div>
       </td>
     </tr>
   )
@@ -338,11 +413,13 @@ function WatchlistTableRow({
 function WatchlistCard({
   item,
   onStockClick,
-  onRemove
+  onRemove,
+  onEdit
 }: {
   item: WatchlistItem
   onStockClick: (stockCode: string) => void
   onRemove: (stockCode: string) => void
+  onEdit: (item: WatchlistItem) => void
 }) {
   const currentPrice = useCurrentPrice(item.stock_code, false)
 
@@ -355,7 +432,7 @@ function WatchlistCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
             <h3 className="font-medium text-gray-900">{item.stock_code}</h3>
-            {item.alert_price && (
+            {(item.alert_price_high !== null || item.alert_price_low !== null) && (
               <span className="text-yellow-600 text-sm">🚨</span>
             )}
           </div>
@@ -381,6 +458,22 @@ function WatchlistCard({
             <div className="text-gray-400">価格データなし</div>
           )}
 
+          {/* Alert Prices */}
+          <div className="flex flex-wrap gap-2 mt-2">
+            {item.alert_price_high !== null && (
+              <div className="flex items-center text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                <span className="mr-1">⬆️</span>
+                {formatPrice(item.alert_price_high)}
+              </div>
+            )}
+            {item.alert_price_low !== null && (
+              <div className="flex items-center text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                <span className="mr-1">⬇️</span>
+                {formatPrice(item.alert_price_low)}
+              </div>
+            )}
+          </div>
+
           {item.notes && (
             <p className="text-xs text-gray-500 mt-2 line-clamp-2">
               📝 {item.notes}
@@ -388,17 +481,30 @@ function WatchlistCard({
           )}
         </div>
         
-        <IconButton
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation()
-            onRemove(item.stock_code)
-          }}
-          tooltip="削除"
-        >
-          🗑️
-        </IconButton>
+        <div className="flex flex-col space-y-1">
+          <IconButton
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(item)
+            }}
+            tooltip="編集"
+          >
+            ✏️
+          </IconButton>
+          <IconButton
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemove(item.stock_code)
+            }}
+            tooltip="削除"
+          >
+            🗑️
+          </IconButton>
+        </div>
       </div>
     </div>
   )

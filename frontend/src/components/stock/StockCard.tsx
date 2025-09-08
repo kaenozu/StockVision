@@ -5,13 +5,14 @@
  * market status, and action buttons. Supports loading and error states.
  */
 
-import React from 'react'
+import React, { memo, useMemo, useCallback } from 'react'
 import { StockData, CurrentPriceResponse } from '../../types/stock'
 import { formatPrice, formatPriceChange, formatPercentageChange, formatMarketStatus } from '../../utils/formatters'
 import { useWatchlistItem } from '../../hooks/useWatchlist'
-import Button, { IconButton } from '../ui/Button'
-import LoadingSpinner from '../ui/LoadingSpinner'
-import ErrorMessage from '../ui/ErrorMessage'
+import Button, { IconButton } from '../UI/Button'
+import LoadingSpinner from '../UI/LoadingSpinner'
+import ErrorMessage from '../UI/ErrorMessage'
+import { getErrorMessage } from '../../utils/apiErrorHandler'
 
 interface StockCardProps {
   stockData?: StockData | null
@@ -41,6 +42,7 @@ export function StockCard({
 
   // Use current price data if available, otherwise fall back to stock data
   const displayData = currentPrice || stockData
+  const companyName = stockData?.company_name || ''
   const marketStatus = currentPrice?.market_status
 
   if (loading) {
@@ -57,7 +59,7 @@ export function StockCard({
     return (
       <div className={`stock-card ${className}`}>
         <ErrorMessage 
-          error={error} 
+          error={getErrorMessage(error)} 
           onRetry={onRefresh}
           retryText="再読み込み"
         />
@@ -106,7 +108,7 @@ export function StockCard({
             )}
           </div>
           <p className={`text-gray-600 truncate ${compact ? 'text-sm' : 'text-base'}`}>
-            {displayData.company_name}
+            {companyName}
           </p>
         </div>
 
@@ -159,7 +161,7 @@ export function StockCard({
             </span>
           </div>
           
-          {!compact && (
+          {!compact && typeof displayData.previous_close === 'number' && (
             <div className="text-sm text-gray-500">
               前日比: {formatPrice(displayData.previous_close)}
             </div>
@@ -170,11 +172,16 @@ export function StockCard({
         {showWatchlistControls && watchlistItem.isInWatchlist && watchlistItem.item && (
           <div className="pt-2 border-t border-gray-200">
             <div className="text-sm text-gray-600">
-              {watchlistItem.item.alert_price && (
+              {(watchlistItem.item.alert_price_high !== null || watchlistItem.item.alert_price_low !== null) && (
                 <div className="flex justify-between">
                   <span>アラート価格:</span>
                   <span className="font-medium">
-                    {formatPrice(watchlistItem.item.alert_price)}
+                    {watchlistItem.item.alert_price_high !== null && (
+                      <span className="text-green-600">⬆️ {formatPrice(watchlistItem.item.alert_price_high as number)} </span>
+                    )}
+                    {watchlistItem.item.alert_price_low !== null && (
+                      <span className="text-red-600">⬇️ {formatPrice(watchlistItem.item.alert_price_low as number)}</span>
+                    )}
                   </span>
                 </div>
               )}
@@ -192,7 +199,7 @@ export function StockCard({
         {watchlistItem.hasError && (
           <div className="pt-2">
             <div className="text-sm text-red-600">
-              ウォッチリストの操作に失敗しました
+              {getErrorMessage(watchlistItem.hasError)}
               <button 
                 onClick={watchlistItem.clearError}
                 className="ml-2 text-red-500 underline hover:no-underline"

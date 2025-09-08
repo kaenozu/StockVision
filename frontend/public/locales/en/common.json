@@ -1,0 +1,33 @@
+{
+  "common": {
+    "home": "Home",
+    "watchlist": "Watchlist",
+    "performance": "Performance",
+    "documents": "Documents",
+    "about": "About",
+    "settings": "Settings",
+    "search": "Search",
+    "language": "Language",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry"
+  },
+  "navigation": {
+    "menu": "Menu",
+    "close": "Close"
+  },
+  "search": {
+    "placeholder": "Enter stock code",
+    "button": "Get Stock Price"
+  },
+  "document": {
+    "title": "Documents",
+    "home": "Document Home",
+    "search_placeholder": "Search documents...",
+    "table_of_contents": "Table of Contents"
+  }
+}

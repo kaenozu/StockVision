@@ -153,7 +153,7 @@ curl http://localhost:8000/api/ml/anomaly-status
 cd frontend && npm run dev
 
 # ブラウザで確認:
-# 1. http://localhost:3000 にアクセス
+# 1. http://localhost:3002 にアクセス
 # 2. 銘柄詳細ページ（例: /stock/7203）に移動
 # 3. 売買判定パネルで以下を確認:
 #    - 🤖 機械学習予測タブが表示される

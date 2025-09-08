@@ -50,7 +50,7 @@ const DEFAULT_CONFIG: StockApiConfig = {
     ? '/api' 
     : process.env.NODE_ENV === 'test' 
     ? 'http://localhost:8001/api' 
-    : 'http://localhost:8080/api',
+    : 'http://localhost:8000/api',
   timeout: 10000, // 10 seconds
   retries: 3,
   retryDelay: 1000 // 1 second
@@ -104,7 +104,7 @@ export class StockApiClient {
     // Setup request interceptor
     this.client.interceptors.request.use(
       (config) => {
-        const fullUrl = config.baseURL + config.url
+        const fullUrl = (config.baseURL || '') + (config.url || '')
         console.log(`[StockAPI] ${config.method?.toUpperCase()} ${fullUrl}`)
         console.log(`[StockAPI] Base URL: ${config.baseURL}`)
         console.log(`[StockAPI] Request URL: ${config.url}`)
@@ -135,15 +135,21 @@ export class StockApiClient {
         url: error.config?.url,
         baseURL: error.config?.baseURL,
         method: error.config?.method,
-        fullURL: error.config?.baseURL + error.config?.url
+        fullURL: (error.config?.baseURL || '') + (error.config?.url || '')
       },
       request: error.request ? 'Request was made' : 'Request was not made',
       response: error.response ? {
         status: error.response.status,
         statusText: error.response.statusText,
         data: error.response.data
-      } : 'No response received'
+      } : 'No response received',
+      // Additional debug info
+      isNetworkError: !error.response && error.request,
+      isAxiosError: error.isAxiosError,
+      stack: error.stack
     })
+    
+    console.error('[StockAPI] Full error object:', error)
     
     const stockApiError = (() => {
       if (error.response) {
@@ -211,7 +217,7 @@ export class StockApiClient {
   }
 
   /**
-   * GET /stocks/{code} - Get basic stock information
+   * GET /stocks/{code} - Get basic stock information (Always uses real data)
    */
   async getStockData(stockCode: string, useRealData = true): Promise<StockData> {
     this.validateStockCode(stockCode)
@@ -232,7 +238,7 @@ export class StockApiClient {
       })
     }
 
-    const params: Record<string, any> = {}
+    const params: Record<string, unknown> = {}
     if (useRealData) {
       params.use_real_data = true
     }
@@ -264,19 +270,13 @@ export class StockApiClient {
   }
 
   /**
-   * GET /stocks/{code}/current - Get current price information
+   * GET /stocks/{code}/current - Get current price information (Always uses real data)
    */
   async getCurrentPrice(stockCode: string, useRealData = true): Promise<CurrentPriceResponse> {
     this.validateStockCode(stockCode)
 
-    const params: Record<string, unknown> = {}
-    if (useRealData) {
-      params.use_real_data = true
-    }
-
     const response = await this.client.get<CurrentPriceResponse>(
-      `/stocks/${stockCode}/current`,
-      { params }
+      `/stocks/${stockCode}/current`
     )
 
     const currentPrice = this.adjustCurrentPriceToRealistic(response.data)
@@ -308,7 +308,7 @@ export class StockApiClient {
       return cached
     }
 
-    const params: Record<string, any> = { days }
+    const params: Record<string, unknown> = { days }
     if (useRealData) {
       params.use_real_data = true
     }
@@ -427,11 +427,11 @@ export class StockApiClient {
   /**
    * GET /stocks/{code}/enhanced - Get enhanced stock information with predictions
    */
-  async getEnhancedStockInfo(stockCode: string, useRealData = true): Promise<any> {
+  async getEnhancedStockInfo(stockCode: string, useRealData = true): Promise<unknown> {
     this.validateStockCode(stockCode)
 
-    const params: Record<string, any> = {}
-    if (useRealData !== null) {
+    const params: Record<string, boolean> = {}
+    if (useRealData !== undefined) {
       params.use_real_data = useRealData
     }
 
@@ -446,11 +446,11 @@ export class StockApiClient {
   /**
    * GET /recommended-stocks - Get recommended stocks with caching
    */
-  async getRecommendedStocks(limit = 10, useRealData = true): Promise<any[]> {
+  async getRecommendedStocks(limit = 10, useRealData = true): Promise<unknown[]> {
     // Check cache first for 24h offline support
     const cacheKey = `recommended_stocks_${limit}_${useRealData}`
     try {
-      const cached = recommendationCache.get<any[]>(cacheKey)
+      const cached = recommendationCache.get<unknown[]>(cacheKey)
       if (cached) {
         console.log('[StockAPI] Using cached recommended stocks')
         return cached
@@ -464,16 +464,16 @@ export class StockApiClient {
     }
 
     try {
-      const params: Record<string, any> = { limit }
+      const params: Record<string, unknown> = { limit }
       if (useRealData) {
         params.use_real_data = useRealData
       }
 
-      const response = await this.client.get<any>('/recommended-stocks', { params })
+      const response = await this.client.get<unknown>('/recommended-stocks', { params })
       const responseData = response.data
 
       // Handle different response formats
-      let recommendations: any[]
+      let recommendations: unknown[]
       if (Array.isArray(responseData)) {
         // Direct array response
         recommendations = responseData
@@ -526,21 +526,21 @@ export class StockApiClient {
   /**
    * GET /trading-recommendations - Get trading recommendations with caching
    */
-  async getTradingRecommendations(useRealData = true): Promise<any[]> {
+  async getTradingRecommendations(useRealData = true): Promise<unknown[]> {
     // Check cache first
     const cacheKey = `trading_recommendations_${useRealData}`
-    const cached = recommendationCache.get<any[]>(cacheKey)
+    const cached = recommendationCache.get<unknown[]>(cacheKey)
     if (cached) {
       console.log('[StockAPI] Using cached trading recommendations')
       return cached
     }
 
-    const params: Record<string, any> = {}
+    const params: Record<string, boolean> = {}
     if (useRealData) {
       params.use_real_data = useRealData
     }
 
-    const response = await this.client.get<any[]>('/trading-recommendations', { params })
+    const response = await this.client.get<unknown[]>('/trading-recommendations', { params })
     const recommendations = response.data
 
     // Validate response is array
@@ -675,9 +675,9 @@ export class StockApiClient {
    * Get cache statistics for monitoring
    */
   getCacheStats(): {
-    stockData: any
-    priceHistory: any
-    recommendations: any
+    stockData: unknown
+    priceHistory: unknown
+    recommendations: unknown
   } {
     return {
       stockData: stockDataCache.getStats(),

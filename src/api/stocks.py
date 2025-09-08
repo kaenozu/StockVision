@@ -43,7 +43,25 @@ def get_db():
            summary="銘柄情報取得",
            response_model=StockData,
            responses={
-               200: {"description": "銘柄情報"},
+               200: {
+                   "description": "銘柄情報",
+                   "content": {
+                       "application/json": {
+                           "example": {
+                               "code": "7203",
+                               "name": "トヨタ自動車",
+                               "sector": "自動車",
+                               "market_cap": 2500000000000,
+                               "dividend_yield": 2.5,
+                               "per": 15.2,
+                               "pbr": 1.8,
+                               "eps": 165.0,
+                               "bps": 1350.0,
+                               "last_updated": "2023-10-27T10:00:00Z"
+                           }
+                       }
+                   }
+               },
                404: {"description": "銘柄が見つからない"},
                400: {"description": "不正な銘柄コード"}
            })
@@ -72,6 +90,11 @@ async def get_stock_info(
     Note:
         use_real_data=true でリアルYahoo Finance API、false または未指定でモックデータを使用。
         環境変数 USE_REAL_YAHOO_API=true でデフォルト動作を変更可能。
+    
+    Examples:
+        - リクエスト: `GET /stocks/7203`
+        - リクエスト (リアルデータ): `GET /stocks/7203?use_real_data=true`
+        - リクエスト (モックデータ): `GET /stocks/7203?use_real_data=false`
     """
     logger.info(f"Fetching stock info for {stock_code} (use_real_data={use_real_data})")
     
@@ -108,7 +131,26 @@ async def get_stock_info(
            summary="リアルタイム価格取得",
            response_model=CurrentPriceResponse,
            responses={
-               200: {"description": "現在価格情報"},
+               200: {
+                   "description": "現在価格情報",
+                   "content": {
+                       "application/json": {
+                           "example": {
+                               "code": "7203",
+                               "name": "トヨタ自動車",
+                               "price": 2500.5,
+                               "change": 25.0,
+                               "change_percent": 1.01,
+                               "previous_close": 2475.5,
+                               "open": 2490.0,
+                               "high": 2510.0,
+                               "low": 2485.0,
+                               "volume": 1000000,
+                               "timestamp": "2023-10-27T10:00:00Z"
+                           }
+                       }
+                   }
+               },
                404: {"description": "銘柄が見つからない"},
                400: {"description": "不正な銘柄コード"}
            })
@@ -133,6 +175,11 @@ async def get_current_price(
     
     Note:
         use_real_data=true でリアルYahoo Finance API、false または未指定でモックデータを使用。
+    
+    Examples:
+        - リクエスト: `GET /stocks/7203/current`
+        - リクエスト (リアルデータ): `GET /stocks/7203/current?use_real_data=true`
+        - リクエスト (モックデータ): `GET /stocks/7203/current?use_real_data=false`
     """
     logger.info(f"Fetching current price for {stock_code} (use_real_data={use_real_data})")
     
@@ -167,7 +214,31 @@ async def get_current_price(
            summary="価格履歴取得",
            response_model=List[PriceHistoryItem],
            responses={
-               200: {"description": "価格履歴"},
+               200: {
+                   "description": "価格履歴",
+                   "content": {
+                       "application/json": {
+                           "example": [
+                               {
+                                   "date": "2023-10-27",
+                                   "open": 2490.0,
+                                   "high": 2510.0,
+                                   "low": 2485.0,
+                                   "close": 2500.5,
+                                   "volume": 1000000
+                               },
+                               {
+                                   "date": "2023-10-26",
+                                   "open": 2480.0,
+                                   "high": 2495.0,
+                                   "low": 2470.0,
+                                   "close": 2490.0,
+                                   "volume": 950000
+                               }
+                           ]
+                       }
+                   }
+               },
                404: {"description": "銘柄が見つからない"},
                400: {"description": "不正な銘柄コードまたは日数"}
            })
@@ -194,6 +265,11 @@ async def get_price_history(
     
     Note:
         use_real_data=true でリアルYahoo Finance API、false または未指定でモックデータを使用。
+    
+    Examples:
+        - リクエスト: `GET /stocks/7203/history`
+        - リクエスト (30日分): `GET /stocks/7203/history?days=30`
+        - リクエスト (リアルデータ): `GET /stocks/7203/history?use_real_data=true`
     """
     logger.info(f"Fetching price history for {stock_code}, {days} days (use_real_data={use_real_data})")
     

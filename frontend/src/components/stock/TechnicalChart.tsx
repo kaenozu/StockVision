@@ -4,6 +4,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { PriceHistoryItem } from '../../types/stock'
 import { calculateAllIndicators } from '../../utils/technicalIndicators'
 import { formatPrice, formatDateShort } from '../../utils/formatters'
+import type { ChartOptions, TooltipItem, ChartData } from 'chart.js'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -215,7 +216,7 @@ export function TechnicalChart({ data, height = 400 }: TechnicalChartProps) {
     return null
   }, [data, selectedIndicator, theme])
   
-  const chartOptions = useMemo(() => {
+  const chartOptions = useMemo<ChartOptions<'line'>>(() => {
     const isDark = theme === 'dark'
     return {
       responsive: true,
@@ -274,11 +275,11 @@ export function TechnicalChart({ data, height = 400 }: TechnicalChartProps) {
           },
           ticks: {
             color: isDark ? '#9CA3AF' : '#6B7280',
-            callback: function(value: number) {
+            callback: function(this, tickValue: string | number) {
               if (selectedIndicator === 'rsi') {
-                return `${value}%`
+                return `${tickValue}%`
               }
-              return formatPrice(value)
+              return typeof tickValue === 'number' ? formatPrice(tickValue) : String(tickValue)
             },
           },
           ...(selectedIndicator === 'rsi' && {
@@ -344,7 +345,7 @@ export function TechnicalChart({ data, height = 400 }: TechnicalChartProps) {
       {secondaryChartData && (selectedIndicator === 'macd' || selectedIndicator === 'rsi') && (
         <div style={{ height: height * 0.3 }}>
           <Line 
-            data={secondaryChartData} 
+            data={secondaryChartData as ChartData<'line'>} 
             options={{
               ...chartOptions,
               plugins: {
