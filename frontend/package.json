@@ -27,7 +27,8 @@
     "test:e2e:compatibility": "playwright test tests/e2e/cross-browser/browser-compatibility.spec.ts",
     "test:e2e:install": "playwright install",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "build:docs": "npm run build-storybook && mkdir -p docs/dist && cp -r storybook-static/* docs/dist/"
   },
   "dependencies": {
     "@sentry/react": "^8.38.0",
@@ -80,7 +81,7 @@
     "storybook": "^8.0.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.39.1",
-    "vite": "^7.1.2",
+    "vite": "^6.0.0",
     "vitest": "^3.2.4"
   }
 }
