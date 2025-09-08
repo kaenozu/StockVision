@@ -57,14 +57,18 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Install root dependencies if package-lock.json exists
+          # Clean npm cache and node_modules to avoid version conflicts
+          npm cache clean --force || true
+          rm -rf node_modules frontend/node_modules || true
+          
+          # Install root dependencies
           if [ -f "package-lock.json" ]; then
             npm ci
           elif [ -f "package.json" ]; then
             npm install
           fi
           
-          # Install frontend dependencies
+          # Install frontend dependencies with clean install
           cd frontend
           if [ -f "package-lock.json" ]; then
             npm ci
