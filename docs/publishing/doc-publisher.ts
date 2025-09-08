@@ -315,10 +315,19 @@ export class DocumentPublisher {
    * Generate WebP versions of images
    */
   private async generateWebP(filePath: string, result: BuildResult): Promise<void> {
-    // This would use sharp or similar library to convert images to WebP
-    // For now, just log the operation
-    const webpPath = filePath.replace(/\.(jpg|jpeg|png)$/i, '.webp')
-    result.warnings.push(`WebP generation not implemented for ${filePath}`)
+    try {
+      // Dynamically import sharp to avoid issues when it's not installed
+      const sharp = (await import('sharp')).default;
+      
+      const webpPath = filePath.replace(/\.(jpg|jpeg|png)$/i, '.webp')
+      await sharp(filePath).webp({ quality: 80 }).toFile(webpPath)
+      
+      console.log(`🖼️  Generated WebP: ${webpPath}`)
+    } catch (error) {
+      // If sharp is not available or fails, add a warning
+      const webpPath = filePath.replace(/\.(jpg|jpeg|png)$/i, '.webp')
+      result.warnings.push(`Failed to generate WebP for ${filePath}: ${error}`)
+    }
   }
 
   /**
