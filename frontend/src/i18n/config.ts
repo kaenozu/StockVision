@@ -75,6 +75,9 @@ i18n
       useSuspense: false,
     },
     
+    // 初期化処理の設定
+    initImmediate: false,
+    
     // サポートする言語
     supportedLngs: SUPPORTED_LANGUAGES.map(lang => lang.code),
   });

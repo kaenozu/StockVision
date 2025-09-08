@@ -1,33 +1,28 @@
 {
-  "common": {
-    "home": "ホーム",
-    "watchlist": "ウォッチリスト",
-    "performance": "パフォーマンス",
-    "documents": "ドキュメント",
-    "about": "About",
-    "settings": "設定",
-    "search": "検索",
-    "language": "言語",
-    "theme": "テーマ",
-    "light": "ライト",
-    "dark": "ダーク",
-    "system": "システム",
-    "loading": "読み込み中...",
-    "error": "エラー",
-    "retry": "再試行"
-  },
-  "navigation": {
-    "menu": "メニュー",
-    "close": "閉じる"
-  },
-  "search": {
-    "placeholder": "銘柄コードを入力",
-    "button": "株価を取得"
-  },
-  "document": {
-    "title": "ドキュメント",
-    "home": "ドキュメントホーム",
-    "search_placeholder": "ドキュメントを検索...",
-    "table_of_contents": "目次"
-  }
+  "home": "ホーム",
+  "watchlist": "ウォッチリスト",
+  "performance": "パフォーマンス",
+  "documents": "ドキュメント",
+  "about": "About",
+  "settings": "設定",
+  "search": "検索",
+  "language": "言語",
+  "theme": "テーマ",
+  "light": "ライト",
+  "dark": "ダーク",
+  "system": "システム",
+  "loading": "読み込み中...",
+  "error": "エラー",
+  "retry": "再試行",
+  "menu": "メニュー",
+  "close": "閉じる",
+  "common.home": "ホーム",
+  "common.watchlist": "ウォッチリスト",
+  "common.performance": "パフォーマンス",
+  "common.documents": "ドキュメント",
+  "common.about": "About",
+  "common.settings": "設定",
+  "common.search": "検索",
+  "common.language": "言語",
+  "common.theme": "テーマ"
 }

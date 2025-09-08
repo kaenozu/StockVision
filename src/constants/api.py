@@ -54,6 +54,8 @@ PROD_ORIGINS = [origin.strip() for origin in PROD_ORIGINS_STR.split(",") if orig
 DEV_CORS_ORIGINS = [
     f"http://{DEVELOPMENT_HOST}:{FRONTEND_DEV_PORT}",
     f"http://{DEVELOPMENT_HOST}:{FRONTEND_PROD_PORT}",
+    "http://localhost:3004",  # フロントエンド実際のポート（以前の設定）
+    "http://localhost:3002",  # フロントエンド新しいポート（Viteが自動選択）
 ]
 
 # 後方互換: 既存参照向け（本番・開発を問わず網羅的に含む）

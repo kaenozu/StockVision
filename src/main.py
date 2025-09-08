@@ -178,19 +178,19 @@ app = FastAPI(
 # 最後に追加されたミドルウェアが最初にリクエストを受け取る
 
 # 1. CORS Middleware (最優先 - セキュリティチェック)
-settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors.allow_origins,
-    allow_credentials=settings.cors.allow_credentials,
-    allow_methods=settings.cors.allow_methods,
-    allow_headers=settings.cors.allow_headers,
+    allow_origins=["http://localhost:3000", "http://localhost:3002", "http://localhost:3003", "http://localhost:3004", "http://localhost:8080"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 # 2. パフォーマンス最適化ミドルウェア群の設定
 # 内部的な順序: CacheControl -> Compression -> Metrics
 # 詳細は docs/middleware-architecture.md を参照
-setup_performance_middleware(app)
+# TEMPORARILY DISABLED DUE TO CONTENT-LENGTH ISSUE
+# setup_performance_middleware(app)
 
 # Import and include API routes
 from .api.stocks import router as stocks_router

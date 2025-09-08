@@ -21,14 +21,14 @@ except ImportError:
 class YahooFinanceConfig(BaseModel):
     """Yahoo Finance API configuration."""
     
-    enabled: bool = Field(default=False, description="Enable real Yahoo Finance API calls")
-    max_requests: int = Field(default=10, description="Maximum requests per time window")
-    time_window: int = Field(default=60, description="Rate limit time window in seconds")
-    max_concurrent: int = Field(default=5, description="Maximum concurrent requests")
-    timeout: int = Field(default=30, description="Request timeout in seconds")
-    retry_attempts: int = Field(default=3, description="Number of retry attempts")
-    retry_delay: float = Field(default=1.0, description="Delay between retries")
-    cache_ttl: int = Field(default=300, description="Cache TTL for API responses in seconds")
+    enabled: bool = Field(default=True, description="Enable real Yahoo Finance API calls")
+    max_requests: int = Field(default=2, description="Maximum requests per time window")
+    time_window: int = Field(default=10, description="Rate limit time window in seconds")
+    max_concurrent: int = Field(default=1, description="Maximum concurrent requests")
+    timeout: int = Field(default=45, description="Request timeout in seconds")
+    retry_attempts: int = Field(default=5, description="Number of retry attempts")
+    retry_delay: float = Field(default=3.0, description="Delay between retries")
+    cache_ttl: int = Field(default=1800, description="Cache TTL for API responses in seconds")
 
 
 class CacheConfig(BaseModel):

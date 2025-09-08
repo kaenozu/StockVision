@@ -12,10 +12,10 @@ export const API_BASE_URL = (() => {
     return import.meta.env.VITE_API_BASE_URL
   }
   
-  // Default URLs for development/production
+  // Default URLs for development/production  
   return IS_DEVELOPMENT 
-    ? 'http://localhost:8000/api'  // Fixed: was 8001, should be 8000 (matches backend default)
-    : 'http://localhost:8080/api'
+    ? 'http://localhost:8000/api'  // 直接APIサーバーにアクセス
+    : 'http://localhost:8000/api'
 })()
 
 // Cache and refresh intervals (in milliseconds)

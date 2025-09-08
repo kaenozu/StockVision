@@ -76,9 +76,11 @@ class RateLimiter:
             
             # レート制限チェック
             if len(self.requests) >= self.max_requests:
-                sleep_time = self.time_window - (now - self.requests[0]) + 1
+                sleep_time = self.time_window - (now - self.requests[0]) + 5  # より長く待機
                 logger.warning(f"Rate limit reached, sleeping for {sleep_time:.2f} seconds")
-                raise RateLimitError(f"Rate limit exceeded, wait {sleep_time:.2f} seconds")
+                await asyncio.sleep(sleep_time)
+                # 再帰的に再試行
+                return await self.acquire()
             
             self.requests.append(now)
 
@@ -177,7 +179,15 @@ class YahooFinanceClient:
                             data = await response.json()
                             return data
                         elif response.status == 429:  # Too Many Requests
-                            raise RateLimitError("Rate limit exceeded by server")
+                            logger.warning(f"Server returned 429 (Rate limit exceeded), attempt {attempt + 1}")
+                            if attempt < self.retry_attempts:
+                                # 429エラーの場合はより長い待機時間
+                                delay = 15 + (attempt * 10)  # 15秒から始めて各試行で10秒追加
+                                logger.warning(f"Waiting {delay}s before retry due to rate limit")
+                                await asyncio.sleep(delay)
+                                continue
+                            else:
+                                raise RateLimitError("Rate limit exceeded by server")
                         elif response.status == 404:
                             raise StockNotFoundError("Stock not found")
                         else:
@@ -366,6 +376,9 @@ class YahooFinanceClient:
             # yfinanceは同期APIなので、executor で実行
             ticker = self._get_yfinance_ticker(stock_code)
             
+            # レート制限を避けるため少し待機
+            await asyncio.sleep(0.5)
+            
             # 非同期でyfinanceを実行
             loop = asyncio.get_event_loop()
             info = await loop.run_in_executor(None, lambda: ticker.info)
@@ -402,6 +415,9 @@ class YahooFinanceClient:
         """
         try:
             ticker = self._get_yfinance_ticker(stock_code)
+            
+            # レート制限を避けるため少し待機
+            await asyncio.sleep(0.5)
             
             # 期間を計算
             end_date = datetime.now()

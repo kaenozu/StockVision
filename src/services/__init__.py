@@ -7,7 +7,6 @@ import lightweight for tests and environments without optional deps.
 __all__ = [
     "HybridStockService",
     "CacheManager",
-    "MockDataGenerator",
     "get_stock_service",
     "cleanup_stock_service",
 ]

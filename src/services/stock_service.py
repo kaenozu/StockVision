@@ -9,16 +9,18 @@ import logging
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
 from ..config import get_settings, should_use_real_data, get_yahoo_finance_config, get_cache_config
-from ..stock_api.data_models import StockData, CurrentPrice, PriceHistoryData
+from ..stock_api.data_models import StockData, CurrentPrice, PriceHistoryData, PriceHistoryItem
 from ..stock_api.yahoo_client import YahooFinanceClient
 from ..models.stock import Stock
 from ..models.price_history import PriceHistory
 from .cache import CacheManager
+from .real_data_provider import get_real_data_provider
 from .data_providers import (
     BaseDataProvider, DataProviderError, DataNotFoundError,
-    YahooFinanceProvider, MockDataProvider, DatabaseProvider
+    YahooFinanceProvider, DatabaseProvider
 )
 
 logger = logging.getLogger(__name__)
@@ -27,20 +29,16 @@ logger = logging.getLogger(__name__)
 # Move CacheManager to cache_manager.py
 
 
-# Move MockDataGenerator to mock_provider.py
-    
-    
-    
 
 
 class HybridStockService:
     """
-    Hybrid stock service that provides both mock and real Yahoo Finance data.
+    Real stock service that provides only real stock data.
     
     Features:
-    - Intelligent switching between mock and real data
-    - Comprehensive caching for real API responses
-    - Fallback to mock data when real API fails
+    - Real-time stock data from multiple sources
+    - Comprehensive caching for API responses
+    - Multiple data source fallback mechanisms
     - Performance monitoring and error handling
     """
     
@@ -49,7 +47,6 @@ class HybridStockService:
         self.yahoo_config = get_yahoo_finance_config()
         self.cache_config = get_cache_config()
         self.cache = CacheManager()
-        self.mock_generator = MockDataGenerator()
         self._yahoo_client: Optional[YahooFinanceClient] = None
         self._client_lock = asyncio.Lock()
     
@@ -82,19 +79,17 @@ class HybridStockService:
         db: Optional[Session] = None
     ) -> StockData:
         """
-        Get stock information with hybrid data source support.
+        Get stock information from real data sources only.
         
         Args:
             stock_code: 4-digit stock code
-            use_real_data: Override for real API usage (None = use config)
+            use_real_data: Ignored parameter for compatibility (always uses real data)
             db: Database session for caching to database
             
         Returns:
-            StockData: Stock information from real API or mock data
+            StockData: Stock information from real API sources
         """
-        should_use_real = should_use_real_data(use_real_data)
-        
-        if should_use_real:
+        try:
             # Try to get from cache first
             cached_data = await self.cache.get(
                 "stock_info", stock_code, ttl=self.yahoo_config.cache_ttl
@@ -104,12 +99,12 @@ class HybridStockService:
                 logger.info(f"Using cached stock info for {stock_code}")
                 return cached_data
             
-            # Try to get from real Yahoo Finance API
-            try:
-                logger.info(f"Fetching real stock info for {stock_code}")
-                client = await self._get_yahoo_client()
-                stock_data = await client.get_stock_info(stock_code)
-                
+            # Try Yahoo Finance client first (more accurate)
+            logger.info(f"Fetching real stock info for {stock_code} using Yahoo Finance client")
+            client = await self._get_yahoo_client()
+            stock_data = await client.get_stock_info(stock_code)
+            
+            if stock_data:
                 # Cache the result
                 await self.cache.set("stock_info", stock_code, stock_data)
                 
@@ -117,48 +112,35 @@ class HybridStockService:
                 if db:
                     await self._save_stock_to_db(stock_data, db)
                 
-                logger.info(f"Successfully retrieved real stock info for {stock_code}")
+                logger.info(f"Successfully retrieved Yahoo Finance stock info for {stock_code}")
                 return stock_data
-                
-            except (YahooFinanceError, StockNotFoundError) as e:
-                logger.warning(f"Real API failed for {stock_code}, falling back to mock data: {e}")
-                # Fall back to mock data
-                pass
-            except Exception as e:
-                logger.error(f"Unexpected error getting real stock info for {stock_code}: {e}")
-                # Fall back to mock data
-                pass
-        
-        # Use mock data - check cache first
-        cached_mock_data = await self.cache.get(
-            "stock_info", stock_code, ttl=self.cache_config.stock_info_ttl
-        )
-        
-        if cached_mock_data:
-            logger.info(f"Using cached mock stock info for {stock_code}")
-            return cached_mock_data
-        
-        logger.info(f"Generating new mock stock info for {stock_code}")
-        mock_data = self.mock_generator.generate_stock_data(stock_code)
-        
-        # Cache the mock data
-        await self.cache.set("stock_info", stock_code, mock_data)
-        
-        # Optionally save mock data to database
-        if db:
-            await self._save_stock_to_db(mock_data, db)
-        
-        return mock_data
+            
+            # Fallback to real data provider
+            logger.warning(f"Yahoo Finance client failed for {stock_code}, trying RealDataProvider")
+            real_provider = await get_real_data_provider()
+            stock_data = await real_provider.get_stock_data(stock_code)
+            
+            # Cache the result
+            await self.cache.set("stock_info", stock_code, stock_data)
+            
+            # Optionally save to database
+            if db:
+                await self._save_stock_to_db(stock_data, db)
+            
+            logger.info(f"Successfully retrieved Yahoo Finance stock info for {stock_code}")
+            return stock_data
+            
+        except Exception as e:
+            logger.error(f"All real data sources failed for {stock_code}: {e}")
+            raise HTTPException(status_code=503, detail=f"Unable to fetch real stock data for {stock_code}")
     
     async def get_current_price(
         self,
         stock_code: str,
         use_real_data: Optional[bool] = None
     ) -> CurrentPrice:
-        """Get current price with hybrid data source support."""
-        should_use_real = should_use_real_data(use_real_data)
-        
-        if should_use_real:
+        """Get current price from real data sources only."""
+        try:
             # Try cache first
             cached_data = await self.cache.get(
                 "current_price", stock_code, ttl=60  # Shorter TTL for price data
@@ -168,37 +150,31 @@ class HybridStockService:
                 logger.info(f"Using cached current price for {stock_code}")
                 return cached_data
             
-            # Try real API
-            try:
-                logger.info(f"Fetching real current price for {stock_code}")
-                client = await self._get_yahoo_client()
-                price_data = await client.get_current_price(stock_code)
-                
+            # Try Yahoo Finance client first (more accurate)
+            logger.info(f"Fetching real current price for {stock_code} using Yahoo Finance client")
+            client = await self._get_yahoo_client()
+            price_data = await client.get_current_price(stock_code)
+            
+            if price_data:
                 # Cache the result
                 await self.cache.set("current_price", stock_code, price_data)
-                
-                logger.info(f"Successfully retrieved real current price for {stock_code}")
+                logger.info(f"Successfully retrieved Yahoo Finance current price for {stock_code}")
                 return price_data
-                
-            except Exception as e:
-                logger.warning(f"Real API failed for current price {stock_code}, using mock: {e}")
-        
-        # Use mock data - check cache first
-        cached_mock_price = await self.cache.get(
-            "current_price", stock_code, ttl=self.cache_config.current_price_ttl
-        )
-        
-        if cached_mock_price:
-            logger.info(f"Using cached mock current price for {stock_code}")
-            return cached_mock_price
-        
-        logger.info(f"Generating new mock current price for {stock_code}")
-        mock_price = self.mock_generator.generate_current_price(stock_code)
-        
-        # Cache the mock data
-        await self.cache.set("current_price", stock_code, mock_price)
-        
-        return mock_price
+            
+            # Fallback to real data provider
+            logger.warning(f"Yahoo Finance client failed for {stock_code}, trying RealDataProvider")
+            real_provider = await get_real_data_provider()
+            price_data = await real_provider.get_current_price_data(stock_code)
+            
+            # Cache the result
+            await self.cache.set("current_price", stock_code, price_data)
+            
+            logger.info(f"Successfully retrieved Yahoo Finance current price for {stock_code}")
+            return price_data
+            
+        except Exception as e:
+            logger.error(f"All real data sources failed for current price {stock_code}: {e}")
+            raise HTTPException(status_code=503, detail=f"Unable to fetch real current price for {stock_code}")
     
     async def get_price_history(
         self,
@@ -207,10 +183,8 @@ class HybridStockService:
         use_real_data: Optional[bool] = None,
         db: Optional[Session] = None
     ) -> PriceHistoryData:
-        """Get price history with hybrid data source support."""
-        should_use_real = should_use_real_data(use_real_data)
-        
-        if should_use_real:
+        """Get price history from real data sources only."""
+        try:
             # Try cache first
             cached_data = await self.cache.get(
                 "price_history", stock_code, ttl=self.yahoo_config.cache_ttl, days=days
@@ -220,45 +194,24 @@ class HybridStockService:
                 logger.info(f"Using cached price history for {stock_code}")
                 return cached_data
             
-            # Try real API
-            try:
-                logger.info(f"Fetching real price history for {stock_code} ({days} days)")
-                client = await self._get_yahoo_client()
-                history_data = await client.get_price_history(stock_code, days)
-                
-                # Cache the result
-                await self.cache.set("price_history", stock_code, history_data, days=days)
-                
-                # Optionally save to database
-                if db:
-                    await self._save_price_history_to_db(history_data, db)
-                
-                logger.info(f"Successfully retrieved real price history for {stock_code}")
-                return history_data
-                
-            except Exception as e:
-                logger.warning(f"Real API failed for price history {stock_code}, using mock: {e}")
-        
-        # Use mock data - check cache first
-        cached_mock_history = await self.cache.get(
-            "price_history", stock_code, ttl=self.cache_config.price_history_ttl, days=days
-        )
-        
-        if cached_mock_history:
-            logger.info(f"Using cached mock price history for {stock_code}")
-            return cached_mock_history
-        
-        logger.info(f"Generating new mock price history for {stock_code}")
-        mock_history = self.mock_generator.generate_price_history(stock_code, days)
-        
-        # Cache the mock data
-        await self.cache.set("price_history", stock_code, mock_history, days=days)
-        
-        # Optionally save mock data to database
-        if db:
-            await self._save_price_history_to_db(mock_history, db)
-        
-        return mock_history
+            # Only use Yahoo Finance for price history as RealDataProvider doesn't support it yet
+            logger.info(f"Fetching real price history for {stock_code} ({days} days)")
+            client = await self._get_yahoo_client()
+            history_data = await client.get_price_history(stock_code, days)
+            
+            # Cache the result
+            await self.cache.set("price_history", stock_code, history_data, days=days)
+            
+            # Optionally save to database
+            if db:
+                await self._save_price_history_to_db(history_data, db)
+            
+            logger.info(f"Successfully retrieved real price history for {stock_code}")
+            return history_data
+            
+        except Exception as e:
+            logger.error(f"All real data sources failed for price history {stock_code}: {e}")
+            raise HTTPException(status_code=503, detail=f"Unable to fetch real price history for {stock_code}")
     
     async def _save_stock_to_db(self, stock_data: StockData, db: Session) -> None:
         """Save stock data to database."""

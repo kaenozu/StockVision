@@ -1,33 +1,28 @@
 {
-  "common": {
-    "home": "Home",
-    "watchlist": "Watchlist",
-    "performance": "Performance",
-    "documents": "Documents",
-    "about": "About",
-    "settings": "Settings",
-    "search": "Search",
-    "language": "Language",
-    "theme": "Theme",
-    "light": "Light",
-    "dark": "Dark",
-    "system": "System",
-    "loading": "Loading...",
-    "error": "Error",
-    "retry": "Retry"
-  },
-  "navigation": {
-    "menu": "Menu",
-    "close": "Close"
-  },
-  "search": {
-    "placeholder": "Enter stock code",
-    "button": "Get Stock Price"
-  },
-  "document": {
-    "title": "Documents",
-    "home": "Document Home",
-    "search_placeholder": "Search documents...",
-    "table_of_contents": "Table of Contents"
-  }
+  "home": "Home",
+  "watchlist": "Watchlist",
+  "performance": "Performance",
+  "documents": "Documents",
+  "about": "About",
+  "settings": "Settings",
+  "search": "Search",
+  "language": "Language",
+  "theme": "Theme",
+  "light": "Light",
+  "dark": "Dark",
+  "system": "System",
+  "loading": "Loading...",
+  "error": "Error",
+  "retry": "Retry",
+  "menu": "Menu",
+  "close": "Close",
+  "common.home": "Home",
+  "common.watchlist": "Watchlist",
+  "common.performance": "Performance",
+  "common.documents": "Documents",
+  "common.about": "About",
+  "common.settings": "Settings",
+  "common.search": "Search",
+  "common.language": "Language",
+  "common.theme": "Theme"
 }
