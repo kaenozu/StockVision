@@ -116,7 +116,7 @@ function App() {
               {/* Main Routes */}
               <Route index element={<SimplifiedHomePage />} />
               <Route path="stock/:stockCode" element={<StockDetailPage />} />
-              <Route path="stocks/:stockId/detail" element={<StockDetailPage />} />
+              <Route path="stocks/:stockCode/detail" element={<StockDetailPage />} />
               <Route path="watchlist" element={<WatchlistPage />} />
               <Route path="search" element={<SearchPage />} />
               <Route path="settings" element={<SettingsPage />} />
