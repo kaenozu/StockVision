@@ -65,7 +65,12 @@ jobs:
           fi
           
           # Install frontend dependencies
-          cd frontend && npm ci
+          cd frontend
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Generate build version
         id: version
