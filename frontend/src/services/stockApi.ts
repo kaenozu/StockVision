@@ -50,7 +50,7 @@ const DEFAULT_CONFIG: StockApiConfig = {
     ? '/api' 
     : process.env.NODE_ENV === 'test' 
     ? 'http://localhost:8001/api' 
-    : 'http://localhost:8080/api',
+    : 'http://localhost:8000/api',
   timeout: 10000, // 10 seconds
   retries: 3,
   retryDelay: 1000 // 1 second
@@ -142,8 +142,14 @@ export class StockApiClient {
         status: error.response.status,
         statusText: error.response.statusText,
         data: error.response.data
-      } : 'No response received'
+      } : 'No response received',
+      // Additional debug info
+      isNetworkError: !error.response && error.request,
+      isAxiosError: error.isAxiosError,
+      stack: error.stack
     })
+    
+    console.error('[StockAPI] Full error object:', error)
     
     const stockApiError = (() => {
       if (error.response) {
@@ -211,13 +217,13 @@ export class StockApiClient {
   }
 
   /**
-   * GET /stocks/{code} - Get basic stock information
+   * GET /stocks/{code} - Get basic stock information (Always uses real data)
    */
-  async getStockData(stockCode: string, useRealData = true): Promise<StockData> {
+  async getStockData(stockCode: string): Promise<StockData> {
     this.validateStockCode(stockCode)
 
     // Check cache first
-    const cacheKey = `stock_${stockCode}_${useRealData}`
+    const cacheKey = `stock_${stockCode}`
     try {
       const cached = stockDataCache.get<StockData>(cacheKey)
       if (cached) {
@@ -232,17 +238,11 @@ export class StockApiClient {
       })
     }
 
-    const params: Record<string, boolean> = {}
-    if (useRealData) {
-      params.use_real_data = true
-    }
-
     const response = await this.client.get<StockData>(
-      `/stocks/${stockCode}`,
-      { params }
+      `/stocks/${stockCode}`
     )
 
-    const stockData = this.adjustPriceToRealistic(response.data)
+    const stockData = response.data
 
     // Validate response data structure
     if (!isStockData(stockData)) {
@@ -264,22 +264,16 @@ export class StockApiClient {
   }
 
   /**
-   * GET /stocks/{code}/current - Get current price information
+   * GET /stocks/{code}/current - Get current price information (Always uses real data)
    */
-  async getCurrentPrice(stockCode: string, useRealData = true): Promise<CurrentPriceResponse> {
+  async getCurrentPrice(stockCode: string): Promise<CurrentPriceResponse> {
     this.validateStockCode(stockCode)
 
-    const params: Record<string, unknown> = {}
-    if (useRealData) {
-      params.use_real_data = true
-    }
-
     const response = await this.client.get<CurrentPriceResponse>(
-      `/stocks/${stockCode}/current`,
-      { params }
+      `/stocks/${stockCode}/current`
     )
 
-    const currentPrice = this.adjustCurrentPriceToRealistic(response.data)
+    const currentPrice = response.data
 
     // Validate response data structure
     if (!isCurrentPriceResponse(currentPrice)) {
@@ -554,112 +548,7 @@ export class StockApiClient {
     return recommendations
   }
 
-  /**
-   * Adjust current price data to realistic values
-   */
-  private adjustCurrentPriceToRealistic(currentPriceData: CurrentPriceResponse): CurrentPriceResponse {
-    const stockCode = currentPriceData.stock_code
-    let realisticBasePrice: number
-    
-    // Set realistic prices based on stock code
-    switch (stockCode) {
-      case '7203': // Toyota
-        realisticBasePrice = 3500
-        break
-      case '6758': // Sony
-        realisticBasePrice = 11000
-        break
-      case '9984': // SoftBank
-        realisticBasePrice = 6000
-        break
-      case '9983': // Fast Retailing
-        realisticBasePrice = 85000
-        break
-      case '8306': // Mitsubishi UFJ
-        realisticBasePrice = 1200
-        break
-      default:
-        realisticBasePrice = 2500
-        break
-    }
-    
-    // Calculate realistic variation (±5%)
-    const variation = (Math.random() - 0.5) * 0.1 // -5% to +5%
-    const currentPrice = realisticBasePrice * (1 + variation)
-    const previousClose = realisticBasePrice * (1 + (Math.random() - 0.5) * 0.04) // ±2%
-    const priceChange = currentPrice - previousClose
-    const priceChangePct = (priceChange / previousClose) * 100
-    
-    const adjustedCurrentPrice = {
-      ...currentPriceData,
-      current_price: Math.round(currentPrice * 100) / 100,
-      previous_close: Math.round(previousClose * 100) / 100,
-      price_change: Math.round(priceChange * 100) / 100,
-      price_change_pct: Math.round(priceChangePct * 100) / 100,
-    }
-    
-    return adjustedCurrentPrice
-  }
 
-  /**
-   * Adjust mock price data to realistic values based on stock code
-   */
-  private adjustPriceToRealistic(stockData: StockData): StockData {
-    const stockCode = stockData.stock_code
-    let realisticBasePrice: number
-    let compunknownName: string
-    
-    // Set realistic prices based on stock code
-    switch (stockCode) {
-      case '7203': // Toyota
-        realisticBasePrice = 3500
-        compunknownName = 'トヨタ自動車株式会社'
-        break
-      case '6758': // Sony
-        realisticBasePrice = 11000
-        compunknownName = 'ソニーグループ株式会社'
-        break
-      case '9984': // SoftBank
-        realisticBasePrice = 6000
-        compunknownName = 'ソフトバンクグループ株式会社'
-        break
-      case '9983': // Fast Retailing
-        realisticBasePrice = 85000
-        compunknownName = '株式会社ファーストリテイリング'
-        break
-      case '8306': // Mitsubishi UFJ
-        realisticBasePrice = 1200
-        compunknownName = '株式会社三菱UFJフィナンシャル・グループ'
-        break
-      default:
-        realisticBasePrice = 2500 // Default realistic price
-        compunknownName = stockData.company_name
-        break
-    }
-    
-    // Calculate realistic variation (±5%)
-    const variation = (Math.random() - 0.5) * 0.1 // -5% to +5%
-    const currentPrice = realisticBasePrice * (1 + variation)
-    const previousClose = realisticBasePrice * (1 + (Math.random() - 0.5) * 0.04) // ±2%
-    const priceChange = currentPrice - previousClose
-    const priceChangePct = (priceChange / previousClose) * 100
-    
-    const adjustedData = {
-      ...stockData,
-      compunknown_name: compunknownName,
-      current_price: Math.round(currentPrice * 100) / 100,
-      previous_close: Math.round(previousClose * 100) / 100,
-      price_change: Math.round(priceChange * 100) / 100,
-      price_change_pct: Math.round(priceChangePct * 100) / 100,
-      day_high: Math.round(currentPrice * 1.02 * 100) / 100,
-      day_low: Math.round(currentPrice * 0.98 * 100) / 100,
-      year_high: Math.round(realisticBasePrice * 1.3 * 100) / 100,
-      year_low: Math.round(realisticBasePrice * 0.7 * 100) / 100,
-      market_cap: currentPrice * 1000000000 // Simplified market cap
-    }
-    
-    return adjustedData
-  }
 
   /**
    * Clear all caches - useful for development and testing
