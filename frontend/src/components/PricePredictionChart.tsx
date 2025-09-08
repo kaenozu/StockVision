@@ -137,7 +137,7 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
         mode: 'index' as const,
         intersect: false,
         callbacks: {
-          title: (context: any) => {
+          title: (context: TooltipItem<'line'>[]) => {
             const date = new Date(chartData?.chartData.labels[context[0].dataIndex] || '');
             return date.toLocaleDateString('ja-JP', { 
               year: 'numeric', 
@@ -145,7 +145,7 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
               day: 'numeric' 
             });
           },
-          label: (context: any) => {
+          label: (context: TooltipItem<'line'>) => {
             const value = context.parsed.y;
             if (value === null) return null;
             return `${context.dataset.label}: ¥${value.toLocaleString('ja-JP')}`;
