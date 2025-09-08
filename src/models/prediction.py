@@ -103,7 +103,7 @@ class PredictionResult(Base):
     error_percentage: Mapped[Optional[float]] = mapped_column(DECIMAL(7, 4), nullable=True)
     
     # Feature snapshot
-    features_used: Mapped[Dict[str, Any]] = mapped_column(MutableDict.as_mutable(JSON), nullable=False)
+    individual_predictions: Mapped[Dict[str, Any]] = mapped_column(MutableDict.as_mutable(JSON), nullable=False)
     
     # Timestamp
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
