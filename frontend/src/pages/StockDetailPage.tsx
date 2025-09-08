@@ -13,6 +13,7 @@ import { usePersistentViewHistory } from '../hooks/usePersistentState'
 import StockCard from '../components/stock/StockCard'
 import PriceChart from '../components/stock/PriceChart'
 import { TechnicalChart } from '../components/stock/TechnicalChart'
+import MLPredictionCard from '../components/ml/MLPredictionCard'
 import Button, { IconButton } from '../components/ui/Button'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import ErrorMessage from '../components/ui/ErrorMessage'
@@ -214,6 +215,18 @@ export function StockDetailPage() {
               onRefresh={stockInfo.individual.currentPrice.refresh}
               showWatchlistControls={true}
             />
+
+            {/* ML Prediction Card */}
+            <div className="mt-6">
+              <MLPredictionCard
+                stockCode={stockCode}
+                currentPrice={stockInfo.currentPrice?.current_price || stockInfo.stockData?.current_price || 0}
+                onRefresh={() => {
+                  // Trigger refresh of stock data when ML prediction is updated
+                  stockInfo.refresh()
+                }}
+              />
+            </div>
 
             {/* Additional Info */}
             <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">

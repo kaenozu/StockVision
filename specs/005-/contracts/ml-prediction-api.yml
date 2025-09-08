@@ -1,0 +1,670 @@
+openapi: 3.0.0
+info:
+  title: ML Stock Prediction API
+  description: Machine learning-based stock prediction and analysis endpoints
+  version: 1.0.0
+  contact:
+    name: StockVision ML Team
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+
+paths:
+  /api/ml/predict/{stock_code}:
+    get:
+      summary: Get ML-based stock prediction
+      description: Returns comprehensive prediction analysis using trained ML models
+      parameters:
+        - name: stock_code
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "7203"
+        - name: prediction_horizon
+          in: query
+          description: Prediction time horizon
+          schema:
+            type: string
+            enum: ["short", "medium", "long", "all"]
+            default: "all"
+        - name: include_confidence
+          in: query
+          description: Include confidence intervals in response
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Successful prediction response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionResponse'
+        '404':
+          description: Stock not found or insufficient data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: ML models unavailable or market anomaly detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/ml/train:
+    post:
+      summary: Trigger model training
+      description: Initiates training process for ML models with latest data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingRequest'
+      responses:
+        '202':
+          description: Training initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingResponse'
+        '400':
+          description: Invalid training parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Training already in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/ml/models:
+    get:
+      summary: List available ML models
+      description: Returns status and performance metrics of all ML models
+      responses:
+        '200':
+          description: List of models with their status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelsListResponse'
+
+  /api/ml/models/{model_id}:
+    get:
+      summary: Get detailed model information
+      description: Returns comprehensive information about specific ML model
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 123
+      responses:
+        '200':
+          description: Detailed model information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelDetailResponse'
+        '404':
+          description: Model not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/ml/accuracy/{stock_code}:
+    get:
+      summary: Get prediction accuracy history
+      description: Returns historical accuracy metrics for predictions on specific stock
+      parameters:
+        - name: stock_code
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "7203"
+        - name: days
+          in: query
+          description: Number of days to look back
+          schema:
+            type: integer
+            default: 30
+            minimum: 1
+            maximum: 365
+      responses:
+        '200':
+          description: Accuracy history data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccuracyHistoryResponse'
+
+  /api/ml/anomaly-status:
+    get:
+      summary: Get current market anomaly status
+      description: Returns current market anomaly detection status and active alerts
+      responses:
+        '200':
+          description: Market anomaly status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnomalyStatusResponse'
+
+components:
+  schemas:
+    PredictionResponse:
+      type: object
+      required:
+        - stock_code
+        - timestamp
+        - predictions
+        - overall_recommendation
+      properties:
+        stock_code:
+          type: string
+          example: "7203"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-09-08T15:30:00Z"
+        predictions:
+          type: object
+          properties:
+            short_term:
+              $ref: '#/components/schemas/SinglePrediction'
+            medium_term:
+              $ref: '#/components/schemas/SinglePrediction'  
+            long_term:
+              $ref: '#/components/schemas/SinglePrediction'
+        overall_recommendation:
+          $ref: '#/components/schemas/OverallRecommendation'
+        model_status:
+          $ref: '#/components/schemas/ModelStatus'
+        data_quality:
+          $ref: '#/components/schemas/DataQuality'
+
+    SinglePrediction:
+      type: object
+      required:
+        - target_date
+        - predicted_price
+        - predicted_action
+        - confidence_score
+      properties:
+        target_date:
+          type: string
+          format: date
+          example: "2025-09-09"
+        predicted_price:
+          type: number
+          format: float
+          example: 2985.50
+        predicted_action:
+          type: string
+          enum: ["buy", "sell", "hold"]
+          example: "buy"
+        confidence_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          example: 0.78
+        price_range:
+          type: object
+          properties:
+            low:
+              type: number
+              format: float
+              example: 2950.00
+            high:
+              type: number
+              format: float  
+              example: 3020.00
+        expected_return:
+          type: number
+          format: float
+          description: Expected return percentage if recommendation followed
+          example: 0.045
+        risk_assessment:
+          type: string
+          enum: ["low", "medium", "high"]
+          example: "medium"
+
+    OverallRecommendation:
+      type: object
+      required:
+        - action
+        - confidence
+        - reasoning
+      properties:
+        action:
+          type: string
+          enum: ["buy", "sell", "hold"]
+          example: "buy"
+        confidence:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          example: 0.82
+        reasoning:
+          type: array
+          items:
+            type: string
+          example:
+            - "Short-term model predicts 3% price increase"
+            - "Volume analysis shows strong buying pressure"
+            - "Market correlation remains stable"
+        target_price:
+          type: number
+          format: float
+          example: 3100.00
+        stop_loss:
+          type: number
+          format: float
+          example: 2850.00
+        time_horizon:
+          type: string
+          example: "5-10 days"
+
+    ModelStatus:
+      type: object
+      properties:
+        models_used:
+          type: array
+          items:
+            type: object
+            properties:
+              model_id:
+                type: integer
+                example: 123
+              name:
+                type: string
+                example: "Random Forest Short-term v1.2.1"
+              last_trained:
+                type: string
+                format: date-time
+                example: "2025-09-07T02:00:00Z"
+              accuracy:
+                type: number
+                format: float
+                example: 0.74
+        ensemble_weight:
+          type: object
+          description: Weights used for combining model predictions
+          additionalProperties:
+            type: number
+            format: float
+        anomaly_detected:
+          type: boolean
+          example: false
+        anomaly_details:
+          type: string
+          nullable: true
+          example: null
+
+    DataQuality:
+      type: object
+      properties:
+        completeness_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          example: 0.98
+        freshness_hours:
+          type: number
+          format: float
+          description: Hours since last data update
+          example: 2.5
+        missing_features:
+          type: array
+          items:
+            type: string
+          example: []
+        data_issues:
+          type: array
+          items:
+            type: string
+          example: []
+
+    TrainingRequest:
+      type: object
+      properties:
+        model_types:
+          type: array
+          items:
+            type: string
+            enum: ["short_term", "medium_term", "long_term"]
+          example: ["short_term", "medium_term"]
+        stock_codes:
+          type: array
+          items:
+            type: string
+          description: Specific stocks to train on, or empty for all
+          example: ["7203", "6758", "9984"]
+        force_retrain:
+          type: boolean
+          default: false
+          description: Force retraining even if models are recent
+        validation_split:
+          type: number
+          format: float
+          minimum: 0.1
+          maximum: 0.5
+          default: 0.2
+          description: Fraction of data to use for validation
+
+    TrainingResponse:
+      type: object
+      required:
+        - training_id
+        - status
+        - estimated_completion
+      properties:
+        training_id:
+          type: string
+          example: "train_20250908_143052"
+        status:
+          type: string
+          enum: ["initiated", "in_progress", "completed", "failed"]
+          example: "initiated"
+        estimated_completion:
+          type: string
+          format: date-time
+          example: "2025-09-08T16:30:00Z"
+        models_scheduled:
+          type: array
+          items:
+            type: string
+          example: ["short_term_rf", "medium_term_lr"]
+
+    ModelsListResponse:
+      type: object
+      properties:
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelSummary'
+        total_models:
+          type: integer
+          example: 6
+        active_models:
+          type: integer
+          example: 3
+
+    ModelSummary:
+      type: object
+      required:
+        - id
+        - name
+        - model_type
+        - is_active
+        - accuracy_score
+      properties:
+        id:
+          type: integer
+          example: 123
+        name:
+          type: string
+          example: "Random Forest Short-term v1.2.1"
+        model_type:
+          type: string
+          enum: ["short_term", "medium_term", "long_term"]
+          example: "short_term"
+        algorithm:
+          type: string
+          example: "random_forest"
+        is_active:
+          type: boolean
+          example: true
+        accuracy_score:
+          type: number
+          format: float
+          example: 0.74
+        last_trained:
+          type: string
+          format: date-time
+          example: "2025-09-07T02:00:00Z"
+        training_period:
+          type: object
+          properties:
+            start_date:
+              type: string
+              format: date
+              example: "2024-01-01"
+            end_date:
+              type: string
+              format: date
+              example: "2025-08-31"
+
+    ModelDetailResponse:
+      type: object
+      required:
+        - model
+        - performance_metrics
+        - feature_importance
+      properties:
+        model:
+          $ref: '#/components/schemas/ModelSummary'
+        performance_metrics:
+          type: object
+          properties:
+            accuracy:
+              type: number
+              format: float
+              example: 0.74
+            precision:
+              type: object
+              properties:
+                buy:
+                  type: number
+                  format: float
+                  example: 0.78
+                sell:
+                  type: number
+                  format: float
+                  example: 0.71
+                hold:
+                  type: number
+                  format: float
+                  example: 0.73
+            recall:
+              type: object
+              properties:
+                buy:
+                  type: number
+                  format: float
+                  example: 0.69
+                sell:
+                  type: number
+                  format: float
+                  example: 0.77
+                hold:
+                  type: number
+                  format: float
+                  example: 0.76
+            f1_score:
+              type: number
+              format: float
+              example: 0.73
+            profit_simulation:
+              type: number
+              format: float
+              description: Hypothetical profit if following model recommendations
+              example: 0.15
+        feature_importance:
+          type: array
+          items:
+            type: object
+            properties:
+              feature_name:
+                type: string
+                example: "rsi"
+              importance_score:
+                type: number
+                format: float
+                example: 0.12
+        training_history:
+          type: array
+          items:
+            type: object
+            properties:
+              version:
+                type: string
+                example: "1.2.1"
+              trained_date:
+                type: string
+                format: date-time
+                example: "2025-09-07T02:00:00Z"
+              accuracy_achieved:
+                type: number
+                format: float
+                example: 0.74
+
+    AccuracyHistoryResponse:
+      type: object
+      properties:
+        stock_code:
+          type: string
+          example: "7203"
+        period:
+          type: object
+          properties:
+            start_date:
+              type: string
+              format: date
+              example: "2025-08-08"
+            end_date:
+              type: string
+              format: date
+              example: "2025-09-08"
+            days_count:
+              type: integer
+              example: 31
+        accuracy_metrics:
+          type: object
+          properties:
+            overall_accuracy:
+              type: number
+              format: float
+              example: 0.72
+            directional_accuracy:
+              type: number
+              format: float
+              description: Percentage of correct buy/sell/hold predictions
+              example: 0.78
+            price_accuracy:
+              type: number
+              format: float
+              description: Average absolute percentage error for price predictions
+              example: 0.045
+        daily_accuracy:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+                example: "2025-09-07"
+              predicted_action:
+                type: string
+                enum: ["buy", "sell", "hold"]
+                example: "buy"
+              actual_optimal_action:
+                type: string
+                enum: ["buy", "sell", "hold"]
+                example: "buy"
+              was_correct:
+                type: boolean
+                example: true
+              predicted_price:
+                type: number
+                format: float
+                example: 2985.50
+              actual_price:
+                type: number
+                format: float
+                example: 2992.00
+              price_error_percent:
+                type: number
+                format: float
+                example: 0.22
+
+    AnomalyStatusResponse:
+      type: object
+      properties:
+        current_status:
+          type: string
+          enum: ["normal", "anomaly_detected", "high_volatility", "system_paused"]
+          example: "normal"
+        active_anomalies:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 456
+              anomaly_type:
+                type: string
+                enum: ["high_volatility", "volume_spike", "correlation_breakdown", "gap_event"]
+                example: "high_volatility"
+              severity_level:
+                type: string
+                enum: ["low", "medium", "high", "critical"]
+                example: "medium"
+              affected_stocks:
+                type: array
+                items:
+                  type: string
+                example: ["7203", "6758"]
+              detection_date:
+                type: string
+                format: date-time
+                example: "2025-09-08T09:15:00Z"
+              estimated_resolution:
+                type: string
+                format: date-time
+                nullable: true
+                example: "2025-09-08T15:30:00Z"
+        model_predictions_paused:
+          type: boolean
+          example: false
+        last_anomaly_check:
+          type: string
+          format: date-time
+          example: "2025-09-08T15:45:00Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: "STOCK_NOT_FOUND"
+        message:
+          type: string
+          example: "Stock code '7203' not found in database or insufficient training data"
+        details:
+          type: object
+          nullable: true
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-09-08T15:45:00Z"

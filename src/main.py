@@ -75,9 +75,11 @@ setup_error_handlers(app)
 # Import and include API routes
 from .api.stocks import router as stocks_router
 from .api.watchlist import router as watchlist_router
+from .api.ml_prediction import router as ml_router
 
 app.include_router(stocks_router)
 app.include_router(watchlist_router)
+app.include_router(ml_router)
 
 
 @app.get("/", tags=["Root"])
@@ -152,7 +154,7 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "src.main:app",
-        host="0.0.0.0",
+        host="localhost",
         port=8000,
         reload=True,
         log_level="info",

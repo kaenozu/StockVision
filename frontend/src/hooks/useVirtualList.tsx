@@ -70,7 +70,6 @@ interface VirtualListProps<T> {
   className?: string
 }
 
-// eslint-disable-next-line @typescript-eslint/parser
 export function VirtualList<T>(props: VirtualListProps<T>) {
   const { items, itemHeight, height, renderItem, className = '' } = props
   const { virtualItems, totalHeight, setScrollOffset } = useVirtualList(items, {
