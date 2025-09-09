@@ -5,7 +5,7 @@
  * and dispatches actions to update the Redux store.
  */
 
-import { Middleware, Action, Dispatch, AnyAction } from 'redux';
+// import { Middleware, Action, Dispatch, AnyAction } from 'redux';
 import { StockData, CurrentPriceResponse, PriceHistoryItem } from '../types/stock';
 
 // Action types
@@ -187,14 +187,71 @@ const initialWebSocketState: WebSocketState = {
 };
 
 // WebSocket middleware
-export const webSocketMiddleware: Middleware = (store) => {
+export const webSocketMiddleware: any = (store: any) => {
   let socket: WebSocket | null = null;
   let reconnectTimeout: NodeJS.Timeout | null = null;
   let reconnectAttempts = 0;
-  const maxReconnectAttempts = 5;
-  const reconnectInterval = 3000; // 3 seconds
+  let heartbeatInterval: NodeJS.Timeout | null = null;
+  const maxReconnectAttempts = 10;
+  const baseReconnectInterval = 1000; // 1 second base
+  const maxReconnectInterval = 30000; // 30 seconds max
+  const heartbeatIntervalMs = 30000; // 30 seconds
+  
+  // 指数バックオフ計算
+  const getReconnectDelay = (attempt: number): number => {
+    const delay = Math.min(baseReconnectInterval * Math.pow(2, attempt), maxReconnectInterval);
+    return delay + Math.random() * 1000; // ジッターを追加
+  };
 
-  return (next: Dispatch<AnyAction>) => (action: AnyAction) => {
+  // ネットワーク状態監視
+  const isOnline = (): boolean => {
+    return navigator.onLine;
+  };
+
+  // ハートビート機能
+  const startHeartbeat = () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+    }
+    heartbeatInterval = setInterval(() => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, heartbeatIntervalMs);
+  };
+
+  const stopHeartbeat = () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      heartbeatInterval = null;
+    }
+  };
+
+  // ネットワーク状態変更の監視
+  const handleOnline = () => {
+    console.log('[WebSocket] Network connection restored');
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      // 再接続を試行
+      const state = store.getState();
+      const lastAction = state.webSocket?.lastConnectAction;
+      if (lastAction) {
+        store.dispatch(connectWebSocket(lastAction.url, lastAction.stockCodes));
+      }
+    }
+  };
+
+  const handleOffline = () => {
+    console.log('[WebSocket] Network connection lost');
+    store.dispatch(webSocketError('Network connection lost'));
+  };
+
+  // イベントリスナーを追加
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+  }
+
+  return (next: any) => (action: any) => {
     // Handle WebSocket actions
     switch (action.type) {
       case WEBSOCKET_CONNECT:
@@ -225,6 +282,7 @@ export const webSocketMiddleware: Middleware = (store) => {
             console.log('[WebSocket] Connected to server');
             store.dispatch(webSocketOpened());
             reconnectAttempts = 0;
+            startHeartbeat();
 
             // Subscribe to stock codes
             if (stockCodes.length > 0) {
@@ -260,6 +318,11 @@ export const webSocketMiddleware: Middleware = (store) => {
                   console.log('[WebSocket] Subscription confirmed:', message.data);
                   break;
 
+                case 'pong':
+                  // Handle heartbeat response
+                  console.log('[WebSocket] Heartbeat pong received');
+                  break;
+
                 case 'error':
                   console.error('[WebSocket] Server error:', message);
                   store.dispatch(webSocketError(message.error || 'Unknown server error'));
@@ -278,15 +341,21 @@ export const webSocketMiddleware: Middleware = (store) => {
           socket.onclose = (event) => {
             console.log('[WebSocket] Connection closed:', event.reason);
             store.dispatch(webSocketClosed());
+            stopHeartbeat();
 
-            // Attempt to reconnect if not explicitly disconnected
-            if (reconnectAttempts < maxReconnectAttempts) {
+            // Attempt to reconnect if not explicitly disconnected and network is online
+            if (reconnectAttempts < maxReconnectAttempts && isOnline() && event.code !== 1000) {
+              const delay = getReconnectDelay(reconnectAttempts);
               reconnectAttempts++;
-              console.log(`[WebSocket] Reconnecting in ${reconnectInterval}ms (attempt ${reconnectAttempts})`);
+              console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
               reconnectTimeout = setTimeout(() => {
-                store.dispatch(connectWebSocket(action.payload.url, action.payload.stockCodes));
-              }, reconnectInterval);
-            } else {
+                if (isOnline()) {
+                  store.dispatch(connectWebSocket(action.payload.url, action.payload.stockCodes));
+                } else {
+                  console.log('[WebSocket] Skipping reconnect - offline');
+                }
+              }, delay);
+            } else if (reconnectAttempts >= maxReconnectAttempts) {
               console.error('[WebSocket] Max reconnect attempts reached');
               store.dispatch(webSocketError('Max reconnect attempts reached'));
             }
@@ -310,11 +379,17 @@ export const webSocketMiddleware: Middleware = (store) => {
           reconnectTimeout = null;
         }
 
+        // Stop heartbeat
+        stopHeartbeat();
+
         // Close connection
         if (socket) {
-          socket.close();
+          socket.close(1000, 'Client disconnect'); // Clean closure
           socket = null;
         }
+
+        // Reset reconnect attempts
+        reconnectAttempts = 0;
 
         // Update state
         next(action);
