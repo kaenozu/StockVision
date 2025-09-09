@@ -8,6 +8,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { CurrentPriceResponse, AsyncState } from '../../types/stock'
 import { stockApi } from '../../services/stockApi'
+import { CACHE_INTERVALS } from '../../constants/api'
 
 interface UseStockPriceOptions {
   autoRefresh?: boolean
@@ -18,7 +19,7 @@ interface UseStockPriceOptions {
 export function useStockPrice(options: UseStockPriceOptions = {}) {
   const { 
     autoRefresh = false, 
-    refreshInterval = 30000, // 30 seconds
+    refreshInterval = CACHE_INTERVALS.PRICE_UPDATE, // 10 minutes (was 30 seconds)
     enableWebSocket = false 
   } = options
 

@@ -11,14 +11,14 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from ..config import get_settings, should_use_real_data, get_yahoo_finance_config, get_cache_config
-from ..stock_api.data_models import StockData, CurrentPrice, PriceHistoryData
-from ..stock_api.yahoo_client import YahooFinanceClient
+from ..stock_api.data_models import StockData, CurrentPrice, PriceHistoryData, PriceHistoryItem
+from ..stock_api.yahoo_client import YahooFinanceClient, YahooFinanceError, StockNotFoundError
 from ..models.stock import Stock
 from ..models.price_history import PriceHistory
 from .cache import CacheManager
 from .data_providers import (
     BaseDataProvider, DataProviderError, DataNotFoundError,
-    YahooFinanceProvider, MockDataProvider, DatabaseProvider
+    YahooFinanceProvider, DatabaseProvider
 )
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class HybridStockService:
         self.yahoo_config = get_yahoo_finance_config()
         self.cache_config = get_cache_config()
         self.cache = CacheManager()
-        self.mock_generator = MockDataGenerator()
+        # Mock generator removed - using data providers instead
         self._yahoo_client: Optional[YahooFinanceClient] = None
         self._client_lock = asyncio.Lock()
     
@@ -104,6 +104,29 @@ class HybridStockService:
                 logger.info(f"Using cached stock info for {stock_code}")
                 return cached_data
             
+            # Try to get from database
+            if db:
+                db_stock = db.query(Stock).filter(Stock.stock_code == stock_code).first()
+                if db_stock and db_stock.updated_at:
+                    # Check if data is fresh enough (e.g., within last hour)
+                    from datetime import datetime, timedelta
+                    if datetime.utcnow() - db_stock.updated_at < timedelta(hours=1):
+                        logger.info(f"Using database stock info for {stock_code}")
+                        stock_data = StockData(
+                            stock_code=db_stock.stock_code,
+                            company_name=db_stock.company_name,
+                            current_price=db_stock.current_price,
+                            previous_close=db_stock.previous_close,
+                            price_change=db_stock.price_change,
+                            price_change_pct=db_stock.price_change_pct,
+                            volume=db_stock.volume,
+                            market_cap=db_stock.market_cap,
+                            last_updated=db_stock.updated_at
+                        )
+                        # Also cache it
+                        await self.cache.set("stock_info", stock_code, stock_data)
+                        return stock_data
+            
             # Try to get from real Yahoo Finance API
             try:
                 logger.info(f"Fetching real stock info for {stock_code}")
@@ -138,17 +161,10 @@ class HybridStockService:
             logger.info(f"Using cached mock stock info for {stock_code}")
             return cached_mock_data
         
-        logger.info(f"Generating new mock stock info for {stock_code}")
-        mock_data = self.mock_generator.generate_stock_data(stock_code)
-        
-        # Cache the mock data
-        await self.cache.set("stock_info", stock_code, mock_data)
-        
-        # Optionally save mock data to database
-        if db:
-            await self._save_stock_to_db(mock_data, db)
-        
-        return mock_data
+        # Mock data generation was removed as per user request
+        # "いらんて" - user explicitly rejected mock data
+        logger.warning(f"Mock data generation disabled for {stock_code}")
+        raise Exception(f"Stock data not available and mock data disabled for {stock_code}")
     
     async def get_current_price(
         self,
@@ -192,13 +208,9 @@ class HybridStockService:
             logger.info(f"Using cached mock current price for {stock_code}")
             return cached_mock_price
         
-        logger.info(f"Generating new mock current price for {stock_code}")
-        mock_price = self.mock_generator.generate_current_price(stock_code)
-        
-        # Cache the mock data
-        await self.cache.set("current_price", stock_code, mock_price)
-        
-        return mock_price
+        # Mock data generation was removed as per user request
+        logger.warning(f"Mock price generation disabled for {stock_code}")
+        raise Exception(f"Current price not available and mock data disabled for {stock_code}")
     
     async def get_price_history(
         self,
@@ -219,6 +231,38 @@ class HybridStockService:
             if cached_data:
                 logger.info(f"Using cached price history for {stock_code}")
                 return cached_data
+            
+            # Try to get from database
+            if db:
+                from datetime import datetime, timedelta
+                start_date = datetime.utcnow().date() - timedelta(days=days)
+                db_history = db.query(PriceHistory).filter(
+                    PriceHistory.stock_code == stock_code,
+                    PriceHistory.date >= start_date
+                ).order_by(PriceHistory.date.desc()).all()
+                
+                if db_history and len(db_history) >= days * 0.7:  # At least 70% of requested days
+                    logger.info(f"Using database price history for {stock_code}: {len(db_history)} records")
+                    history_items = []
+                    for record in db_history:
+                        history_items.append(PriceHistoryItem(
+                            stock_code=record.stock_code,
+                            date=record.date,
+                            open=record.open_price,
+                            high=record.high_price,
+                            low=record.low_price,
+                            close=record.close_price,
+                            volume=record.volume
+                        ))
+                    
+                    history_data = PriceHistoryData(
+                        stock_code=stock_code,
+                        history=history_items,
+                        period_days=days
+                    )
+                    # Also cache it
+                    await self.cache.set("price_history", stock_code, history_data, days=days)
+                    return history_data
             
             # Try real API
             try:
@@ -248,17 +292,9 @@ class HybridStockService:
             logger.info(f"Using cached mock price history for {stock_code}")
             return cached_mock_history
         
-        logger.info(f"Generating new mock price history for {stock_code}")
-        mock_history = self.mock_generator.generate_price_history(stock_code, days)
-        
-        # Cache the mock data
-        await self.cache.set("price_history", stock_code, mock_history, days=days)
-        
-        # Optionally save mock data to database
-        if db:
-            await self._save_price_history_to_db(mock_history, db)
-        
-        return mock_history
+        # Mock data generation was removed as per user request
+        logger.warning(f"Mock price history generation disabled for {stock_code}")
+        raise Exception(f"Price history not available and mock data disabled for {stock_code}")
     
     async def _save_stock_to_db(self, stock_data: StockData, db: Session) -> None:
         """Save stock data to database."""
