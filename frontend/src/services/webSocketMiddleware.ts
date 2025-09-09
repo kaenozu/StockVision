@@ -251,7 +251,7 @@ export const webSocketMiddleware: Middleware = (store: any) => {
     window.addEventListener('offline', handleOffline);
   }
 
-  return (next: any) => (action: any) => {
+  return (next: any) => (action: AnyAction) => {
     // Handle WebSocket actions
     switch (action.type) {
       case WEBSOCKET_CONNECT:
