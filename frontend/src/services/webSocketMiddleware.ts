@@ -187,7 +187,7 @@ const initialWebSocketState: WebSocketState = {
 };
 
 // WebSocket middleware
-export const webSocketMiddleware: any = (store: any) => {
+export const webSocketMiddleware: Middleware = (store: any) => {
   let socket: WebSocket | null = null;
   let reconnectTimeout: NodeJS.Timeout | null = null;
   let reconnectAttempts = 0;
