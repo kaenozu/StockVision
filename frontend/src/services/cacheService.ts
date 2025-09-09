@@ -20,7 +20,7 @@ class CacheService {
   private ttl: number;
   private maxSize: number;
   private stats = { hits: 0, misses: 0 };
-  private cleanupInterval: NodeJS.Timeout | null = null;
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(ttl = 60 * 1000, maxSize = 1000) {
     this.ttl = ttl;
