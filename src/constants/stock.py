@@ -6,8 +6,6 @@ from decimal import Decimal
 
 # Stock price constants
 class StockPrice:
-    BASE_PRICE = Decimal('1000.0')
-    MOCK_BASE_PRICE = 1000.0
     MIN_VOLUME = 100000
     MAX_VOLUME = 10000000
     MIN_MARKET_CAP_MULTIPLIER = 1000000
