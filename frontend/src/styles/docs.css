@@ -52,7 +52,27 @@
 
 /* ドキュメントコンテンツ */
 .doc-content {
-  @apply prose prose-lg max-w-none;
+  @apply max-w-none text-gray-700 leading-relaxed;
+  
+  /* Typography styles to replace prose */
+  h1 { @apply text-3xl font-bold text-gray-900 mb-6 mt-8; }
+  h2 { @apply text-2xl font-semibold text-gray-900 mb-4 mt-6; }
+  h3 { @apply text-xl font-medium text-gray-900 mb-3 mt-5; }
+  h4 { @apply text-lg font-medium text-gray-900 mb-2 mt-4; }
+  
+  p { @apply mb-4 text-base leading-7; }
+  
+  ul, ol { @apply mb-4 pl-6; }
+  li { @apply mb-1; }
+  
+  code { @apply bg-gray-100 px-1 py-0.5 rounded text-sm font-mono; }
+  pre { @apply bg-gray-100 p-4 rounded-lg mb-4 overflow-x-auto; }
+  
+  blockquote { @apply border-l-4 border-blue-500 pl-4 italic text-gray-600 mb-4; }
+  
+  table { @apply w-full mb-4; }
+  th, td { @apply px-3 py-2 border-b border-gray-200; }
+  th { @apply font-semibold text-left; }
 }
 
 /* 目次 */

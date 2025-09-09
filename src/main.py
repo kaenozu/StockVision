@@ -179,12 +179,20 @@ app = FastAPI(
 
 # 1. CORS Middleware (最優先 - セキュリティチェック)
 settings = get_settings()
+# Temporary direct CORS configuration for debugging
+cors_origins = [
+    "http://localhost:3004",
+    "http://localhost:3003", 
+    "http://localhost:3002",
+    "http://localhost:3001",
+    "http://localhost:3000"
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors.allow_origins,
-    allow_credentials=settings.cors.allow_credentials,
-    allow_methods=settings.cors.allow_methods,
-    allow_headers=settings.cors.allow_headers,
+    allow_origins=["*"],  # Temporary: allow all origins for debugging
+    allow_credentials=False,  # Must be False when using "*" for origins
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 2. パフォーマンス最適化ミドルウェア群の設定
@@ -210,6 +218,20 @@ def get_db():
 async def health_check():
     """Simple health check endpoint."""
     return {"status": "ok"}
+
+@api_router.get("/cors-debug", tags=["Debug"])
+async def cors_debug():
+    """Debug CORS configuration."""
+    settings = get_settings()
+    return {
+        "cors_origins": settings.cors.allow_origins,
+        "environment": settings.environment,
+        "cors_config": {
+            "allow_credentials": settings.cors.allow_credentials,
+            "allow_methods": settings.cors.allow_methods,
+            "allow_headers": settings.cors.allow_headers
+        }
+    }
 
 @api_router.get("/live", tags=["Health"])
 async def live_check():

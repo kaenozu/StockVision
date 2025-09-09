@@ -32,6 +32,35 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/stocks", tags=["Stocks"])
 
+@router.get("/test")
+async def test_endpoint():
+    """テスト用エンドポイント"""
+    return {"message": "API is working", "timestamp": "2025-09-09"}
+
+@router.get("/history-test/{stock_code}")
+async def get_price_history_test(stock_code: str):
+    """新しい価格履歴テストエンドポイント"""
+    return [
+        {
+            "stock_code": stock_code,
+            "date": "2025-09-09",
+            "open": 2500.0,
+            "high": 2520.0,
+            "low": 2485.0,
+            "close": 2505.0,
+            "volume": 1200000
+        },
+        {
+            "stock_code": stock_code,
+            "date": "2025-09-08",
+            "open": 2495.0,
+            "high": 2515.0,
+            "low": 2480.0,
+            "close": 2500.0,
+            "volume": 1150000
+        }
+    ]
+
 
 def get_db():
     """Database session dependency."""
@@ -212,7 +241,6 @@ async def get_current_price(
 
 @router.get("/{stock_code}/history",
            summary="価格履歴取得",
-           response_model=List[PriceHistoryItem],
            responses={
                200: {
                    "description": "価格履歴",
@@ -242,7 +270,6 @@ async def get_current_price(
                404: {"description": "銘柄が見つからない"},
                400: {"description": "不正な銘柄コードまたは日数"}
            })
-@cache_price_history()  # 10分間キャッシュ
 async def get_price_history(
     stock_code: str = Path(..., pattern=r"^[0-9]{4}$"),
     days: int = Query(default=30, ge=1, le=365, description="取得する日数"),
@@ -252,59 +279,46 @@ async def get_price_history(
     ),
     db: Session = Depends(get_db)
 ):
-    """価格履歴を取得します。
-    
-    Args:
-        stock_code: 4桁の銘柄コード
-        days: 取得する日数 (1-365)
-        use_real_data: リアルAPIデータを使用するかどうか (None = 環境設定に従う)
-        db: データベースセッション
-    
-    Returns:
-        List[PriceHistoryItem]: 価格履歴のリスト (日付降順、リアルAPIまたはモックデータ)
-    
-    Note:
-        use_real_data=true でリアルYahoo Finance API、false または未指定でモックデータを使用。
-    
-    Examples:
-        - リクエスト: `GET /stocks/7203/history`
-        - リクエスト (30日分): `GET /stocks/7203/history?days=30`
-        - リクエスト (リアルデータ): `GET /stocks/7203/history?use_real_data=true`
-    """
-    logger.info(f"Fetching price history for {stock_code}, {days} days (use_real_data={use_real_data})")
+    """価格履歴を取得します（実際のYahoo Finance APIを使用）。"""
+    logger.info(f"Fetching price history for {stock_code}, days={days} (use_real_data={use_real_data})")
     
     try:
         # バリデーション
         stock_validator = StockCode(code=stock_code)
-        request_validator = PriceHistoryRequest(stock_code=stock_code, days=days)
-        
-        # 特定の銘柄コードは存在しないものとして404を返す（テスト用）
-        invalid_codes = ["0001", "0000"]
-        if stock_code in invalid_codes:
-            logger.info(f"Stock code {stock_code} is marked as non-existent")
-            raise HTTPException(status_code=404, detail=f"Stock code {stock_code} not found")
         
         # ハイブリッドサービスを使用
         stock_service = await get_stock_service()
-        price_history = await stock_service.get_price_history(
+        price_history_data = await stock_service.get_price_history(
             stock_code=stock_code,
             days=days,
             use_real_data=use_real_data,
             db=db
         )
         
-        logger.info(f"Successfully retrieved {len(price_history.history)} price history records for {stock_code}")
-        return price_history.history
-    
+        # レスポンス形式に変換
+        history = []
+        for item in price_history_data.history:
+            history.append({
+                "stock_code": item.stock_code,
+                "date": item.date.strftime("%Y-%m-%d") if hasattr(item.date, 'strftime') else str(item.date),
+                "open": float(item.open),
+                "high": float(item.high),
+                "low": float(item.low),
+                "close": float(item.close),
+                "volume": int(item.volume)
+            })
+        
+        # 日付順でソート（古い順）
+        history.sort(key=lambda x: x["date"])
+        
+        logger.info(f"Successfully retrieved {len(history)} price history records for {stock_code}")
+        return history
+        
     except HTTPException:
         raise
     except ValueError as e:
         logger.error(f"Validation error for price history {stock_code}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
-    except SQLAlchemyError as e:
-        logger.error(f"Database error for price history {stock_code}: {e}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Database error")
     except Exception as e:
         logger.error(f"Unexpected error for price history {stock_code}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")

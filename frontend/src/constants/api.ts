@@ -14,7 +14,7 @@ export const API_BASE_URL = (() => {
   
   // Default URLs for development/production
   return IS_DEVELOPMENT 
-    ? 'http://localhost:8000/api'  // Fixed: was 8001, should be 8000 (matches backend default)
+    ? '/api'  // Use relative path for development to leverage Vite proxy
     : 'http://localhost:8080/api'
 })()
 

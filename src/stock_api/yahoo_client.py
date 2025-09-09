@@ -313,27 +313,32 @@ class YahooFinanceClient:
                     # DatetimeIndexからdateに変換
                     trade_date = date_index.date() if hasattr(date_index, 'date') else date_index
                     
+                    # Check for NaN values before creating item
+                    if pd.isna(row['Open']) or pd.isna(row['High']) or pd.isna(row['Low']) or pd.isna(row['Close']):
+                        logger.debug(f"Skipping row with NaN values for {stock_code} on {date_index}")
+                        continue
+                        
                     price_item = PriceHistoryItem(
                         stock_code=stock_code,
-                        trading_date=trade_date,
-                        open_price=Decimal(str(row['Open'])),
-                        high_price=Decimal(str(row['High'])),
-                        low_price=Decimal(str(row['Low'])),
-                        close_price=Decimal(str(row['Close'])),
-                        volume=int(row['Volume']) if not pd.isna(row['Volume']) else 0,
-                        adj_close=Decimal(str(row['Adj Close'])) if 'Adj Close' in row and not pd.isna(row['Adj Close']) else None
+                        date=datetime.combine(trade_date, datetime.min.time()) if isinstance(trade_date, date) else trade_date,
+                        open=Decimal(str(row['Open'])),
+                        high=Decimal(str(row['High'])),
+                        low=Decimal(str(row['Low'])),
+                        close=Decimal(str(row['Close'])),
+                        volume=int(row['Volume']) if not pd.isna(row['Volume']) else 0
                     )
                     history_items.append(price_item)
                     
                 except (ValueError, TypeError) as e:
                     logger.warning(f"Skipping invalid price data for {stock_code} on {date_index}: {e}")
+                    logger.debug(f"Row data: {dict(row)}")
                     continue
             
             if not history_items:
                 raise DataValidationError(f"No valid price history data for stock {stock_code}")
             
-            # 日付範囲の計算
-            dates = [item.date for item in history_items]
+            # 日付範囲の計算  
+            dates = [item.date.date() if isinstance(item.date, datetime) else item.date for item in history_items]
             start_date = min(dates)
             end_date = max(dates)
             
