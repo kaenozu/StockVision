@@ -1,18 +1,5 @@
 import React, { useState, useEffect } from 'react'
-
-// シンプルなモックAPI
-const mockApi = {
-  getCurrentPrice: async (_code: string) => {
-    await new Promise(resolve => setTimeout(resolve, 500))
-    const basePrice = 1000 + Math.random() * 5000
-    const change = (Math.random() - 0.5) * 200
-    return {
-      current_price: Math.round(basePrice),
-      price_change: Math.round(change),
-      price_change_pct: Number(((change / basePrice) * 100).toFixed(2))
-    }
-  }
-}
+import { stockApi } from '../services/stockApi'
 
 interface Stock {
   code: string
@@ -44,7 +31,7 @@ const ColorfulDashboard = () => {
     try {
       const stockData = await Promise.all(
         stockCodes.map(async ({ code, name }) => {
-          const data = await mockApi.getCurrentPrice(code)
+          const data = await stockApi.getCurrentPrice(code)
           return {
             code,
             name,

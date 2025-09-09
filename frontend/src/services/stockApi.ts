@@ -9,7 +9,7 @@
  * - Typed request/response interfaces
  * - Runtime data validation using type guards
  * - Comprehensive error handling with custom error types
- * - Support for both mock and real data modes
+ * - Support for real data from Yahoo Finance API
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios'
@@ -219,11 +219,11 @@ export class StockApiClient {
   /**
    * GET /stocks/{code} - Get basic stock information (Always uses real data)
    */
-  async getStockData(stockCode: string, useRealData = true): Promise<StockData> {
+  async getStockData(stockCode: string): Promise<StockData> {
     this.validateStockCode(stockCode)
 
     // Check cache first
-    const cacheKey = `stock_${stockCode}_${useRealData}`
+    const cacheKey = `stock_${stockCode}`
     try {
       const cached = stockDataCache.get<StockData>(cacheKey)
       if (cached) {
@@ -238,17 +238,11 @@ export class StockApiClient {
       })
     }
 
-    const params: Record<string, unknown> = {}
-    if (useRealData) {
-      params.use_real_data = true
-    }
-
     const response = await this.client.get<StockData>(
-      `/stocks/${stockCode}`,
-      { params }
+      `/stocks/${stockCode}`
     )
 
-    const stockData = this.adjustPriceToRealistic(response.data)
+    const stockData = response.data
 
     // Validate response data structure
     if (!isStockData(stockData)) {
@@ -272,14 +266,14 @@ export class StockApiClient {
   /**
    * GET /stocks/{code}/current - Get current price information (Always uses real data)
    */
-  async getCurrentPrice(stockCode: string, useRealData = true): Promise<CurrentPriceResponse> {
+  async getCurrentPrice(stockCode: string): Promise<CurrentPriceResponse> {
     this.validateStockCode(stockCode)
 
     const response = await this.client.get<CurrentPriceResponse>(
       `/stocks/${stockCode}/current`
     )
 
-    const currentPrice = this.adjustCurrentPriceToRealistic(response.data)
+    const currentPrice = response.data
 
     // Validate response data structure
     if (!isCurrentPriceResponse(currentPrice)) {
@@ -294,14 +288,13 @@ export class StockApiClient {
    */
   async getPriceHistory(
     stockCode: string, 
-    days: number = DEFAULT_DAYS_HISTORY,
-    useRealData = true
+    days: number = DEFAULT_DAYS_HISTORY
   ): Promise<PriceHistoryItem[]> {
     this.validateStockCode(stockCode)
     this.validateDays(days)
 
     // Check cache first
-    const cacheKey = `history_${stockCode}_${days}_${useRealData}`
+    const cacheKey = `history_${stockCode}_${days}`
     const cached = priceHistoryCache.get<PriceHistoryItem[]>(cacheKey)
     if (cached) {
       console.log(`[StockAPI] Using cached price history for ${stockCode}`)
@@ -309,9 +302,6 @@ export class StockApiClient {
     }
 
     const params: Record<string, unknown> = { days }
-    if (useRealData) {
-      params.use_real_data = true
-    }
 
     const response = await this.client.get<PriceHistoryItem[]>(
       `/stocks/${stockCode}/history`,
@@ -427,17 +417,11 @@ export class StockApiClient {
   /**
    * GET /stocks/{code}/enhanced - Get enhanced stock information with predictions
    */
-  async getEnhancedStockInfo(stockCode: string, useRealData = true): Promise<unknown> {
+  async getEnhancedStockInfo(stockCode: string): Promise<unknown> {
     this.validateStockCode(stockCode)
 
-    const params: Record<string, boolean> = {}
-    if (useRealData !== undefined) {
-      params.use_real_data = useRealData
-    }
-
     const response = await this.client.get(
-      `/stocks/${stockCode}/enhanced`,
-      { params }
+      `/stocks/${stockCode}/enhanced`
     )
 
     return response.data
@@ -446,9 +430,9 @@ export class StockApiClient {
   /**
    * GET /recommended-stocks - Get recommended stocks with caching
    */
-  async getRecommendedStocks(limit = 10, useRealData = true): Promise<unknown[]> {
+  async getRecommendedStocks(limit = 10): Promise<unknown[]> {
     // Check cache first for 24h offline support
-    const cacheKey = `recommended_stocks_${limit}_${useRealData}`
+    const cacheKey = `recommended_stocks_${limit}`
     try {
       const cached = recommendationCache.get<unknown[]>(cacheKey)
       if (cached) {
@@ -465,9 +449,6 @@ export class StockApiClient {
 
     try {
       const params: Record<string, unknown> = { limit }
-      if (useRealData) {
-        params.use_real_data = useRealData
-      }
 
       const response = await this.client.get<unknown>('/recommended-stocks', { params })
       const responseData = response.data
@@ -514,8 +495,7 @@ export class StockApiClient {
         severity: ErrorSeverity.HIGH,
         context: {
           function: 'getRecommendedStocks',
-          limit,
-          useRealData
+          limit
         },
         error: error instanceof Error ? error : undefined
       })
@@ -526,21 +506,16 @@ export class StockApiClient {
   /**
    * GET /trading-recommendations - Get trading recommendations with caching
    */
-  async getTradingRecommendations(useRealData = true): Promise<unknown[]> {
+  async getTradingRecommendations(): Promise<unknown[]> {
     // Check cache first
-    const cacheKey = `trading_recommendations_${useRealData}`
+    const cacheKey = `trading_recommendations`
     const cached = recommendationCache.get<unknown[]>(cacheKey)
     if (cached) {
       console.log('[StockAPI] Using cached trading recommendations')
       return cached
     }
 
-    const params: Record<string, boolean> = {}
-    if (useRealData) {
-      params.use_real_data = useRealData
-    }
-
-    const response = await this.client.get<unknown[]>('/trading-recommendations', { params })
+    const response = await this.client.get<unknown[]>('/trading-recommendations')
     const recommendations = response.data
 
     // Validate response is array
@@ -554,112 +529,7 @@ export class StockApiClient {
     return recommendations
   }
 
-  /**
-   * Adjust current price data to realistic values
-   */
-  private adjustCurrentPriceToRealistic(currentPriceData: CurrentPriceResponse): CurrentPriceResponse {
-    const stockCode = currentPriceData.stock_code
-    let realisticBasePrice: number
-    
-    // Set realistic prices based on stock code
-    switch (stockCode) {
-      case '7203': // Toyota
-        realisticBasePrice = 3500
-        break
-      case '6758': // Sony
-        realisticBasePrice = 11000
-        break
-      case '9984': // SoftBank
-        realisticBasePrice = 6000
-        break
-      case '9983': // Fast Retailing
-        realisticBasePrice = 85000
-        break
-      case '8306': // Mitsubishi UFJ
-        realisticBasePrice = 1200
-        break
-      default:
-        realisticBasePrice = 2500
-        break
-    }
-    
-    // Calculate realistic variation (±5%)
-    const variation = (Math.random() - 0.5) * 0.1 // -5% to +5%
-    const currentPrice = realisticBasePrice * (1 + variation)
-    const previousClose = realisticBasePrice * (1 + (Math.random() - 0.5) * 0.04) // ±2%
-    const priceChange = currentPrice - previousClose
-    const priceChangePct = (priceChange / previousClose) * 100
-    
-    const adjustedCurrentPrice = {
-      ...currentPriceData,
-      current_price: Math.round(currentPrice * 100) / 100,
-      previous_close: Math.round(previousClose * 100) / 100,
-      price_change: Math.round(priceChange * 100) / 100,
-      price_change_pct: Math.round(priceChangePct * 100) / 100,
-    }
-    
-    return adjustedCurrentPrice
-  }
 
-  /**
-   * Adjust mock price data to realistic values based on stock code
-   */
-  private adjustPriceToRealistic(stockData: StockData): StockData {
-    const stockCode = stockData.stock_code
-    let realisticBasePrice: number
-    let companyName: string
-    
-    // Set realistic prices based on stock code
-    switch (stockCode) {
-      case '7203': // Toyota
-        realisticBasePrice = 3500
-        companyName = 'トヨタ自動車株式会社'
-        break
-      case '6758': // Sony
-        realisticBasePrice = 11000
-        companyName = 'ソニーグループ株式会社'
-        break
-      case '9984': // SoftBank
-        realisticBasePrice = 6000
-        companyName = 'ソフトバンクグループ株式会社'
-        break
-      case '9983': // Fast Retailing
-        realisticBasePrice = 85000
-        companyName = '株式会社ファーストリテイリング'
-        break
-      case '8306': // Mitsubishi UFJ
-        realisticBasePrice = 1200
-        companyName = '株式会社三菱UFJフィナンシャル・グループ'
-        break
-      default:
-        realisticBasePrice = 2500 // Default realistic price
-        companyName = stockData.company_name
-        break
-    }
-    
-    // Calculate realistic variation (±5%)
-    const variation = (Math.random() - 0.5) * 0.1 // -5% to +5%
-    const currentPrice = realisticBasePrice * (1 + variation)
-    const previousClose = realisticBasePrice * (1 + (Math.random() - 0.5) * 0.04) // ±2%
-    const priceChange = currentPrice - previousClose
-    const priceChangePct = (priceChange / previousClose) * 100
-    
-    const adjustedData = {
-      ...stockData,
-      company_name: companyName,
-      current_price: Math.round(currentPrice * 100) / 100,
-      previous_close: Math.round(previousClose * 100) / 100,
-      price_change: Math.round(priceChange * 100) / 100,
-      price_change_pct: Math.round(priceChangePct * 100) / 100,
-      day_high: Math.round(currentPrice * 1.02 * 100) / 100,
-      day_low: Math.round(currentPrice * 0.98 * 100) / 100,
-      year_high: Math.round(realisticBasePrice * 1.3 * 100) / 100,
-      year_low: Math.round(realisticBasePrice * 0.7 * 100) / 100,
-      market_cap: currentPrice * 1000000000 // Simplified market cap
-    }
-    
-    return adjustedData
-  }
 
   /**
    * Clear all caches - useful for development and testing
