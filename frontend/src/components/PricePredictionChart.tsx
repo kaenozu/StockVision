@@ -25,21 +25,20 @@ ChartJS.register(
   Filler
 );
 
-// Interface definitions (unused but kept for future expansion)
-// interface ChartDataPointLocal {
-//   date: string;
-//   actual?: number;
-//   predicted?: number;
-//   upperBound?: number;
-//   lowerBound?: number;
-// }
+interface ChartDataPoint {
+  date: string;
+  actual?: number;
+  predicted?: number;
+  upperBound?: number;
+  lowerBound?: number;
+}
 
-// interface TradingMarkerLocal {
-//   date: string;
-//   price: number;
-//   type: 'buy' | 'sell';
-//   reason: string;
-// }
+interface TradingMarker {
+  date: string;
+  price: number;
+  type: 'buy' | 'sell';
+  reason: string;
+}
 
 interface ChartData {
   stock: {

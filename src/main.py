@@ -195,6 +195,7 @@ setup_performance_middleware(app)
 # Import and include API routes
 from .api.stocks import router as stocks_router
 from .api.watchlist import router as watchlist_router
+from .api.ml_prediction import router as ml_router
 from .api.metrics import router as metrics_router
 from .api.performance import router as performance_router
 
@@ -292,6 +293,7 @@ async def readiness_check(db: Session = Depends(get_db)):
 
 api_router.include_router(stocks_router)
 api_router.include_router(watchlist_router)
+api_router.include_router(ml_router)
 api_router.include_router(metrics_router)
 api_router.include_router(performance_router)
 

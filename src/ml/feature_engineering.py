@@ -1,515 +1,431 @@
 """
-Advanced Feature Engineering for Stock Prediction
-
-This module provides advanced feature engineering techniques for stock price prediction,
-including technical indicators, fundamental ratios, market sentiment features, and
-macroeconomic indicators.
+Feature engineering for stock prediction ML models.
 """
-
-import numpy as np
 import pandas as pd
-import logging
-from typing import Dict, List, Optional, Tuple, Any
+import numpy as np
+from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-import talib  # For technical indicators
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
-import warnings
-warnings.filterwarnings('ignore')
+try:
+    import talib
+    TALIB_AVAILABLE = True
+except ImportError:
+    TALIB_AVAILABLE = False
+    print("Warning: TA-Lib not available. Using simplified technical indicators.")
+import logging
 
 logger = logging.getLogger(__name__)
 
-class AdvancedFeatureEngine:
-    """Advanced feature engineering for stock prediction"""
+
+class FeatureEngineer:
+    """Stock data feature engineering for machine learning models."""
     
-    def __init__(self):
-        self.scalers = {}
-        self.feature_names = []
-    
-    def create_technical_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Create comprehensive technical indicators"""
-        df = df.copy()
+    def __init__(self, lookback_days: int = 60):
+        """
+        Initialize feature engineer.
         
-        # Convert column names to uppercase for TA-Lib compatibility
-        df.columns = [col.upper() for col in df.columns]
+        Args:
+            lookback_days: Number of historical days to use for feature calculation
+        """
+        self.lookback_days = lookback_days
         
-        # Price-based indicators
-        df['SMA_5'] = talib.SMA(df['CLOSE'], timeperiod=5)
-        df['SMA_10'] = talib.SMA(df['CLOSE'], timeperiod=10)
-        df['SMA_20'] = talib.SMA(df['CLOSE'], timeperiod=20)
-        df['SMA_50'] = talib.SMA(df['CLOSE'], timeperiod=50)
-        df['SMA_200'] = talib.SMA(df['CLOSE'], timeperiod=200)
+    def create_features(self, price_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Create comprehensive feature set from price data.
         
-        df['EMA_12'] = talib.EMA(df['CLOSE'], timeperiod=12)
-        df['EMA_26'] = talib.EMA(df['CLOSE'], timeperiod=26)
+        Args:
+            price_data: DataFrame with columns [date, open, high, low, close, volume]
         
-        # MACD
-        df['MACD'], df['MACD_SIGNAL'], df['MACD_HIST'] = talib.MACD(
-            df['CLOSE'], fastperiod=12, slowperiod=26, signalperiod=9
-        )
+        Returns:
+            DataFrame with engineered features
+        """
+        logger.info(f"Creating features for {len(price_data)} data points")
         
-        # RSI
-        df['RSI_14'] = talib.RSI(df['CLOSE'], timeperiod=14)
-        df['RSI_7'] = talib.RSI(df['CLOSE'], timeperiod=7)
+        df = price_data.copy()
+        df = df.sort_values('date')
         
-        # Bollinger Bands
-        df['BB_UPPER'], df['BB_MIDDLE'], df['BB_LOWER'] = talib.BBANDS(
-            df['CLOSE'], timeperiod=20, nbdevup=2, nbdevdn=2
-        )
-        df['BB_WIDTH'] = (df['BB_UPPER'] - df['BB_LOWER']) / df['BB_MIDDLE']
-        df['BB_POSITION'] = (df['CLOSE'] - df['BB_LOWER']) / (df['BB_UPPER'] - df['BB_LOWER'])
+        # Ensure required columns exist
+        required_cols = ['open', 'high', 'low', 'close', 'volume']
+        for col in required_cols:
+            if col not in df.columns:
+                raise ValueError(f"Required column '{col}' not found in price_data")
         
-        # Stochastic Oscillator
-        df['STOCH_K'], df['STOCH_D'] = talib.STOCH(
-            df['HIGH'], df['LOW'], df['CLOSE'], 
-            fastk_period=14, slowk_period=3, slowk_matype=0,
-            slowd_period=3, slowd_matype=0
-        )
+        # Technical indicators
+        df = self._add_technical_indicators(df)
         
-        # Williams %R
-        df['WILLIAMS_R'] = talib.WILLR(df['HIGH'], df['LOW'], df['CLOSE'], timeperiod=14)
+        # Price-based features
+        df = self._add_price_features(df)
         
-        # CCI (Commodity Channel Index)
-        df['CCI_14'] = talib.CCI(df['HIGH'], df['LOW'], df['CLOSE'], timeperiod=14)
+        # Volume-based features
+        df = self._add_volume_features(df)
         
-        # ADX (Average Directional Index)
-        df['ADX_14'] = talib.ADX(df['HIGH'], df['LOW'], df['CLOSE'], timeperiod=14)
+        # Temporal features
+        df = self._add_temporal_features(df)
         
-        # Aroon
-        df['AROON_UP'], df['AROON_DOWN'] = talib.AROON(df['HIGH'], df['LOW'], timeperiod=14)
-        df['AROON_OSC'] = df['AROON_UP'] - df['AROON_DOWN']
-        
-        # Momentum indicators
-        df['MOM_10'] = talib.MOM(df['CLOSE'], timeperiod=10)
-        df['ROC_10'] = talib.ROC(df['CLOSE'], timeperiod=10)
-        
-        # Volume indicators
-        if 'VOLUME' in df.columns:
-            df['OBV'] = talib.OBV(df['CLOSE'], df['VOLUME'])
-            df['AD'] = talib.AD(df['HIGH'], df['LOW'], df['CLOSE'], df['VOLUME'])
-            df['ADOSC'] = talib.ADOSC(
-                df['HIGH'], df['LOW'], df['CLOSE'], df['VOLUME'], 
-                fastperiod=3, slowperiod=10
-            )
-            df['VOLUME_SMA'] = talib.SMA(df['VOLUME'], timeperiod=20)
-            df['VOLUME_RATIO'] = df['VOLUME'] / df['VOLUME_SMA']
-        
-        # Volatility indicators
-        df['ATR_14'] = talib.ATR(df['HIGH'], df['LOW'], df['CLOSE'], timeperiod=14)
-        df['NATR_14'] = talib.NATR(df['HIGH'], df['LOW'], df['CLOSE'], timeperiod=14)
-        
-        # Price transformation indicators
-        df['HT_TRENDLINE'] = talib.HT_TRENDLINE(df['CLOSE'])
-        df['HT_SINE'], df['HT_LEADSINE'] = talib.HT_SINE(df['CLOSE'])
-        df['HT_TRENDMODE'] = talib.HT_TRENDMODE(df['CLOSE'])
-        
-        return df
-    
-    def create_price_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Create price-based features"""
-        df = df.copy()
-        
-        # Basic returns
-        df['RETURNS'] = df['CLOSE'].pct_change()
-        df['LOG_RETURNS'] = np.log(df['CLOSE'] / df['CLOSE'].shift(1))
-        
-        # Price ratios
-        df['HIGH_LOW_RATIO'] = df['HIGH'] / df['LOW']
-        df['OPEN_CLOSE_RATIO'] = df['OPEN'] / df['CLOSE']
-        df['PRICE_RANGE'] = (df['HIGH'] - df['LOW']) / df['CLOSE']
-        
-        # Price position indicators
-        df['PRICE_POSITION'] = (df['CLOSE'] - df['LOW']) / (df['HIGH'] - df['LOW'])
-        
-        # Lagged prices and returns
-        for lag in [1, 2, 3, 5, 10]:
-            df[f'CLOSE_LAG_{lag}'] = df['CLOSE'].shift(lag)
-            df[f'RETURNS_LAG_{lag}'] = df['RETURNS'].shift(lag)
-            df[f'VOLUME_LAG_{lag}'] = df['VOLUME'].shift(lag) if 'VOLUME' in df.columns else None
-        
-        # Rolling statistics
-        for window in [5, 10, 20, 50]:
-            df[f'ROLLING_MEAN_{window}'] = df['CLOSE'].rolling(window=window).mean()
-            df[f'ROLLING_STD_{window}'] = df['CLOSE'].rolling(window=window).std()
-            df[f'ROLLING_MIN_{window}'] = df['CLOSE'].rolling(window=window).min()
-            df[f'ROLLING_MAX_{window}'] = df['CLOSE'].rolling(window=window).max()
-            df[f'ROLLING_SKEW_{window}'] = df['CLOSE'].rolling(window=window).skew()
-            df[f'ROLLING_KURT_{window}'] = df['CLOSE'].rolling(window=window).kurt()
-            
-            # Rolling returns statistics
-            df[f'RETURNS_STD_{window}'] = df['RETURNS'].rolling(window=window).std()
-            df[f'RETURNS_SKEW_{window}'] = df['RETURNS'].rolling(window=window).skew()
-            df[f'RETURNS_KURT_{window}'] = df['RETURNS'].rolling(window=window).kurt()
-        
-        # Price momentum
-        for period in [1, 3, 5, 10, 20]:
-            df[f'MOMENTUM_{period}'] = df['CLOSE'] / df['CLOSE'].shift(period) - 1
-            df[f'PRICE_CHAN_{period}'] = (
-                df['CLOSE'] - df['CLOSE'].rolling(window=period).min()
-            ) / (
-                df['CLOSE'].rolling(window=period).max() - 
-                df['CLOSE'].rolling(window=period).min()
-            )
+        # Market structure features
+        df = self._add_market_structure_features(df)
         
         # Volatility features
-        df['VOLATILITY_5'] = df['RETURNS'].rolling(window=5).std()
-        df['VOLATILITY_10'] = df['RETURNS'].rolling(window=10).std()
-        df['VOLATILITY_20'] = df['RETURNS'].rolling(window=20).std()
-        df['VOLATILITY_RATIO'] = df['VOLATILITY_20'] / df['VOLATILITY_5']
+        df = self._add_volatility_features(df)
         
-        # Price trend features
-        df['PRICE_TREND_5'] = (df['CLOSE'] - df['CLOSE'].shift(5)) / 5
-        df['PRICE_TREND_20'] = (df['CLOSE'] - df['CLOSE'].shift(20)) / 20
-        df['TREND_RATIO'] = df['PRICE_TREND_5'] / df['PRICE_TREND_20']
+        # Target variables
+        df = self._add_target_variables(df)
         
-        return df
-    
-    def create_pattern_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Create candlestick pattern recognition features"""
-        df = df.copy()
+        # Remove rows with insufficient history
+        df = df.iloc[self.lookback_days:].copy()
         
-        # Convert column names to uppercase for TA-Lib compatibility
-        df.columns = [col.upper() for col in df.columns]
-        
-        # Two crows
-        df['CDL_2CROWS'] = talib.CDL2CROWS(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Three black crows
-        df['CDL_3BLACKCROWS'] = talib.CDL3BLACKCROWS(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Three inside up/down
-        df['CDL_3INSIDE'] = talib.CDL3INSIDE(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Three-line strike
-        df['CDL_3LINESTRIKE'] = talib.CDL3LINESTRIKE(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Three outside up/down
-        df['CDL_3OUTSIDE'] = talib.CDL3OUTSIDE(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Three stars in the south
-        df['CDL_3STARSINSOUTH'] = talib.CDL3STARSINSOUTH(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Abandoned baby
-        df['CDL_ABANDONEDBABY'] = talib.CDLABANDONEDBABY(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Advance block
-        df['CDL_ADVANCEBLOCK'] = talib.CDLADVANCEBLOCK(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Belt-hold
-        df['CDL_BELTHOLD'] = talib.CDLBELTHOLD(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Breakaway
-        df['CDL_BREAKAWAY'] = talib.CDLBREAKAWAY(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Closing marubozu
-        df['CDL_CLOSINGMARUBOZU'] = talib.CDLCLOSINGMARUBOZU(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Concealing baby swallow
-        df['CDL_CONCEALBABYSWALL'] = talib.CDLCONCEALBABYSWALL(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Counterattack
-        df['CDL_COUNTERATTACK'] = talib.CDLCOUNTERATTACK(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Dark cloud cover
-        df['CDL_DARKCLOUDCOVER'] = talib.CDLDARKCLOUDCOVER(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Doji
-        df['CDL_DOJI'] = talib.CDLDOJI(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Doji star
-        df['CDL_DOJISTAR'] = talib.CDLDOJISTAR(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Dragonfly doji
-        df['CDL_DRAGONFLYDOJI'] = talib.CDLDRAGONFLYDOJI(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Engulfing pattern
-        df['CDL_ENGULFING'] = talib.CDLENGULFING(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Evening doji star
-        df['CDL_EVENINGDOJISTAR'] = talib.CDLEVENINGDOJISTAR(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Evening star
-        df['CDL_EVENINGSTAR'] = talib.CDLEVENINGSTAR(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Up/down gap side-by-side white lines
-        df['CDL_GAPSIDESIDEWHITE'] = talib.CDLGAPSIDESIDEWHITE(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Gravestone doji
-        df['CDL_GRAVESTONEDOJI'] = talib.CDLGRAVESTONEDOJI(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Hammer
-        df['CDL_HAMMER'] = talib.CDLHAMMER(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Hanging man
-        df['CDL_HANGINGMAN'] = talib.CDLHANGINGMAN(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Harami pattern
-        df['CDL_HARAMI'] = talib.CDLHARAMI(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Harami cross
-        df['CDL_HARAMICROSS'] = talib.CDLHARAMICROSS(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # High-wave candle
-        df['CDL_HIGHWAVE'] = talib.CDLHIGHWAVE(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Hikkake pattern
-        df['CDL_HIKKAKE'] = talib.CDLHIKKAKE(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Modified hikkake pattern
-        df['CDL_HIKKAKEMOD'] = talib.CDLHIKKAKEMOD(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Homing pigeon
-        df['CDL_HOMINGPIGEON'] = talib.CDLHOMINGPIGEON(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Identical three crows
-        df['CDL_IDENTICAL3CROWS'] = talib.CDLIDENTICAL3CROWS(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # In-neck pattern
-        df['CDL_INNECK'] = talib.CDLINNECK(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Inverted hammer
-        df['CDL_INVERTEDHAMMER'] = talib.CDLINVERTEDHAMMER(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Kicking
-        df['CDL_KICKING'] = talib.CDLKICKING(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Kicking - bull/bear determined by the longer marubozu
-        df['CDL_KICKINGBYLENGTH'] = talib.CDLKICKINGBYLENGTH(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Ladder bottom
-        df['CDL_LADDERBOTTOM'] = talib.CDLLADDERBOTTOM(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Long legged doji
-        df['CDL_LONGLEGGEDDOJI'] = talib.CDLLONGLEGGEDDOJI(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Long line candle
-        df['CDL_LONGLINE'] = talib.CDLLONGLINE(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Marubozu
-        df['CDL_MARUBOZU'] = talib.CDLMARUBOZU(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Matching low
-        df['CDL_MATCHINGLOW'] = talib.CDLMATCHINGLOW(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Mat hold
-        df['CDL_MATHOLD'] = talib.CDLMATHOLD(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Morning doji star
-        df['CDL_MORNINGDOJISTAR'] = talib.CDLMORNINGDOJISTAR(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Morning star
-        df['CDL_MORNINGSTAR'] = talib.CDLMORNINGSTAR(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # On-neck pattern
-        df['CDL_ONNECK'] = talib.CDLONNECK(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Piercing pattern
-        df['CDL_PIERCING'] = talib.CDLPIERCING(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Rickshaw man
-        df['CDL_RICKSHAWMAN'] = talib.CDLRICKSHAWMAN(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Rising/falling three methods
-        df['CDL_RISEFALL3METHODS'] = talib.CDLRISEFALL3METHODS(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Separating lines
-        df['CDL_SEPARATINGLINES'] = talib.CDLSEPARATINGLINES(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Shooting star
-        df['CDL_SHOOTINGSTAR'] = talib.CDLSHOOTINGSTAR(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Short line candle
-        df['CDL_SHORTLINE'] = talib.CDLSHORTLINE(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Spinning top
-        df['CDL_SPINNINGTOP'] = talib.CDLSPINNINGTOP(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Stalled pattern
-        df['CDL_STALLEDPATTERN'] = talib.CDLSTALLEDPATTERN(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Stick sandwich
-        df['CDL_STICKSANDWICH'] = talib.CDLSTICKSANDWICH(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Takuri (dragonfly doji with very long lower shadow)
-        df['CDL_TAKURI'] = talib.CDLTAKURI(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Tasuki gap
-        df['CDL_TASUKIGAP'] = talib.CDLTASUKIGAP(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Thrusting pattern
-        df['CDL_THRUSTING'] = talib.CDLTHRUSTING(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Tristar pattern
-        df['CDL_TRISTAR'] = talib.CDLTRISTAR(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Unique 3 river
-        df['CDL_UNIQUE3RIVER'] = talib.CDLUNIQUE3RIVER(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Upside gap two crows
-        df['CDL_UPSIDEGAP2CROWS'] = talib.CDLUPSIDEGAP2CROWS(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
-        
-        # Upside/downside gap three methods
-        df['CDL_XSIDEGAP3METHODS'] = talib.CDLXSIDEGAP3METHODS(df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'])
+        logger.info(f"Created {len(df.columns)} features for {len(df)} samples")
         
         return df
     
-    def create_fundamental_features(self, df: pd.DataFrame, fundamental_data: Optional[Dict] = None) -> pd.DataFrame:
-        """Create fundamental analysis features (placeholder)"""
-        df = df.copy()
+    def _add_technical_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add technical analysis indicators."""
+        close = df['close'].values
+        high = df['high'].values
+        low = df['low'].values
+        volume = df['volume'].values
         
-        # This would typically integrate with a fundamental data source
-        # For now, we'll create some placeholder features
-        
-        # Price-to-earnings ratio (placeholder)
-        df['PE_RATIO'] = np.random.uniform(10, 30, len(df))
-        
-        # Price-to-book ratio (placeholder)
-        df['PB_RATIO'] = np.random.uniform(1, 5, len(df))
-        
-        # Debt-to-equity ratio (placeholder)
-        df['DEBT_EQUITY'] = np.random.uniform(0.1, 2.0, len(df))
-        
-        # Return on equity (placeholder)
-        df['ROE'] = np.random.uniform(0.05, 0.25, len(df))
-        
-        # Return on assets (placeholder)
-        df['ROA'] = np.random.uniform(0.02, 0.15, len(df))
-        
-        # Dividend yield (placeholder)
-        df['DIVIDEND_YIELD'] = np.random.uniform(0, 0.1, len(df))
-        
-        # Earnings per share growth (placeholder)
-        df['EPS_GROWTH'] = np.random.uniform(-0.1, 0.3, len(df))
-        
-        # Revenue growth (placeholder)
-        df['REVENUE_GROWTH'] = np.random.uniform(-0.05, 0.2, len(df))
-        
-        return df
-    
-    def create_market_features(self, df: pd.DataFrame, market_data: Optional[pd.DataFrame] = None) -> pd.DataFrame:
-        """Create market-wide features (placeholder)"""
-        df = df.copy()
-        
-        # Market return (placeholder)
-        df['MARKET_RETURN'] = np.random.normal(0.0005, 0.02, len(df))
-        
-        # Market volatility (placeholder)
-        df['MARKET_VOLATILITY'] = np.random.uniform(0.1, 0.4, len(df))
-        
-        # Sector return (placeholder)
-        df['SECTOR_RETURN'] = np.random.normal(0.0003, 0.015, len(df))
-        
-        # Beta (placeholder)
-        df['BETA'] = np.random.uniform(0.5, 2.0, len(df))
-        
-        # Alpha (placeholder)
-        df['ALPHA'] = np.random.normal(0, 0.01, len(df))
-        
-        return df
-    
-    def create_time_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Create time-based features"""
-        df = df.copy()
-        
-        # Extract date components
-        if isinstance(df.index, pd.DatetimeIndex):
-            df['YEAR'] = df.index.year
-            df['MONTH'] = df.index.month
-            df['DAY'] = df.index.day
-            df['DAY_OF_WEEK'] = df.index.dayofweek
-            df['DAY_OF_YEAR'] = df.index.dayofyear
-            df['WEEK_OF_YEAR'] = df.index.isocalendar().week
-            df['QUARTER'] = df.index.quarter
-            
-            # Cyclical encoding
-            df['MONTH_SIN'] = np.sin(2 * np.pi * df['MONTH'] / 12)
-            df['MONTH_COS'] = np.cos(2 * np.pi * df['MONTH'] / 12)
-            df['DAY_OF_WEEK_SIN'] = np.sin(2 * np.pi * df['DAY_OF_WEEK'] / 7)
-            df['DAY_OF_WEEK_COS'] = np.cos(2 * np.pi * df['DAY_OF_WEEK'] / 7)
-            
-        return df
-    
-    def create_all_features(
-        self, 
-        df: pd.DataFrame, 
-        fundamental_data: Optional[Dict] = None,
-        market_data: Optional[pd.DataFrame] = None
-    ) -> pd.DataFrame:
-        """Create all features"""
-        df = df.copy()
-        
-        logger.info("Creating technical indicators...")
-        df = self.create_technical_indicators(df)
-        
-        logger.info("Creating price features...")
-        df = self.create_price_features(df)
-        
-        logger.info("Creating pattern features...")
-        df = self.create_pattern_features(df)
-        
-        logger.info("Creating fundamental features...")
-        df = self.create_fundamental_features(df, fundamental_data)
-        
-        logger.info("Creating market features...")
-        df = self.create_market_features(df, market_data)
-        
-        logger.info("Creating time features...")
-        df = self.create_time_features(df)
-        
-        # Store feature names
-        self.feature_names = [col for col in df.columns if col not in ['OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME']]
-        
-        logger.info(f"Created {len(self.feature_names)} features")
-        return df
-    
-    def prepare_features_for_training(
-        self, 
-        df: pd.DataFrame, 
-        target_col: str = 'CLOSE',
-        sequence_length: int = 60
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Prepare features for training with sequence creation"""
-        # Remove non-feature columns
-        feature_columns = [col for col in df.columns if col not in ['OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME']]
-        df_features = df[feature_columns]
-        
-        # Handle missing values
-        df_features = df_features.fillna(method='ffill').fillna(method='bfill')
-        df_features = df_features.fillna(0)
-        
-        # Create sequences
-        X, y = [], []
-        data = df_features.values
-        target = df[target_col].values
-        
-        for i in range(sequence_length, len(data)):
-            X.append(data[i-sequence_length:i])
-            y.append(target[i])
-        
-        X = np.array(X)
-        y = np.array(y)
-        
-        return X, y
-    
-    def scale_features(self, X: np.ndarray, fit: bool = True) -> np.ndarray:
-        """Scale features using StandardScaler"""
-        if fit or 'features' not in self.scalers:
-            self.scalers['features'] = StandardScaler()
-            return self.scalers['features'].fit_transform(X)
+        if TALIB_AVAILABLE:
+            # Use TA-Lib for technical indicators
+            self._add_talib_indicators(df, close, high, low, volume)
         else:
-            return self.scalers['features'].transform(X)
+            # Use simplified pandas-based indicators
+            self._add_simple_indicators(df)
+        
+        return df
     
-    def get_feature_importance(self, model, feature_names: List[str]) -> pd.DataFrame:
-        """Get feature importance from model"""
-        if hasattr(model, 'feature_importances_'):
-            importance = model.feature_importances_
-            feature_importance = pd.DataFrame({
-                'feature': feature_names,
-                'importance': importance
-            }).sort_values('importance', ascending=False)
-            return feature_importance
-        else:
-            logger.warning("Model does not have feature_importances_ attribute")
-            return pd.DataFrame()
-
-# Global advanced feature engine instance
-advanced_feature_engine = AdvancedFeatureEngine()
+    def _add_talib_indicators(self, df: pd.DataFrame, close, high, low, volume):
+        """Add TA-Lib based technical indicators."""
+        # Moving averages
+        df['sma_5'] = talib.SMA(close, timeperiod=5)
+        df['sma_10'] = talib.SMA(close, timeperiod=10)
+        df['sma_20'] = talib.SMA(close, timeperiod=20)
+        df['sma_50'] = talib.SMA(close, timeperiod=50)
+        df['ema_12'] = talib.EMA(close, timeperiod=12)
+        df['ema_26'] = talib.EMA(close, timeperiod=26)
+        
+        # MACD
+        macd, macd_signal, macd_hist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
+        df['macd'] = macd
+        df['macd_signal'] = macd_signal
+        df['macd_histogram'] = macd_hist
+        
+        # RSI
+        df['rsi_14'] = talib.RSI(close, timeperiod=14)
+        df['rsi_30'] = talib.RSI(close, timeperiod=30)
+        
+        # Bollinger Bands
+        upper, middle, lower = talib.BBANDS(close, timeperiod=20, nbdevup=2, nbdevdn=2)
+        df['bb_upper'] = upper
+        df['bb_middle'] = middle
+        df['bb_lower'] = lower
+        df['bb_width'] = (upper - lower) / middle
+        df['bb_position'] = (close - lower) / (upper - lower)
+        
+        # Stochastic
+        df['stoch_k'], df['stoch_d'] = talib.STOCH(high, low, close, fastk_period=14, slowk_period=3, slowd_period=3)
+        
+        # Williams %R
+        df['williams_r'] = talib.WILLR(high, low, close, timeperiod=14)
+        
+        # Average Directional Index
+        df['adx'] = talib.ADX(high, low, close, timeperiod=14)
+        
+        # Commodity Channel Index
+        df['cci'] = talib.CCI(high, low, close, timeperiod=14)
+        
+        # Volume indicators
+        df['obv'] = talib.OBV(close, volume)
+        df['ad_line'] = talib.AD(high, low, close, volume)
+        
+        return df
+    
+    def _add_price_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add price-based features."""
+        # Price ratios
+        df['high_low_ratio'] = df['high'] / df['low']
+        df['close_open_ratio'] = df['close'] / df['open']
+        df['close_high_ratio'] = df['close'] / df['high']
+        df['close_low_ratio'] = df['close'] / df['low']
+        
+        # Price changes
+        df['price_change'] = df['close'].pct_change()
+        df['price_change_2d'] = df['close'].pct_change(periods=2)
+        df['price_change_5d'] = df['close'].pct_change(periods=5)
+        df['price_change_10d'] = df['close'].pct_change(periods=10)
+        
+        # Price position relative to recent range
+        df['price_position_5d'] = self._calculate_price_position(df['close'], 5)
+        df['price_position_10d'] = self._calculate_price_position(df['close'], 10)
+        df['price_position_20d'] = self._calculate_price_position(df['close'], 20)
+        
+        # Gap analysis
+        df['gap'] = (df['open'] - df['close'].shift(1)) / df['close'].shift(1)
+        df['gap_filled'] = ((df['high'] >= df['close'].shift(1)) & (df['gap'] < 0)) | \
+                          ((df['low'] <= df['close'].shift(1)) & (df['gap'] > 0))
+        
+        # Typical Price
+        df['typical_price'] = (df['high'] + df['low'] + df['close']) / 3
+        
+        return df
+    
+    def _add_volume_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add volume-based features."""
+        # Volume ratios
+        df['volume_sma_20'] = df['volume'].rolling(window=20).mean()
+        df['volume_ratio'] = df['volume'] / df['volume_sma_20']
+        
+        # Volume-price relationship
+        df['vwap'] = (df['typical_price'] * df['volume']).rolling(window=20).sum() / \
+                    df['volume'].rolling(window=20).sum()
+        df['price_volume_trend'] = ((df['close'] - df['close'].shift(1)) / df['close'].shift(1)) * \
+                                  (df['volume'] / df['volume'].rolling(window=20).mean())
+        
+        # Volume momentum
+        df['volume_change'] = df['volume'].pct_change()
+        df['volume_change_5d'] = df['volume'].pct_change(periods=5)
+        
+        return df
+    
+    def _add_temporal_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add time-based features."""
+        df['date'] = pd.to_datetime(df['date'])
+        
+        # Day of week effect
+        df['day_of_week'] = df['date'].dt.dayofweek
+        df['is_monday'] = (df['day_of_week'] == 0).astype(int)
+        df['is_friday'] = (df['day_of_week'] == 4).astype(int)
+        
+        # Month effect
+        df['month'] = df['date'].dt.month
+        df['is_january'] = (df['month'] == 1).astype(int)
+        df['is_december'] = (df['month'] == 12).astype(int)
+        
+        # Quarter effect
+        df['quarter'] = df['date'].dt.quarter
+        
+        # Market patterns
+        df['days_since_last_friday'] = df.apply(
+            lambda row: (row['date'].weekday() + 3) % 7 if row['date'].weekday() < 5 else 0, axis=1
+        )
+        
+        return df
+    
+    def _add_market_structure_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add market structure features."""
+        # Support and resistance levels
+        df['support_20d'] = df['low'].rolling(window=20).min()
+        df['resistance_20d'] = df['high'].rolling(window=20).max()
+        df['support_distance'] = (df['close'] - df['support_20d']) / df['close']
+        df['resistance_distance'] = (df['resistance_20d'] - df['close']) / df['close']
+        
+        # Trend features
+        df['trend_5d'] = self._calculate_trend(df['close'], 5)
+        df['trend_10d'] = self._calculate_trend(df['close'], 10)
+        df['trend_20d'] = self._calculate_trend(df['close'], 20)
+        
+        # Price patterns
+        df['higher_high'] = ((df['high'] > df['high'].shift(1)) & 
+                           (df['high'].shift(1) > df['high'].shift(2))).astype(int)
+        df['lower_low'] = ((df['low'] < df['low'].shift(1)) & 
+                         (df['low'].shift(1) < df['low'].shift(2))).astype(int)
+        
+        return df
+    
+    def _add_volatility_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add volatility-based features."""
+        # Historical volatility
+        df['volatility_5d'] = df['price_change'].rolling(window=5).std() * np.sqrt(252)
+        df['volatility_10d'] = df['price_change'].rolling(window=10).std() * np.sqrt(252)
+        df['volatility_20d'] = df['price_change'].rolling(window=20).std() * np.sqrt(252)
+        
+        # True Range and ATR
+        df['true_range'] = np.maximum(
+            df['high'] - df['low'],
+            np.maximum(
+                np.abs(df['high'] - df['close'].shift(1)),
+                np.abs(df['low'] - df['close'].shift(1))
+            )
+        )
+        df['atr_14'] = df['true_range'].rolling(window=14).mean()
+        df['atr_ratio'] = df['true_range'] / df['atr_14']
+        
+        # Volatility regime
+        df['volatility_regime'] = (df['volatility_20d'] > df['volatility_20d'].rolling(window=60).mean()).astype(int)
+        
+        return df
+    
+    def _add_target_variables(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add target variables for prediction."""
+        # Next day price change (classification target)
+        df['target_direction'] = np.where(df['close'].shift(-1) > df['close'], 1, 0)
+        
+        # Next day exact price (regression target)
+        df['target_price'] = df['close'].shift(-1)
+        
+        # Next day returns
+        df['target_return'] = df['close'].shift(-1) / df['close'] - 1
+        
+        # Multi-day targets
+        df['target_return_3d'] = df['close'].shift(-3) / df['close'] - 1
+        df['target_return_5d'] = df['close'].shift(-5) / df['close'] - 1
+        df['target_return_10d'] = df['close'].shift(-10) / df['close'] - 1
+        
+        return df
+    
+    def _calculate_price_position(self, prices: pd.Series, window: int) -> pd.Series:
+        """Calculate price position within recent range (0-1)."""
+        rolling_min = prices.rolling(window=window).min()
+        rolling_max = prices.rolling(window=window).max()
+        return (prices - rolling_min) / (rolling_max - rolling_min)
+    
+    def _calculate_trend(self, prices: pd.Series, window: int) -> pd.Series:
+        """Calculate trend strength using linear regression slope."""
+        def slope(y):
+            if len(y) < 2:
+                return 0
+            x = np.arange(len(y))
+            return np.polyfit(x, y, 1)[0]
+        
+        return prices.rolling(window=window).apply(slope, raw=False)
+    
+    def get_feature_names(self, include_targets: bool = False) -> List[str]:
+        """Get list of feature names created by this engineer."""
+        features = [
+            # Technical indicators
+            'sma_5', 'sma_10', 'sma_20', 'sma_50', 'ema_12', 'ema_26',
+            'macd', 'macd_signal', 'macd_histogram',
+            'rsi_14', 'rsi_30',
+            'bb_upper', 'bb_middle', 'bb_lower', 'bb_width', 'bb_position',
+            'stoch_k', 'stoch_d', 'williams_r', 'adx', 'cci',
+            'obv', 'ad_line',
+            
+            # Price features
+            'high_low_ratio', 'close_open_ratio', 'close_high_ratio', 'close_low_ratio',
+            'price_change', 'price_change_2d', 'price_change_5d', 'price_change_10d',
+            'price_position_5d', 'price_position_10d', 'price_position_20d',
+            'gap', 'gap_filled', 'typical_price',
+            
+            # Volume features
+            'volume_sma_20', 'volume_ratio', 'vwap', 'price_volume_trend',
+            'volume_change', 'volume_change_5d',
+            
+            # Temporal features
+            'day_of_week', 'is_monday', 'is_friday', 'month', 'is_january', 'is_december',
+            'quarter', 'days_since_last_friday',
+            
+            # Market structure
+            'support_20d', 'resistance_20d', 'support_distance', 'resistance_distance',
+            'trend_5d', 'trend_10d', 'trend_20d', 'higher_high', 'lower_low',
+            
+            # Volatility
+            'volatility_5d', 'volatility_10d', 'volatility_20d',
+            'true_range', 'atr_14', 'atr_ratio', 'volatility_regime'
+        ]
+        
+        if include_targets:
+            features.extend([
+                'target_direction', 'target_price', 'target_return',
+                'target_return_3d', 'target_return_5d', 'target_return_10d'
+            ])
+        
+        return features
+    
+    def validate_features(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Validate feature quality and return statistics."""
+        validation_results = {
+            'total_features': len([col for col in df.columns if col not in ['date', 'open', 'high', 'low', 'close', 'volume']]),
+            'total_samples': len(df),
+            'missing_values': {},
+            'infinite_values': {},
+            'feature_ranges': {},
+            'quality_score': 0.0
+        }
+        
+        feature_names = self.get_feature_names(include_targets=True)
+        
+        for feature in feature_names:
+            if feature in df.columns:
+                # Check for missing values
+                missing_count = df[feature].isna().sum()
+                validation_results['missing_values'][feature] = missing_count
+                
+                # Check for infinite values
+                if df[feature].dtype in ['float64', 'int64']:
+                    infinite_count = np.isinf(df[feature]).sum()
+                    validation_results['infinite_values'][feature] = infinite_count
+                    
+                    # Feature range
+                    if not df[feature].isna().all():
+                        validation_results['feature_ranges'][feature] = {
+                            'min': float(df[feature].min()),
+                            'max': float(df[feature].max()),
+                            'mean': float(df[feature].mean()),
+                            'std': float(df[feature].std())
+                        }
+        
+        # Calculate overall quality score
+        total_cells = len(df) * len(feature_names)
+        total_missing = sum(validation_results['missing_values'].values())
+        total_infinite = sum(validation_results['infinite_values'].values())
+        validation_results['quality_score'] = 1.0 - (total_missing + total_infinite) / total_cells
+        
+        return validation_results
+    
+    def _add_simple_indicators(self, df: pd.DataFrame):
+        """Add simplified technical indicators without TA-Lib."""
+        # Simple moving averages
+        df['sma_5'] = df['close'].rolling(window=5).mean()
+        df['sma_10'] = df['close'].rolling(window=10).mean()
+        df['sma_20'] = df['close'].rolling(window=20).mean()
+        df['sma_50'] = df['close'].rolling(window=50).mean()
+        
+        # Simple exponential moving averages
+        df['ema_12'] = df['close'].ewm(span=12).mean()
+        df['ema_26'] = df['close'].ewm(span=26).mean()
+        
+        # Simple MACD
+        df['macd'] = df['ema_12'] - df['ema_26']
+        df['macd_signal'] = df['macd'].ewm(span=9).mean()
+        df['macd_histogram'] = df['macd'] - df['macd_signal']
+        
+        # Simple RSI
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        df['rsi_14'] = 100 - (100 / (1 + rs))
+        df['rsi_30'] = df['close'].rolling(window=30).apply(lambda x: self._simple_rsi(x), raw=False)
+        
+        # Simple Bollinger Bands
+        df['bb_middle'] = df['close'].rolling(window=20).mean()
+        bb_std = df['close'].rolling(window=20).std()
+        df['bb_upper'] = df['bb_middle'] + (bb_std * 2)
+        df['bb_lower'] = df['bb_middle'] - (bb_std * 2)
+        df['bb_width'] = (df['bb_upper'] - df['bb_lower']) / df['bb_middle']
+        df['bb_position'] = (df['close'] - df['bb_lower']) / (df['bb_upper'] - df['bb_lower'])
+        
+        # Fill remaining indicators with basic values
+        df['stoch_k'] = ((df['close'] - df['low'].rolling(14).min()) / 
+                        (df['high'].rolling(14).max() - df['low'].rolling(14).min())) * 100
+        df['stoch_d'] = df['stoch_k'].rolling(3).mean()
+        df['williams_r'] = ((df['high'].rolling(14).max() - df['close']) / 
+                           (df['high'].rolling(14).max() - df['low'].rolling(14).min())) * -100
+        df['adx'] = 50  # Placeholder
+        df['cci'] = ((df['close'] - df['close'].rolling(14).mean()) / 
+                    (0.015 * df['close'].rolling(14).std()))
+        df['obv'] = (df['volume'] * np.where(df['close'] > df['close'].shift(1), 1, -1)).cumsum()
+        df['ad_line'] = df['volume'] * ((df['close'] - df['low']) - (df['high'] - df['close'])) / (df['high'] - df['low'])
+        
+        return df
+    
+    def _simple_rsi(self, prices):
+        """Calculate simple RSI for a price series."""
+        if len(prices) < 2:
+            return 50
+        delta = prices.diff()
+        gain = delta.where(delta > 0, 0).mean()
+        loss = (-delta.where(delta < 0, 0)).mean()
+        if loss == 0:
+            return 100
+        rs = gain / loss
+        return 100 - (100 / (1 + rs))

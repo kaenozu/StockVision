@@ -54,6 +54,9 @@ class Stock(Base):
     # Relationships
     watchlist_items = relationship("Watchlist", back_populates="stock")
     price_history = relationship("PriceHistory", back_populates="stock")
+    prediction_results = relationship("PredictionResult", back_populates="stock")
+    training_datasets = relationship("TrainingDataset", back_populates="stock")
+    anomaly_detections = relationship("MarketAnomalyDetection", back_populates="stock")
     
     # Indexes for performance
     __table_args__ = (

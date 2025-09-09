@@ -19,8 +19,8 @@ import SettingsPage from './pages/SettingsPage'
 import DemoPage from './pages/DemoPage'
 import RecommendedStocksPage from './pages/RecommendedStocksPage'
 import TradingRecommendationsPage from './pages/TradingRecommendationsPage'
-import { PerformancePage } from './pages/PerformancePage'
 import TestPage from './pages/TestPage'
+import { PerformancePage } from './pages/PerformancePage'
 import DocumentationPage from './pages/DocumentationPage'
 
 // i18n
@@ -90,7 +90,7 @@ function App() {
               {/* Main Routes */}
               <Route index element={<SimplifiedHomePage />} />
               <Route path="stock/:stockCode" element={<StockDetailPage />} />
-              <Route path="stocks/:stockId/detail" element={<StockDetailPage />} />
+              <Route path="stocks/:stockCode/detail" element={<StockDetailPage />} />
               <Route path="watchlist" element={<WatchlistPage />} />
               <Route path="search" element={<SearchPage />} />
               <Route path="settings" element={<SettingsPage />} />
