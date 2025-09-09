@@ -50,7 +50,7 @@ const DEFAULT_CONFIG: StockApiConfig = {
     ? '/api' 
     : process.env.NODE_ENV === 'test' 
     ? 'http://localhost:8001/api' 
-    : 'http://localhost:8000/api',
+    : '/api',  // Use relative path in development to leverage Vite proxy
   timeout: 10000, // 10 seconds
   retries: 3,
   retryDelay: 1000 // 1 second
