@@ -61,7 +61,7 @@ def get_db():
         yield session
 
 
-@router.get("/",
+@router.get("",
            summary="ウォッチリスト取得",
            response_model=List[WatchlistResponse],
            responses={
@@ -143,7 +143,7 @@ async def get_watchlist(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/",
+@router.post("",
             summary="ウォッチリストに追加",
             response_model=WatchlistResponse,
             status_code=201,

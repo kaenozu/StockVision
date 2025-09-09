@@ -34,7 +34,7 @@ export function StockSearch({
 }: StockSearchProps) {
   const [formData, setFormData] = useState<StockSearchFormData>({
     stock_code: initialValue,
-    use_real_data: false
+    use_real_data: true // Always use real data (kept for type compatibility)
   })
   
   const [validation, setValidation] = useState<ValidationResult>({
@@ -86,7 +86,7 @@ export function StockSearch({
     const isValid = validateForm(formData)
     if (isValid && formData.stock_code) {
       const formattedCode = formatStockCode(formData.stock_code)
-      onSearch(formattedCode, formData.use_real_data)
+      onSearch(formattedCode, true) // Always use real data
     }
   }
 
@@ -108,7 +108,7 @@ export function StockSearch({
     const newFormData = { ...formData, stock_code: stockCode }
     setFormData(newFormData)
     setSearchQuery(stockCode)
-    onSearch(stockCode, formData.use_real_data)
+    onSearch(stockCode, true) // Always use real data
   }
 
   const hasErrors = touched && validation.errors.length > 0
@@ -172,23 +172,7 @@ export function StockSearch({
           )}
         </div>
 
-        {/* Real Data Option */}
-        {showRealDataOption && (
-          <div className="flex items-center">
-            <input
-              id="use-real-data"
-              type="checkbox"
-              checked={formData.use_real_data}
-              onChange={handleRealDataChange}
-              disabled={disabled}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="use-real-data" className="ml-2 text-sm text-gray-700">
-              リアルタイムデータを使用する
-              <span className="text-gray-500 ml-1">(応答が遅くなる場合があります)</span>
-            </label>
-          </div>
-        )}
+        {/* Real data option removed - always use real data */}
 
         {/* Submit Button */}
         <Button

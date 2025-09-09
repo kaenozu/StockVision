@@ -49,7 +49,7 @@ const DEFAULT_CONFIG: StockApiConfig = {
   baseURL: process.env.NODE_ENV === 'production' 
     ? '/api' 
     : process.env.NODE_ENV === 'test' 
-    ? 'http://localhost:8001/api' 
+    ? 'http://localhost:8000/api' 
     : '/api',  // Use relative path in development to leverage Vite proxy
   timeout: 10000, // 10 seconds
   retries: 3,
@@ -301,7 +301,7 @@ export class StockApiClient {
       return cached
     }
 
-    const params: Record<string, unknown> = { days }
+    const params: Record<string, unknown> = { days, use_real_data: true }
 
     const response = await this.client.get<PriceHistoryItem[]>(
       `/stocks/${stockCode}/history`,

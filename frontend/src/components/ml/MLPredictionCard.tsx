@@ -51,9 +51,17 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
     setLoading(true)
     setError(null)
     
+    console.log('ML Prediction - Current Price:', currentPrice)
+    
+    if (!currentPrice || currentPrice === 0) {
+      setError('現在価格が取得できていません。しばらく待ってから再度お試しください。')
+      setLoading(false)
+      return
+    }
+    
     try {
       const response = await fetch(
-        `/api/ml/predict/${stockCode}?prediction_horizon=${selectedHorizon}&include_confidence=true`
+        `/api/ml/predict/${stockCode}?prediction_horizon=${selectedHorizon}&include_confidence=true&current_price=${currentPrice}`
       )
       
       if (response.status === 503) {
@@ -124,7 +132,10 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
     return new Intl.NumberFormat('ja-JP').format(price)
   }
 
-  const formatPercentage = (value: number) => {
+  const formatPercentage = (value: number | undefined | null) => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return 'N/A'
+    }
     return `${(value * 100).toFixed(2)}%`
   }
 

@@ -137,6 +137,9 @@ class CurrentPrice(BaseModel):
         Returns:
             CurrentPriceResponse instance with contract-compliant field names
         """
+        # Import here to avoid circular imports
+        from ..utils.market_hours import get_japan_market_status
+        
         return CurrentPriceResponse(
             stock_code=self.stock_code,
             current_price=self.current_price,
@@ -144,7 +147,7 @@ class CurrentPrice(BaseModel):
             price_change=self.price_change,
             price_change_pct=self.price_change_pct,
             timestamp=self.timestamp.isoformat() + 'Z' if self.timestamp else datetime.utcnow().isoformat() + 'Z',
-            market_status="closed"
+            market_status=get_japan_market_status()
         )
     
     def to_stock_model(self) -> Stock:

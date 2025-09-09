@@ -121,15 +121,10 @@ export function useCurrentPrice(
     }
   }, [])
 
-  // Auto-refresh effect
+  // Auto-refresh effect - 自動更新は無効化済み
   useEffect(() => {
-    if (!stockCode || !autoRefresh) return
-
-    const intervalId = setInterval(() => {
-      fetchCurrentPrice(stockCode, useRealData)
-    }, refreshInterval)
-
-    return () => clearInterval(intervalId)
+    // 自動更新を無効にしました - 手動更新のみ対応
+    return
   }, [stockCode, useRealData, autoRefresh, refreshInterval, fetchCurrentPrice])
 
   // Initial fetch

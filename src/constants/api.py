@@ -54,6 +54,7 @@ PROD_ORIGINS = [origin.strip() for origin in PROD_ORIGINS_STR.split(",") if orig
 DEV_CORS_ORIGINS = [
     f"http://{DEVELOPMENT_HOST}:{FRONTEND_DEV_PORT}",
     f"http://{DEVELOPMENT_HOST}:{FRONTEND_PROD_PORT}",
+    "http://localhost:3004",
     "http://localhost:3003",
     "http://localhost:3002",
     "http://localhost:3001",

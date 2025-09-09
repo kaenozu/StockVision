@@ -28,7 +28,7 @@ export function StockDetailPage() {
   const navigate = useNavigate()
   const { theme } = useTheme()
   
-  const useRealData = searchParams.get('real') === 'true'
+  // Always use real data (real data toggle removed)
   const [chartConfig, setChartConfig] = useState<ChartConfig>({
     timeframe: '30d',
     chart_type: 'line',
@@ -50,12 +50,12 @@ export function StockDetailPage() {
 
   const historyDays = getDaysFromTimeframe(chartConfig.timeframe)
 
-  // Fetch stock data
+  // Fetch stock data (always use real data, no auto-refresh)
   const stockInfo = useStockInfo(
     stockCode,
     historyDays,
-    useRealData,
-    true // Auto-refresh current price
+    true, // Always use real data
+    false // Disable auto-refresh
   )
 
   const watchlistItem = useWatchlistItem(stockCode || '')
@@ -73,16 +73,7 @@ export function StockDetailPage() {
     setChartConfig(newConfig)
   }
 
-  // Handle real data toggle
-  const handleRealDataToggle = () => {
-    const newSearchParams = new URLSearchParams(searchParams)
-    if (useRealData) {
-      newSearchParams.delete('real')
-    } else {
-      newSearchParams.set('real', 'true')
-    }
-    setSearchParams(newSearchParams)
-  }
+  // Real data toggle removed - always use real data
 
   // Add to watchlist with modal (simplified for now)
   const handleAddToWatchlist = async () => {
@@ -169,29 +160,6 @@ export function StockDetailPage() {
         </Button>
         
         <div className="flex items-center gap-3">
-          {/* Real Data Toggle */}
-          <div className="flex items-center gap-2">
-            <label className="flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={useRealData}
-                onChange={handleRealDataToggle}
-                className="sr-only"
-              />
-              <div className={`
-                relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                ${useRealData ? 'bg-blue-600' : 'bg-gray-200'}
-              `}>
-                <span className={`
-                  inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                  ${useRealData ? 'translate-x-6' : 'translate-x-1'}
-                `} />
-              </div>
-            </label>
-            <span className="text-sm text-gray-600">
-              リアルデータ {useRealData && '(遅延あり)'}
-            </span>
-          </div>
 
           {/* Refresh Button */}
           <IconButton
@@ -207,9 +175,9 @@ export function StockDetailPage() {
 
       {/* Stock Information Card */}
       {stockInfo.isReady && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
           {/* Main Stock Card */}
-          <div className="lg:col-span-1 space-y-6">
+          <div>
             <StockCard
               stockData={stockInfo.stockData}
               currentPrice={stockInfo.currentPrice}
@@ -233,7 +201,7 @@ export function StockDetailPage() {
             {stockInfo.currentPrice && (
               <TradingRecommendation
                 stockCode={stockCode}
-                currentPrice={stockInfo.currentPrice.price}
+                currentPrice={stockInfo.currentPrice.current_price}
               />
             )}
 
@@ -275,7 +243,7 @@ export function StockDetailPage() {
                 <div className="flex justify-between">
                   <span className="text-gray-600">データ形式:</span>
                   <span className="font-medium">
-                    {useRealData ? 'リアルタイム' : 'サンプル'}
+                    リアルタイム
                   </span>
                 </div>
               </div>
@@ -331,7 +299,7 @@ export function StockDetailPage() {
           </div>
 
           {/* Chart Section */}
-          <div className="lg:col-span-2 space-y-6">
+          <div>
             {/* Chart Type Toggle */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex gap-2">
@@ -372,14 +340,14 @@ export function StockDetailPage() {
                 onConfigChange={handleChartConfigChange}
                 onRefresh={stockInfo.individual.priceHistory.refresh}
                 stockCode={stockCode}
-                height={500}
+                height={400}
               />
             ) : (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <h3 className="text-lg font-semibold mb-4">テクニカル分析チャート</h3>
                 <TechnicalChart
                   data={stockInfo.priceHistory || []}
-                  height={500}
+                  height={400}
                 />
               </div>
             )}
