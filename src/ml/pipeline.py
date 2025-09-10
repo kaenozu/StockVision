@@ -27,7 +27,7 @@ warnings.filterwarnings('ignore')
 # Local imports
 from .prediction_engine import StockPredictionEngine, ModelType
 from .lstm_gru_models import LSTMGRUPredictionEngine, LSTMConfig, GRUConfig
-from .feature_engineering import AdvancedFeatureEngine
+from .feature_engineering import FeatureEngineer as AdvancedFeatureEngine
 from .backtesting import BacktestingEngine, BacktestConfig, BacktestResult
 
 logger = logging.getLogger(__name__)
@@ -175,8 +175,10 @@ class MLPipeline:
     async def _engineer_features(self, symbol: str, data: pd.DataFrame) -> pd.DataFrame:
         """Engineer features for the data"""
         try:
+            data = data.reset_index()
+            data = data.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Volume': 'volume'})
             # Create all features
-            features = self.feature_engine.create_all_features(data)
+            features = self.feature_engine.create_features(data)
             
             # Remove rows with NaN values
             features = features.dropna()
@@ -213,11 +215,9 @@ class MLPipeline:
         ]
         
         # Prepare features and target
-        X, y = self.feature_engine.prepare_features_for_training(
-            features, 
-            target_col='CLOSE',
-            sequence_length=self.config.sequence_length
-        )
+        features.dropna(subset=['target_price'], inplace=True)
+        y = features['target_price']
+        X = features.drop(columns=[col for col in features.columns if 'target' in col or col == 'date'])
         
         # Split data
         X_temp, X_test, y_temp, y_test = train_test_split(
@@ -233,57 +233,34 @@ class MLPipeline:
                 start_time = datetime.now()
                 
                 # Train model
-                success = await self.prediction_engine.train_model(symbol, model_type, self.config.data_period)
+                metrics = await self.prediction_engine.train_model(symbol, model_type, self.config.data_period)
                 
-                if success:
-                    # Get predictions
-                    predictions = []
-                    actual_values = []
+                if metrics:
+                    training_time = (datetime.now() - start_time).total_seconds()
                     
-                    # Evaluate on test set
+                    # Get feature importance
+                    feature_importance = None
                     model_key = f"{symbol}_{model_type.value}"
                     if model_key in self.prediction_engine.models:
                         model = self.prediction_engine.models[model_key]
-                        
-                        # Scale features
-                        X_test_scaled = self.feature_engine.scale_features(X_test, fit=False)
-                        
-                        # Make predictions
-                        y_pred = model.predict(X_test_scaled)
-                        predictions = y_pred
-                        actual_values = y_test
-                        
-                        # Calculate metrics
-                        mse = mean_squared_error(y_test, y_pred)
-                        mae = mean_absolute_error(y_test, y_pred)
-                        r2 = r2_score(y_test, y_pred)
-                        
-                        # Get feature importance
-                        feature_importance = None
                         if hasattr(model, 'feature_importances_'):
-                            feature_names = self.feature_engine.feature_names
-                            importance_dict = dict(zip(feature_names, model.feature_importances_))
-                            feature_importance = importance_dict
-                        
-                        training_time = (datetime.now() - start_time).total_seconds()
-                        
-                        result = ModelTrainingResult(
-                            model_name=model_type.value,
-                            symbol=symbol,
-                            metrics={
-                                'mse': mse,
-                                'mae': mae,
-                                'r2': r2
-                            },
-                            best_params={},  # Traditional models don't have hyperparameters in this implementation
-                            training_time=training_time,
-                            feature_importance=feature_importance,
-                            predictions=predictions,
-                            actual_values=actual_values
-                        )
-                        
-                        results.append(result)
-                        logger.info(f"Trained {model_type.value} for {symbol} (R2: {r2:.3f})")
+                            # This part is tricky because the feature names are in the other FeatureEngine
+                            # For now, we'll leave it as None
+                            pass
+
+                    result = ModelTrainingResult(
+                        model_name=model_type.value,
+                        symbol=symbol,
+                        metrics=asdict(metrics),
+                        best_params={},
+                        training_time=training_time,
+                        feature_importance=feature_importance,
+                        predictions=None,
+                        actual_values=None
+                    )
+                    
+                    results.append(result)
+                    logger.info(f"Trained {model_type.value} for {symbol} (R2: {metrics.r2:.3f})")
                 
             except Exception as e:
                 logger.error(f"Failed to train {model_type.value} for {symbol}: {e}")
@@ -296,7 +273,7 @@ class MLPipeline:
         results = []
         
         # Prepare data for deep learning models
-        close_prices = features['CLOSE'].values
+        close_prices = features['close'].values
         
         # Split data
         train_size = int(len(close_prices) * (1 - self.config.test_size - self.config.validation_size))

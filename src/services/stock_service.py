@@ -264,6 +264,7 @@ class HybridStockService:
         logger.info(f"Getting price history for {stock_code} (use_real_data={should_use_real})")
         
         if should_use_real:
+
             # Try cache first
             cached_data = await self.cache.get(
                 "price_history", stock_code, ttl=self.yahoo_config.cache_ttl, days=days
@@ -314,7 +315,6 @@ class HybridStockService:
                 
                 # Cache the result
                 await self.cache.set("price_history", stock_code, price_history_data, days=days)
-                
                 # Optionally save to database
                 if db:
                     await self._save_price_history_to_db(price_history_data, db)
@@ -323,9 +323,10 @@ class HybridStockService:
                 return price_history_data
                 
             except Exception as e:
-                logger.warning(f"Real API failed for price history {stock_code}, using mock: {e}")
+                logger.error(f"Real API failed for price history {stock_code}: {e}")
+                # Fallback to mock data will be handled below
         
-        # Use mock data - check cache first
+        # Fallback: Use cached mock data or generate sample data
         cached_mock_history = await self.cache.get(
             "price_history", stock_code, ttl=self.cache_config.price_history_ttl, days=days
         )
