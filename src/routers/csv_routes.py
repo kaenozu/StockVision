@@ -5,12 +5,11 @@ Google ColabからのCSVデータ取得とインポート機能
 
 import logging
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File
 from pydantic import BaseModel
 
 from ..services.csv_data_service import csv_data_service
-from ..database import get_db
-from sqlalchemy.orm import Session
+from ..stock_storage.database import get_session_scope
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,6 @@ async def upload_csv(
     file: UploadFile = File(...),
     data_type: str = "stock_data",
     background_tasks: BackgroundTasks = None,
-    db: Session = Depends(get_db)
 ):
     """
     CSVファイルをアップロードしてデータベースに取り込む
@@ -54,8 +52,7 @@ async def upload_csv(
                 # バックグラウンドでDB同期
                 background_tasks.add_task(
                     csv_data_service.sync_csv_to_database,
-                    tmp_file_path,
-                    db
+                    tmp_file_path
                 )
                 
                 # レコード数をカウント
@@ -86,7 +83,6 @@ async def upload_csv(
 async def download_from_colab(
     request: CSVDownloadRequest,
     background_tasks: BackgroundTasks = None,
-    db: Session = Depends(get_db)
 ):
     """
     Google ColabからCSVをダウンロードして取り込む
@@ -107,8 +103,7 @@ async def download_from_colab(
         if request.data_type == "stock_data":
             background_tasks.add_task(
                 csv_data_service.sync_csv_to_database,
-                local_path,
-                db
+                local_path
             )
         
         return CSVImportResponse(

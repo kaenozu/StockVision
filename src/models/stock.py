@@ -31,8 +31,8 @@ class Stock(Base):
     
     __tablename__ = "stocks"
     
-    # Primary key
-    stock_code: Mapped[str] = mapped_column(String(4), primary_key=True)
+    # Primary key (allow .T suffix for Japanese stocks)
+    stock_code: Mapped[str] = mapped_column(String(10), primary_key=True)
     
     # Basic information
     company_name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -68,8 +68,8 @@ class Stock(Base):
         if not isinstance(stock_code, str):
             raise ValueError("Stock code must be a string")
         
-        if not re.match(r'^\d{4}$', stock_code):
-            raise ValueError("Stock code must be exactly 4 digits")
+        if not re.match(r'^\d{4}(\.T)?$', stock_code):
+            raise ValueError("Stock code must be 4 digits or 4 digits with .T suffix")
         
         return stock_code
     

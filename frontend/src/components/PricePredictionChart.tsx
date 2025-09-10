@@ -65,17 +65,23 @@ interface PricePredictionChartProps {
   height?: number;
 }
 
+console.log('DEBUG: PricePredictionChart module is being loaded');
+
 const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
   symbol,
   period,
   height = 400
 }) => {
+  console.log('DEBUG: PricePredictionChart component is being rendered with:', { symbol, period, height });
+  
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // ref is not required; omit to avoid type friction across versions
 
   useEffect(() => {
+    console.log('=== PricePredictionChart mounted ===');
+    console.log('Symbol:', symbol, 'Period:', period);
     fetchChartData();
   }, [symbol, period, fetchChartData]);
 
@@ -92,6 +98,14 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
       }
       
       const data: ChartData = await response.json();
+      console.log('=== Price prediction chart data received ===');
+      console.log('Full data:', data);
+      console.log('Chart labels (length=' + data.chartData.labels.length + '):', data.chartData.labels);
+      console.log('Labels detail:');
+      data.chartData.labels.forEach((label, index) => {
+        console.log(`  [${index}]: ${label}`);
+      });
+      console.log('Actual price data:', data.chartData.datasets[0]?.data);
       setChartData(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'チャートデータの取得に失敗しました');
@@ -103,11 +117,25 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
   const createChartData = () => {
     if (!chartData) return null;
 
+    console.log('=== Creating chart data ===');
+    console.log('Input chartData.labels length:', chartData.chartData.labels.length);
+    console.log('Input chartData.labels:', chartData.chartData.labels);
+    
+    // Check for actual historical data (non-null values)
+    const actualData = chartData.chartData.datasets[0]?.data || [];
+    const nonNullCount = actualData.filter(val => val !== null).length;
+    console.log('Historical data points (non-null):', nonNullCount);
+    console.log('First few actual prices:', actualData.slice(0, 10));
+
     // APIレスポンスの chartData は既に Chart.js の形式で整形済み
-    return {
+    const result = {
       labels: chartData.chartData.labels,
       datasets: chartData.chartData.datasets
     };
+    
+    console.log('Final chart data labels:', result.labels);
+    console.log('Final chart data datasets count:', result.datasets.length);
+    return result;
   };
 
   const chartOptions: ChartOptions<'line'> = {
@@ -162,6 +190,25 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
         },
         grid: {
           color: 'rgba(0, 0, 0, 0.1)'
+        },
+        ticks: {
+          autoSkip: false,
+          callback: function(value: any, index: number) {
+            const labels = chartData?.chartData.labels;
+            if (!labels || !labels[index]) {
+              console.log('DEBUG PricePredictionChart X-axis: NO LABEL at index', index);
+              return '';
+            }
+            
+            const dataLength = labels.length;
+            console.log(`DEBUG PricePredictionChart X-axis: index=${index}/${dataLength-1}, date=${labels[index]}`);
+            
+            // 全てのラベルを表示（テスト用）
+            const dateObj = new Date(labels[index]);
+            const result = dateObj.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+            console.log(`DEBUG PricePredictionChart: ✓ SHOWING index ${index}: ${labels[index]} → ${result}`);
+            return result;
+          }
         }
       },
       y: {
