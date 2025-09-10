@@ -84,67 +84,52 @@ async def get_ml_prediction(
     try:
         logger.info(f"ML prediction request for {stock_code}, horizon: {prediction_horizon}")
         
-        # --- Start: Replace mock prediction with actual ML prediction ---
-        # Convert prediction_horizon string to PredictionHorizon Enum
-        # For simplicity, we'll map "short" to DAILY for now, and "all" will use ensemble or default
-        # This mapping can be refined later based on actual model training horizons
         if prediction_horizon == "short":
             horizon_enum = PredictionHorizon.DAILY
         elif prediction_horizon == "medium":
-            horizon_enum = PredictionHorizon.WEEKLY # Example mapping
+            horizon_enum = PredictionHorizon.WEEKLY
         elif prediction_horizon == "long":
-            horizon_enum = PredictionHorizon.MONTHLY # Example mapping
-        else: # "all" or other
-            horizon_enum = PredictionHorizon.DAILY # Default to daily for now, or use ensemble
+            horizon_enum = PredictionHorizon.MONTHLY
+        else:
+            horizon_enum = PredictionHorizon.DAILY
 
-        # Use the prediction engine to get actual prediction
-        # For now, let's use RANDOM_FOREST as a default model type
-        # In a more advanced setup, you might select model based on horizon or use ensemble
-        
-        # Ensure the prediction engine has the latest data for feature engineering
-        # The predict_price method in prediction_engine already fetches data via stock_service
-        
-        # If current_price is provided, it might be used by the prediction engine for context
-        # However, the current prediction_engine.predict_price doesn't directly take current_price as input
-        # It fetches its own data. We'll proceed assuming it fetches what it needs.
-        
-        # Call the prediction engine
-        prediction_result: Optional[PredictionResult] = await prediction_engine.predict_price(
-            symbol=stock_code,
-            horizon=horizon_enum,
-            model_type=ModelType.RANDOM_FOREST # Using a specific model for now
-        )
+        try:
+            prediction_result: Optional[PredictionResult] = await prediction_engine.predict_price(
+                symbol=stock_code,
+                horizon=horizon_enum,
+                model_type=ModelType.RANDOM_FOREST
+            )
+        except Exception as e:
+            logger.error(f"Error during prediction_engine.predict_price for {stock_code}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to generate prediction: {e}")
 
         if not prediction_result:
-            raise HTTPException(status_code=500, detail=f"Failed to get ML prediction for {stock_code}")
+            logger.warning(f"Prediction result is None for {stock_code}. This might indicate data issues or model failure.")
+            raise HTTPException(status_code=500, detail=f"Failed to get ML prediction for {stock_code}. No prediction result returned.")
 
-        # Extract data from PredictionResult
         predicted_price = prediction_result.predicted_price
-        current_price_from_ml = prediction_result.current_price # Use current price from ML result
-        predicted_return = prediction_result.change_percent / 100.0 # Convert percent to decimal
+        current_price_from_ml = prediction_result.current_price
+        predicted_return = prediction_result.change_percent / 100.0
         confidence = prediction_result.confidence
-        action = prediction_result.direction # 'buy', 'sell', 'hold'
+        action = prediction_result.direction
+        
+        target_date = date.today() + timedelta(days=1)
 
-        # --- End: Replace mock prediction with actual ML prediction ---
-        
-        target_date = date.today() + timedelta(days=1) # This might need to be dynamic based on horizon
-        
-        # Build response
         response_data = {
             "stock_code": stock_code,
             "prediction_date": date.today().isoformat(),
             "target_date": target_date.isoformat(),
             "predictions": {
-                "short_term": { # This structure might need adjustment based on actual ML output
+                "short_term": {
                     "predicted_price": predicted_price,
                     "predicted_return": predicted_return,
                     "confidence": confidence,
-                    "prediction": predicted_return,  # For frontend compatibility
-                    "weight": 1.0  # Add weight field for frontend
+                    "prediction": predicted_return,
+                    "weight": 1.0
                 }
             },
             "ensemble_prediction": {
-                "predicted_price": predicted_price, # Using single model prediction for now
+                "predicted_price": predicted_price,
                 "predicted_return": predicted_return,
                 "confidence_score": confidence
             },
@@ -168,8 +153,8 @@ async def get_ml_prediction(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error in ML prediction: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Unexpected error in ML prediction for {stock_code}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error occurred during ML prediction.")
 
 
 @router.post("/train", response_model=TrainingResponse)
