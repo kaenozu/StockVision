@@ -255,11 +255,11 @@ class StockPredictionEngine:
             
             logger.info(f"Model trained for {symbol}. R2: {metrics.r2:.3f}, Accuracy: {metrics.accuracy:.3f}")
             
-            return True
+            return metrics
             
         except Exception as e:
             logger.error(f"Failed to train model for {symbol}: {e}")
-            return False
+            return None
             
     async def predict_price(
         self,
