@@ -321,7 +321,8 @@ class StockPredictionEngine:
         self,
         symbol: str,
         horizon: PredictionHorizon = PredictionHorizon.DAILY,
-        model_type: ModelType = ModelType.RANDOM_FOREST
+        model_type: ModelType = ModelType.RANDOM_FOREST,
+        historical_data: Optional[pd.DataFrame] = None # <-- 追加
     ) -> Optional[PredictionResult]:
         """Predict stock price for given horizon"""
         try:
@@ -336,16 +337,17 @@ class StockPredictionEngine:
                     
             model = self.models[model_key]
             
-            # Ensure stock service is available
-            await self._ensure_stock_service()
-            
-            # Get recent data using stock service instead of direct yfinance
-            try:
-                price_history = await self.stock_service.get_price_history(symbol, 365)  # 1 year
-                df = self._price_history_to_dataframe(price_history)
-            except Exception as e:
-                logger.error(f"Failed to get recent data for {symbol}: {e}")
-                return None
+            # Use provided historical_data or fetch if not provided
+            if historical_data is None: # <-- 変更
+                await self._ensure_stock_service()
+                try:
+                    price_history = await self.stock_service.get_price_history(symbol, 365)  # 1 year
+                    df = self._price_history_to_dataframe(price_history)
+                except Exception as e:
+                    logger.error(f"Failed to get recent data for {symbol}: {e}")
+                    return None
+            else: # <-- 追加
+                df = historical_data.copy() # <-- 追加
             
             if df.empty:
                 logger.error(f"No recent data for {symbol}")
@@ -435,6 +437,7 @@ class StockPredictionEngine:
     async def get_ensemble_prediction(
         self,
         symbol: str,
+        historical_data: pd.DataFrame, # <-- 追加
         horizon: PredictionHorizon = PredictionHorizon.DAILY
     ) -> Optional[PredictionResult]:
         """Get ensemble prediction using multiple models"""
@@ -463,16 +466,46 @@ class StockPredictionEngine:
             ensemble_price = np.average(predictions, weights=weights)
             ensemble_confidence = np.mean(confidences)
             
-            # Ensure stock service is available
-            await self._ensure_stock_service()
+            # Get predictions from deep learning models (LSTM/GRU)
+            # Use the provided historical_data instead of fetching again
+            close_prices = historical_data['Close'].values # <-- 変更
             
-            # Get current price for comparison using stock service
-            try:
-                current_price_data = await self.stock_service.get_current_price(symbol)
-                current_price = float(current_price_data.current_price)
-            except Exception as e:
-                logger.error(f"Failed to get current price for {symbol}: {e}")
+            if len(close_prices) > self.lstm_gru_engine.model_configs.get(f"{symbol}_lstm", LSTMConfig()).sequence_length: # Ensure enough data
+                try:
+                    lstm_pred_array = self.lstm_gru_engine.predict_with_lstm(symbol, close_prices, steps=1)
+                    if lstm_pred_array is not None and len(lstm_pred_array) > 0:
+                        lstm_pred_price = lstm_pred_array[0]
+                        # Placeholder confidence for DL models, ideally from model evaluation
+                        lstm_confidence = self.model_metrics.get(f"{symbol}_lstm", ModelMetrics(0,0,0,0)).accuracy # Use stored metrics
+                        predictions.append(lstm_pred_price)
+                        confidences.append(lstm_confidence)
+                except Exception as e:
+                    logger.warning(f"Failed to get LSTM prediction for {symbol}: {e}")
+
+                try:
+                    gru_pred_array = self.lstm_gru_engine.predict_with_gru(symbol, close_prices, steps=1)
+                    if gru_pred_array is not None and len(gru_pred_array) > 0:
+                        gru_pred_price = gru_pred_array[0]
+                        gru_confidence = self.model_metrics.get(f"{symbol}_gru", ModelMetrics(0,0,0,0)).accuracy # Use stored metrics
+                        predictions.append(gru_pred_price)
+                        confidences.append(gru_confidence)
+                except Exception as e:
+                    logger.warning(f"Failed to get GRU prediction for {symbol}: {e}")
+            else:
+                logger.warning(f"Not enough data for DL models for {symbol}. Skipping DL predictions.")
+                    
+            if not predictions:
                 return None
+                
+            # Calculate weighted average
+            weights = np.array(confidences)
+            weights = weights / weights.sum()
+            
+            ensemble_price = np.average(predictions, weights=weights)
+            ensemble_confidence = np.mean(confidences)
+            
+            # Get current price for comparison using the provided historical_data
+            current_price = historical_data['Close'].iloc[-1] # <-- 変更
             
             change_percent = (ensemble_price - current_price) / current_price * 100
             direction = 'up' if change_percent > 0.5 else 'down' if change_percent < -0.5 else 'stable'

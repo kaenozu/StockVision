@@ -93,14 +93,29 @@ async def get_ml_prediction(
         else:
             horizon_enum = PredictionHorizon.DAILY
 
+        # --- Start: Centralized Data Fetching ---
+        await prediction_engine._ensure_stock_service() # Ensure stock service is initialized
         try:
-            prediction_result: Optional[PredictionResult] = await prediction_engine.predict_price(
+            # Fetch historical data once for both prediction and anomaly detection
+            # Fetch enough data for feature engineering and lookback periods (e.g., 1 year)
+            historical_price_data = await prediction_engine.stock_service.get_price_history(stock_code, 365)
+            df_historical = prediction_engine._price_history_to_dataframe(historical_price_data)
+            
+            if df_historical.empty:
+                raise ValueError(f"No historical data available for {stock_code}")
+        except Exception as e:
+            logger.error(f"Error fetching historical data for {stock_code}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to fetch historical data for prediction: {e}")
+        # --- End: Centralized Data Fetching ---
+
+        try:
+            prediction_result: Optional[PredictionResult] = await prediction_engine.get_ensemble_prediction(
                 symbol=stock_code,
-                horizon=horizon_enum,
-                model_type=ModelType.RANDOM_FOREST
+                historical_data=df_historical, # <-- 変更
+                horizon=horizon_enum
             )
         except Exception as e:
-            logger.error(f"Error during prediction_engine.predict_price for {stock_code}: {e}", exc_info=True)
+            logger.error(f"Error during prediction_engine.get_ensemble_prediction for {stock_code}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Failed to generate prediction: {e}")
 
         if not prediction_result:
@@ -114,6 +129,25 @@ async def get_ml_prediction(
         action = prediction_result.direction
         
         target_date = date.today() + timedelta(days=1)
+
+        # --- Start: Integrate Anomaly Detection ---
+        # Use the already fetched historical data for anomaly detection
+        try:
+            anomaly_status = anomaly_detector.detect_anomalies(df_historical, stock_code) # <-- 変更
+        except Exception as e:
+            logger.error(f"Error during anomaly detection for {stock_code}: {e}", exc_info=True)
+            # Fallback to default anomaly status if detection fails
+            anomaly_status = {
+                "detection_date": date.today().isoformat(),
+                "stock_code": stock_code,
+                "anomalies_detected": [{"type": "anomaly_detection_failed", "level": "warning", "description": f"Anomaly detection failed: {e}"}],
+                "overall_anomaly_level": "warning",
+                "prediction_gate_action": "allow",
+                "metrics": {}
+            }
+        # --- End: Integrate Anomaly Detection ---
+
+        response_data = {
 
         response_data = {
             "stock_code": stock_code,
