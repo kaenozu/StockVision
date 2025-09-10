@@ -19,7 +19,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ..stock_storage.database import get_session_scope
 from ..stock_api.data_models import (
-    StockData, CurrentPrice, CurrentPriceResponse, PriceHistoryItem, 
+    StockData, CurrentPrice, CurrentPriceResponse, 
     StockCode, PriceHistoryRequest
 )
 from ..models.stock import Stock
@@ -320,5 +320,7 @@ async def get_price_history(
         logger.error(f"Validation error for price history {stock_code}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        import traceback
         logger.error(f"Unexpected error for price history {stock_code}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

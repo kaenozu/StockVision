@@ -338,7 +338,6 @@ class HybridStockService:
         logger.warning(f"Generating sample price history for {stock_code} as fallback - consider using CSV import for real data")
         from datetime import date, timedelta, datetime
         from decimal import Decimal
-        from ..stock_api.data_models import PriceHistoryData, PriceHistoryItem
         
         # Generate simple sample data for the requested period
         history_items = []

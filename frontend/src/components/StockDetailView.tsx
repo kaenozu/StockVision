@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PricePredictionChart from './PricePredictionChart';
+import ScenarioPredictionPanel from './ScenarioPredictionPanel';
 import './StockDetailView.css';
 
 interface StockDetail {
@@ -391,6 +392,14 @@ const StockDetailView: React.FC = () => {
             <PricePredictionChart 
               symbol={stockDetail.stock.symbol}
               period={selectedPredictionPeriod}
+            />
+          </div>
+
+          {/* Scenario Prediction Panel */}
+          <div className="scenario-card">
+            <ScenarioPredictionPanel 
+              stockCode={stockDetail.stock.symbol}
+              predictionDays={selectedPredictionPeriod === 'short' ? 7 : 14}
             />
           </div>
         </div>

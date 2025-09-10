@@ -11,6 +11,7 @@ from ..stock_api.data_models import StockData, PriceHistoryData, PriceHistoryIte
 from ..models.stock import Stock
 from ..models.price_history import PriceHistory
 from sqlalchemy.orm import Session
+from ..stock_storage.database import get_session_scope
 
 logger = logging.getLogger(__name__)
 
@@ -95,52 +96,59 @@ class CSVDataService:
             logger.error(f"Error loading price history from CSV: {e}")
             return {}
     
-    async def sync_csv_to_database(self, csv_path: str, db: Session):
+    async def sync_csv_to_database(self, csv_path: str):
         """CSVデータをデータベースに同期"""
         try:
             stock_data_list = await self.load_stock_data_from_csv(csv_path)
             
-            for stock_data in stock_data_list:
-                # 既存レコードの確認
-                existing_stock = db.query(Stock).filter(Stock.stock_code == stock_data.stock_code).first()
+            with get_session_scope() as db:
+                for stock_data in stock_data_list:
+                    # 既存レコードの確認
+                    existing_stock = db.query(Stock).filter(Stock.stock_code == stock_data.stock_code).first()
+                    
+                    if existing_stock:
+                        # 更新
+                        existing_stock.current_price = stock_data.current_price
+                        existing_stock.previous_close = stock_data.previous_close
+                        existing_stock.price_change = stock_data.price_change
+                        existing_stock.price_change_pct = stock_data.price_change_pct
+                        existing_stock.volume = stock_data.volume
+                        existing_stock.market_cap = stock_data.market_cap
+                        existing_stock.updated_at = datetime.utcnow()
+                    else:
+                        # 新規作成
+                        new_stock = Stock(
+                            stock_code=stock_data.stock_code,
+                            company_name=stock_data.company_name,
+                            current_price=stock_data.current_price,
+                            previous_close=stock_data.previous_close,
+                            price_change=stock_data.price_change,
+                            price_change_pct=stock_data.price_change_pct,
+                            volume=stock_data.volume,
+                            market_cap=stock_data.market_cap,
+                            created_at=datetime.utcnow()
+                        )
+                        db.add(new_stock)
                 
-                if existing_stock:
-                    # 更新
-                    existing_stock.current_price = stock_data.current_price
-                    existing_stock.previous_close = stock_data.previous_close
-                    existing_stock.price_change = stock_data.price_change
-                    existing_stock.price_change_pct = stock_data.price_change_pct
-                    existing_stock.volume = stock_data.volume
-                    existing_stock.market_cap = stock_data.market_cap
-                    existing_stock.updated_at = datetime.utcnow()
-                else:
-                    # 新規作成
-                    new_stock = Stock(
-                        stock_code=stock_data.stock_code,
-                        company_name=stock_data.company_name,
-                        current_price=stock_data.current_price,
-                        previous_close=stock_data.previous_close,
-                        price_change=stock_data.price_change,
-                        price_change_pct=stock_data.price_change_pct,
-                        volume=stock_data.volume,
-                        market_cap=stock_data.market_cap,
-                        created_at=datetime.utcnow()
-                    )
-                    db.add(new_stock)
-            
-            db.commit()
-            logger.info(f"Synced {len(stock_data_list)} stocks to database")
+                db.commit()
+                logger.info(f"Synced {len(stock_data_list)} stocks to database")
             
         except Exception as e:
             logger.error(f"Error syncing CSV to database: {e}")
-            db.rollback()
     
     async def download_csv_from_colab(self, colab_url: str, local_path: str) -> bool:
         """Google Colabから生成されたCSVをダウンロード"""
         try:
             import requests
             
-            response = requests.get(colab_url)
+            # Google Drive URLをダイレクトダウンロード用に変換
+            if "drive.google.com" in colab_url and "/file/d/" in colab_url:
+                file_id = colab_url.split('/file/d/')[1].split('/')[0]
+                download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+            else:
+                download_url = colab_url
+            
+            response = requests.get(download_url)
             response.raise_for_status()
             
             with open(local_path, 'wb') as f:

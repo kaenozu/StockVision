@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { EnhancedStockCard } from '../components/stock/EnhancedStockCard'
 import LoadingState from '../components/enhanced/LoadingState'
 import { useTheme } from '../contexts/ThemeContext'
+import { stockApi } from '../services/stockApi'
 
 interface StockData {
   stock_code: string
@@ -15,53 +16,78 @@ interface StockData {
   updated_at?: string
 }
 
+interface RecommendedStock {
+  symbol: string
+  name: string
+  price: {
+    current: number
+    change: number
+    changePercent: number
+    volume?: number
+  }
+  recommendation: {
+    signal: string
+    confidence: number
+    reasoning: string
+  }
+}
+
 const RecommendedStocksPage: React.FC = () => {
   const { actualTheme } = useTheme()
   const [stocks, setStocks] = useState<StockData[]>([])
   const [loading, setLoading] = useState(true)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [recommendationSummary, setRecommendationSummary] = useState<{
+    totalBuy: number;
+    totalHold: number;
+    totalSell: number;
+    commonReasons: string[];
+  }>({
+    totalBuy: 0,
+    totalHold: 0,
+    totalSell: 0,
+    commonReasons: []
+  })
 
   useEffect(() => {
-    // Simulate loading recommended stocks
-    setTimeout(() => {
-      const recommendedStocks: StockData[] = [
-        {
-          stock_code: '7203',
-          company_name: 'トヨタ自動車',
-          current_price: 2500,
-          previous_close: 2450,
-          price_change: 50,
-          percentage_change: 2.04,
-          volume: 15000000,
-          market_cap: 32000000000000,
-          updated_at: '2025-01-15T09:30:00Z'
-        },
-        {
-          stock_code: '6758',
-          company_name: 'ソニーグループ',
-          current_price: 12000,
-          previous_close: 11800,
-          price_change: 200,
-          percentage_change: 1.69,
-          volume: 8000000,
-          market_cap: 15000000000000,
-          updated_at: '2025-01-15T09:30:00Z'
-        },
-        {
-          stock_code: '9984',
-          company_name: 'ソフトバンクグループ',
-          current_price: 5400,
-          previous_close: 5350,
-          price_change: 50,
-          percentage_change: 0.93,
-          volume: 12000000,
-          market_cap: 12000000000000,
-          updated_at: '2025-01-15T09:30:00Z'
+    const fetchRecommendedStocks = async () => {
+      try {
+        setLoading(true)
+        const response = await stockApi.getRecommendedStocks(10)
+        
+        // Convert API response to StockData format
+        const convertedStocks: StockData[] = response.map((item: any) => ({
+          stock_code: item.symbol,
+          company_name: item.name,
+          current_price: item.price.current,
+          previous_close: item.price.current - item.price.change,
+          price_change: item.price.change,
+          percentage_change: item.price.changePercent,
+          volume: item.price.volume || 0,
+          market_cap: 0, // Will be calculated from stock info if needed
+          updated_at: new Date().toISOString()
+        }))
+        
+        // Calculate recommendation summary
+        const summary = {
+          totalBuy: response.filter((item: any) => item.recommendation.signal === 'buy').length,
+          totalHold: response.filter((item: any) => item.recommendation.signal === 'hold').length,
+          totalSell: response.filter((item: any) => item.recommendation.signal === 'sell').length,
+          commonReasons: [...new Set(response.map((item: any) => item.recommendation.reasoning))]
         }
-      ]
-      setStocks(recommendedStocks)
-      setLoading(false)
-    }, 1500)
+        
+        setStocks(convertedStocks)
+        setRecommendationSummary(summary)
+      } catch (error) {
+        console.error('推奨銘柄の取得に失敗しました:', error)
+        // Fall back to empty array
+        setStocks([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchRecommendedStocks()
 
     // Load favorites
     const savedFavorites = localStorage.getItem('favorites')
@@ -116,15 +142,41 @@ const RecommendedStocksPage: React.FC = () => {
       )}
 
       <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-        <h2 className="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-2">
-          推奨理由
+        <h2 className="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-4">
+          推奨サマリー
         </h2>
-        <ul className="space-y-2 text-blue-800 dark:text-blue-200">
-          <li>• 過去3ヶ月の成長率が安定している</li>
-          <li>• 業界内での競争力が高い</li>
-          <li>• 財務指標が良好</li>
-          <li>• 市場トレンドに適合している</li>
-        </ul>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+              {recommendationSummary.totalBuy}
+            </div>
+            <div className="text-sm text-blue-800 dark:text-blue-200">買い推奨</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+              {recommendationSummary.totalHold}
+            </div>
+            <div className="text-sm text-blue-800 dark:text-blue-200">様子見</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+              {recommendationSummary.totalSell}
+            </div>
+            <div className="text-sm text-blue-800 dark:text-blue-200">売り推奨</div>
+          </div>
+        </div>
+        {recommendationSummary.commonReasons.length > 0 && (
+          <>
+            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
+              主な分析結果
+            </h3>
+            <ul className="space-y-2 text-blue-800 dark:text-blue-200">
+              {recommendationSummary.commonReasons.slice(0, 4).map((reason, index) => (
+                <li key={index}>• {reason}</li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
     </div>
   )

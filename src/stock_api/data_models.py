@@ -27,8 +27,8 @@ class StockCode(BaseModel):
         if not isinstance(v, str):
             raise ValueError("Stock code must be a string")
         
-        if not re.match(r'^\d{4}$', v):
-            raise ValueError("Stock code must be exactly 4 digits")
+        if not re.match(r'^\d{4}(\.T)?$', v):
+            raise ValueError("Stock code must be 4 digits or 4 digits with .T suffix")
         
         return v
 
@@ -85,6 +85,17 @@ class CurrentPrice(BaseModel):
     market_cap: Optional[Decimal] = Field(None, gt=0, description="Market capitalization")
     timestamp: Optional[datetime] = Field(default_factory=datetime.utcnow, description="Data timestamp")
     
+    @field_validator('market_cap', mode='before')
+    @classmethod
+    def convert_market_cap(cls, v):
+        """Convert market cap from various numeric types to Decimal."""
+        if v is None:
+            return v
+        try:
+            return Decimal(str(v))
+        except (ValueError, TypeError):
+            raise ValueError("Market cap must be a valid numeric value")
+    
     model_config = {
         "populate_by_name": True,
         "json_encoders": {
@@ -102,8 +113,8 @@ class CurrentPrice(BaseModel):
     @classmethod
     def validate_stock_code(cls, v):
         """Validate stock code format."""
-        if not re.match(r'^\d{4}$', v):
-            raise ValueError("Stock code must be exactly 4 digits")
+        if not re.match(r'^\d{4}(\.T)?$', v):
+            raise ValueError("Stock code must be 4 digits or 4 digits with .T suffix")
         return v
     
     @field_validator('company_name')
@@ -211,8 +222,8 @@ class CurrentPriceResponse(BaseModel):
     @classmethod
     def validate_stock_code(cls, v):
         """Validate stock code format."""
-        if not re.match(r'^\d{4}$', v):
-            raise ValueError("Stock code must be exactly 4 digits")
+        if not re.match(r'^\d{4}(\.T)?$', v):
+            raise ValueError("Stock code must be 4 digits or 4 digits with .T suffix")
         return v
 
 
@@ -274,8 +285,8 @@ class PriceHistoryItem(BaseModel):
     @classmethod
     def validate_stock_code(cls, v):
         """Validate stock code format."""
-        if not re.match(r'^\d{4}$', v):
-            raise ValueError("Stock code must be exactly 4 digits")
+        if not re.match(r'^\d{4}(\.T)?$', v):
+            raise ValueError("Stock code must be 4 digits or 4 digits with .T suffix")
         return v
     
     @field_validator('date', mode='before')
@@ -288,10 +299,22 @@ class PriceHistoryItem(BaseModel):
             return datetime(v.year, v.month, v.day)
         if isinstance(v, str):
             try:
+                # Handle timezone-aware strings by removing timezone info
+                if '+' in v and ':' in v.split('+')[-1]:
+                    # Remove timezone part (e.g., "+09:00")
+                    v = v.split('+')[0].strip()
+                elif v.endswith('Z'):
+                    # Remove Z timezone indicator
+                    v = v[:-1].strip()
+                
                 # Try ISO format first
                 return datetime.fromisoformat(v)
             except Exception:
-                return datetime.strptime(v, "%Y-%m-%d")
+                try:
+                    return datetime.strptime(v, "%Y-%m-%d")
+                except Exception:
+                    # Try other common formats
+                    return datetime.strptime(v.split(' ')[0], "%Y-%m-%d")
         return v
     
     @model_validator(mode='after')
@@ -414,6 +437,17 @@ class StockData(BaseModel):
     volume: int = Field(..., ge=0, description="Trading volume")
     market_cap: Optional[Decimal] = Field(None, gt=0, description="Market capitalization")
     
+    @field_validator('market_cap', mode='before')
+    @classmethod
+    def convert_market_cap_stockdata(cls, v):
+        """Convert market cap from various numeric types to Decimal."""
+        if v is None:
+            return v
+        try:
+            return Decimal(str(v))
+        except (ValueError, TypeError):
+            raise ValueError("Market cap must be a valid numeric value")
+    
     model_config = {
         "json_encoders": {
             Decimal: float
@@ -444,8 +478,8 @@ class StockData(BaseModel):
     @classmethod
     def validate_stock_code(cls, v):
         """Validate stock code format."""
-        if not re.match(r'^\d{4}$', v):
-            raise ValueError("Stock code must be exactly 4 digits")
+        if not re.match(r'^\d{4}(\.T)?$', v):
+            raise ValueError("Stock code must be 4 digits or 4 digits with .T suffix")
         return v
     
     @field_validator('company_name')
@@ -532,8 +566,8 @@ class PriceHistoryData(BaseModel):
     @classmethod
     def validate_stock_code(cls, v):
         """Validate stock code format."""
-        if not re.match(r'^\d{4}$', v):
-            raise ValueError("Stock code must be exactly 4 digits")
+        if not re.match(r'^\d{4}(\.T)?$', v):
+            raise ValueError("Stock code must be 4 digits or 4 digits with .T suffix")
         return v
     
     @field_validator('history')
@@ -654,8 +688,8 @@ class StockInfoRequest(BaseModel):
     @classmethod
     def validate_stock_code(cls, v):
         """Validate stock code format."""
-        if not re.match(r'^\d{4}$', v):
-            raise ValueError("Stock code must be exactly 4 digits")
+        if not re.match(r'^\d{4}(\.T)?$', v):
+            raise ValueError("Stock code must be 4 digits or 4 digits with .T suffix")
         return v
 
 
@@ -669,8 +703,8 @@ class PriceHistoryRequest(BaseModel):
     @classmethod
     def validate_stock_code(cls, v):
         """Validate stock code format."""
-        if not re.match(r'^\d{4}$', v):
-            raise ValueError("Stock code must be exactly 4 digits")
+        if not re.match(r'^\d{4}(\.T)?$', v):
+            raise ValueError("Stock code must be 4 digits or 4 digits with .T suffix")
         return v
 
 

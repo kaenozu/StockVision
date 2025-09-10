@@ -10,6 +10,9 @@ interface Stock {
   price: number
   change: number
   changePercent: number
+  signal?: string
+  confidence?: number
+  reasoning?: string
 }
 
 const SimplifiedHomePage = () => {
@@ -23,31 +26,51 @@ const SimplifiedHomePage = () => {
 
   const loadStocks = async () => {
     setLoading(true)
-    const stockCodes = [
-      { code: '7203', name: 'トヨタ自動車' },
-      { code: '9984', name: 'ソフトバンクグループ' },
-      { code: '6758', name: 'ソニーグループ' },
-      { code: '7974', name: '任天堂' },
-      { code: '6861', name: 'キーエンス' },
-      { code: '9983', name: 'ファーストリテイリング' }
-    ]
-
     try {
-      const stockData = await Promise.all(
-        stockCodes.map(async ({ code, name }) => {
-          const data = await stockApi.getCurrentPrice(code)
-          return {
-            code,
-            name,
-            price: data.current_price,
-            change: data.price_change,
-            changePercent: data.price_change_pct
-          }
-        })
-      )
+      // 推奨APIからデータを取得（買い推奨順にソート済み）
+      const response = await stockApi.getRecommendedStocks(20)
+      
+      const stockData: Stock[] = response.map((item: any) => ({
+        code: item.symbol,
+        name: item.name,
+        price: item.price.current,
+        change: item.price.change,
+        changePercent: item.price.changePercent,
+        signal: item.recommendation.signal,
+        confidence: item.recommendation.confidence,
+        reasoning: item.recommendation.reasoning
+      }))
+      
       setStocks(stockData)
     } catch (error) {
-      console.error('データの取得に失敗しました:', error)
+      console.error('おすすめ銘柄データの取得に失敗しました:', error)
+      // フォールバック: 従来の方式
+      const stockCodes = [
+        { code: '7203', name: 'トヨタ自動車' },
+        { code: '9984', name: 'ソフトバンクグループ' },
+        { code: '6758', name: 'ソニーグループ' },
+        { code: '7974', name: '任天堂' },
+        { code: '6861', name: 'キーエンス' },
+        { code: '9983', name: 'ファーストリテイリング' }
+      ]
+      
+      try {
+        const stockData = await Promise.all(
+          stockCodes.map(async ({ code, name }) => {
+            const data = await stockApi.getCurrentPrice(code)
+            return {
+              code,
+              name,
+              price: data.current_price,
+              change: data.price_change,
+              changePercent: data.price_change_pct
+            }
+          })
+        )
+        setStocks(stockData)
+      } catch (fallbackError) {
+        console.error('フォールバックデータの取得に失敗しました:', fallbackError)
+      }
     } finally {
       setLoading(false)
     }
@@ -138,7 +161,7 @@ const SimplifiedHomePage = () => {
         {/* 株価カード一覧セクション */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-white text-center mb-6 bg-gradient-to-r from-pink-500 to-purple-600 rounded-lg p-4 shadow-lg">
-            🏢 主要銘柄一覧 🏢
+            ⭐ おすすめ銘柄一覧 ⭐
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {stocks.map((stock) => {
@@ -148,7 +171,9 @@ const SimplifiedHomePage = () => {
                   key={stock.code} 
                   onClick={() => handleStockClick(stock.code)}
                   className={`cursor-pointer transform hover:scale-105 transition-all duration-200 rounded-xl p-6 shadow-lg border-2 ${
-                    isPositive 
+                    stock.signal === 'buy' 
+                      ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-300 hover:border-blue-400' 
+                      : isPositive 
                       ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-300 hover:border-green-400' 
                       : 'bg-gradient-to-br from-red-50 to-red-100 border-red-300 hover:border-red-400'
                   }`}>
@@ -156,6 +181,19 @@ const SimplifiedHomePage = () => {
                     <div>
                       <h3 className="text-lg font-bold text-gray-900">{stock.name}</h3>
                       <p className="text-sm font-semibold text-gray-600 bg-gray-200 px-2 py-1 rounded">{stock.code}</p>
+                      {stock.signal && (
+                        <div className="mt-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                            stock.signal === 'buy' ? 'bg-blue-500 text-white' :
+                            stock.signal === 'sell' ? 'bg-red-500 text-white' :
+                            'bg-yellow-500 text-white'
+                          }`}>
+                            {stock.signal === 'buy' ? '買い推奨' : 
+                             stock.signal === 'sell' ? '売り推奨' : '様子見'}
+                            {stock.confidence && ` (${stock.confidence.toFixed(1)})`}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
                       isPositive ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
@@ -182,6 +220,11 @@ const SimplifiedHomePage = () => {
                     <span className="bg-blue-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
                       クリックで詳細
                     </span>
+                    {stock.reasoning && (
+                      <p className="text-xs text-gray-600 mt-2 truncate" title={stock.reasoning}>
+                        {stock.reasoning}
+                      </p>
+                    )}
                   </div>
                 </div>
               )
