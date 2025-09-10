@@ -44,11 +44,14 @@ export interface PriceHistoryItem {
 // Watchlist item interface for API responses
 export interface WatchlistItemAPI {
   stock_code: string
-  company_name: string
-  added_date: string       // ISO timestamp
+  company_name?: string    // Optional company name (may not be available)
+  added_at: string         // ISO timestamp
+  added_date?: string      // Legacy field name (for backward compatibility)
   alert_price_high?: number | null
   alert_price_low?: number | null
   notes?: string | null
+  id?: number             // API ID field
+  is_active?: boolean     // Active status field
 }
 
 // Request interface for adding to watchlist
@@ -338,16 +341,24 @@ export function isWatchlistItemAPI(obj: unknown): obj is WatchlistItemAPI {
 
   return (
     'stock_code' in obj &&
-    'company_name' in obj &&
-    'added_date' in obj &&
     typeof typedObj.stock_code === 'string' &&
     isValidStockCode(typedObj.stock_code) &&
-    typeof typedObj.company_name === 'string' &&
-    typeof typedObj.added_date === 'string' &&
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(typedObj.added_date) &&
-    (typedObj.alert_price_high === null || (typeof typedObj.alert_price_high === 'number' && typedObj.alert_price_high > 0)) &&
-    (typedObj.alert_price_low === null || (typeof typedObj.alert_price_low === 'number' && typedObj.alert_price_low > 0)) &&
-    (typedObj.notes === null || typeof typedObj.notes === 'string')
+    // added_at or added_date must be present
+    (('added_at' in obj && typeof typedObj.added_at === 'string') || 
+     ('added_date' in obj && typeof typedObj.added_date === 'string')) &&
+    // company_name is optional
+    (typedObj.company_name === undefined || typeof typedObj.company_name === 'string') &&
+    // Alert prices are optional and nullable
+    (typedObj.alert_price_high === undefined || typedObj.alert_price_high === null || 
+     (typeof typedObj.alert_price_high === 'number' && typedObj.alert_price_high > 0)) &&
+    (typedObj.alert_price_low === undefined || typedObj.alert_price_low === null || 
+     (typeof typedObj.alert_price_low === 'number' && typedObj.alert_price_low > 0)) &&
+    // Notes are optional and nullable
+    (typedObj.notes === undefined || typedObj.notes === null || typeof typedObj.notes === 'string') &&
+    // ID is optional
+    (typedObj.id === undefined || typeof typedObj.id === 'number') &&
+    // is_active is optional
+    (typedObj.is_active === undefined || typeof typedObj.is_active === 'boolean')
   )
 }
 

@@ -70,15 +70,8 @@ export function useStockPrice(options: UseStockPriceOptions = {}) {
   }, [])
 
   const startAutoRefresh = useCallback((stockCode: string) => {
-    if (!autoRefresh || intervalRef.current) return
-
-    currentStockCode.current = stockCode
-    
-    intervalRef.current = setInterval(() => {
-      if (currentStockCode.current) {
-        fetchPrice(currentStockCode.current)
-      }
-    }, refreshInterval)
+    // 自動更新は無効化済み - 手動更新のみ対応
+    return
   }, [autoRefresh, refreshInterval, fetchPrice])
 
   const stopAutoRefresh = useCallback(() => {

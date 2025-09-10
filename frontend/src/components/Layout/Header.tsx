@@ -55,46 +55,46 @@ export function Header({ onSearch }: HeaderProps) {
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo and Brand */}
-          <div className="flex items-center">
+      <div className="w-full px-2 sm:px-4 lg:px-6">
+        <div className="flex items-center justify-between h-16 gap-2">
+          {/* Logo and Brand - Responsive */}
+          <div className="flex items-center flex-shrink-0">
             <button 
               onClick={() => navigate('/')}
-              className="flex items-center space-x-2 hover:opacity-75 transition-opacity"
+              className="flex items-center space-x-1 sm:space-x-2 hover:opacity-75 transition-opacity"
             >
-              <div className="text-2xl">📈</div>
+              <div className="text-xl sm:text-2xl">📈</div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">株価チェッカー</h1>
+                <h1 className="text-sm sm:text-lg lg:text-xl font-bold text-gray-900 truncate max-w-[100px] sm:max-w-none">株価チェッカー</h1>
                 <p className="text-xs text-gray-500 hidden sm:block">Stock Price Tracker</p>
               </div>
             </button>
           </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
+          {/* Desktop Navigation - Responsive with better breakpoints */}
+          <nav className="hidden lg:flex items-center space-x-2 xl:space-x-4">
             {navigationItems.map((item) => (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
                 className={`
-                  flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                  flex items-center space-x-1 px-2 lg:px-3 py-2 rounded-lg text-xs lg:text-sm font-medium transition-colors whitespace-nowrap
                   ${isActive(item.path) 
                     ? 'bg-blue-100 text-blue-700' 
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
               >
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
+                <span className="text-base lg:text-lg">{item.icon}</span>
+                <span className="hidden xl:inline">{item.label}</span>
               </button>
             ))}
           </nav>
 
-          {/* Right Side Controls */}
-          <div className="flex items-center space-x-4">
+          {/* Right Side Controls - Responsive */}
+          <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 flex-shrink-0">
             {/* Language Selector (Desktop) */}
-            <div className="hidden md:relative">
+            <div className="hidden lg:relative">
               <button
                 onClick={() => setLanguageSelectorOpen(!languageSelectorOpen)}
                 className={`
@@ -140,24 +140,27 @@ export function Header({ onSearch }: HeaderProps) {
             </div>
             
             {/* Theme Toggle */}
-            <IconButton
-              variant="ghost"
-              onClick={toggleTheme}
+            <button
+              onClick={() => {
+                console.log('Theme toggle clicked, current theme:', theme)
+                toggleTheme()
+              }}
+              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
               aria-label={t('common.theme')}
             >
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </IconButton>
+              <span className="text-2xl">{theme === 'dark' ? '☀️' : '🌙'}</span>
+            </button>
 
             {/* Desktop Search */}
-            <div className="hidden md:block">
+            <div className="hidden xl:block">
               <CompactStockSearch 
                 onSearch={handleSearch}
-                className="w-64"
+                className="w-48 2xl:w-64"
               />
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden">
+            <div className="lg:hidden">
               <IconButton
                 variant="ghost"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -171,7 +174,7 @@ export function Header({ onSearch }: HeaderProps) {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 py-4 space-y-4">
+          <div className="lg:hidden border-t border-gray-200 py-4 space-y-4">
             {/* Mobile Search */}
             <div className="px-2">
               <CompactStockSearch 

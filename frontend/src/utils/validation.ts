@@ -324,10 +324,10 @@ export function validateISOTimestamp(timestamp: string): ValidationResult {
     return { is_valid: false, errors, warnings }
   }
 
-  // Check ISO 8601 format (basic check)
-  const isoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/
+  // Check ISO 8601 format (flexible check for various formats)
+  const isoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})?$/
   if (!isoPattern.test(timestamp)) {
-    errors.push('タイムスタンプはISO 8601形式（YYYY-MM-DDTHH:mm:ssZ）で指定してください')
+    errors.push('タイムスタンプはISO 8601形式（YYYY-MM-DDTHH:mm:ss）で指定してください')
     return { is_valid: false, errors, warnings }
   }
 

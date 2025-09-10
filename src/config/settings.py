@@ -21,7 +21,7 @@ except ImportError:
 class YahooFinanceConfig(BaseModel):
     """Yahoo Finance API configuration."""
     
-    enabled: bool = Field(default=False, description="Enable real Yahoo Finance API calls")
+    enabled: bool = Field(default=True, description="Enable real Yahoo Finance API calls")
     max_requests: int = Field(default=10, description="Maximum requests per time window")
     time_window: int = Field(default=60, description="Rate limit time window in seconds")
     max_concurrent: int = Field(default=5, description="Maximum concurrent requests")

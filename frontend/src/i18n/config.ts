@@ -60,10 +60,10 @@ i18n
     defaultNS: 'common',
     
     // キーの区切り文字
-    keySeparator: false,
+    keySeparator: '.',
     
     // 名前空間の区切り文字
-    nsSeparator: false,
+    nsSeparator: ':',
     
     // 言語を変更したときにDOMを更新
     interpolation: {

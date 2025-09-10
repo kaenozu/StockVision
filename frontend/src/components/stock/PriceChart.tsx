@@ -17,6 +17,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler,
   TooltipItem,
   ChartData as ChartJSData,
   ChartDataset as ChartJSDataset
@@ -35,7 +36,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 )
 
 interface PriceChartProps {
@@ -72,7 +74,7 @@ export function PriceChart({
   onConfigChange,
   onRefresh,
   stockCode = '',
-  height = 400,
+  height = 300,
   className = ''
 }: PriceChartProps) {
   const { isDark } = useTheme()

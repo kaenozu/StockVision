@@ -319,7 +319,7 @@ function WatchlistTableRow({
             {item.stock_code}
           </div>
           <div className="text-sm text-gray-500 truncate max-w-32">
-            {item.company_name}
+            {item.company_name || '企業名取得中...'}
           </div>
         </div>
       </td>
@@ -374,7 +374,7 @@ function WatchlistTableRow({
       </td>
       
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        {formatTimestamp(item.added_date).split(' ')[0]}
+        {formatTimestamp(item.added_at || item.added_date).split(' ')[0]}
       </td>
       
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

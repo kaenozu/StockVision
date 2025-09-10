@@ -21,7 +21,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
   },
   server: {
-    port: 3002,
+    port: 3004,
     host: true,
     proxy: {
       '/api': {

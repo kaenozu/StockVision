@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import LoadingState from '../components/enhanced/LoadingState'
 import { stockApi } from '../services/stockApi'
@@ -12,6 +13,7 @@ interface Stock {
 }
 
 const SimplifiedHomePage = () => {
+  const navigate = useNavigate()
   const [stocks, setStocks] = useState<Stock[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -54,16 +56,20 @@ const SimplifiedHomePage = () => {
   const upStocks = stocks.filter(s => s.change > 0).length
   const downStocks = stocks.filter(s => s.change < 0).length
 
+  const handleStockClick = (stockCode: string) => {
+    navigate(`/stock/${stockCode}`)
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 flex items-center justify-center transition-colors duration-300">
         <LoadingState message="株価データを読み込み中..." />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 transition-colors duration-300">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* ヘッダー */}
         <div className="text-center mb-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl p-6 shadow-xl border-2 border-yellow-300">
@@ -138,11 +144,14 @@ const SimplifiedHomePage = () => {
             {stocks.map((stock) => {
               const isPositive = stock.change >= 0
               return (
-                <div key={stock.code} className={`cursor-pointer transform hover:scale-105 transition-all duration-200 rounded-xl p-6 shadow-lg border-2 ${
-                  isPositive 
-                    ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-300 hover:border-green-400' 
-                    : 'bg-gradient-to-br from-red-50 to-red-100 border-red-300 hover:border-red-400'
-                }`}>
+                <div 
+                  key={stock.code} 
+                  onClick={() => handleStockClick(stock.code)}
+                  className={`cursor-pointer transform hover:scale-105 transition-all duration-200 rounded-xl p-6 shadow-lg border-2 ${
+                    isPositive 
+                      ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-300 hover:border-green-400' 
+                      : 'bg-gradient-to-br from-red-50 to-red-100 border-red-300 hover:border-red-400'
+                  }`}>
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h3 className="text-lg font-bold text-gray-900">{stock.name}</h3>
@@ -151,7 +160,7 @@ const SimplifiedHomePage = () => {
                     <div className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
                       isPositive ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                     }`}>
-                      {isPositive ? '+' : ''}{stock.changePercent}%
+                      {isPositive ? '+' : ''}{stock.changePercent.toFixed(2)}%
                     </div>
                   </div>
                   
