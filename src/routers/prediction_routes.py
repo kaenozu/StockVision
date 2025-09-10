@@ -113,9 +113,9 @@ async def batch_predict_prices(request: BatchPredictionRequest):
             
         symbols = [s.upper() for s in request.symbols]
         
-        # Limit batch size
-        if len(symbols) > 50:
-            raise HTTPException(status_code=400, detail="Maximum 50 symbols per batch")
+        # Limit batch size to prevent rate limiting
+        if len(symbols) > 5:
+            raise HTTPException(status_code=400, detail="Maximum 5 symbols per batch to prevent rate limiting")
             
         # Get predictions
         results = await prediction_engine.batch_predict(
@@ -271,9 +271,9 @@ async def batch_train_models(
             
         symbols = [s.upper() for s in symbols]
         
-        # Limit batch size
-        if len(symbols) > 20:
-            raise HTTPException(status_code=400, detail="Maximum 20 symbols per batch training")
+        # Limit batch size to prevent rate limiting
+        if len(symbols) > 3:
+            raise HTTPException(status_code=400, detail="Maximum 3 symbols per batch training to prevent rate limiting")
             
         # Start training for each symbol
         for symbol in symbols:
@@ -440,7 +440,8 @@ async def predict_popular_stocks():
     Returns predictions for commonly traded stocks
     """
     try:
-        popular_symbols = ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NVDA", "SPY", "QQQ", "VTI"]
+        # Reduced popular symbols to prevent rate limiting
+        popular_symbols = ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA"]
         
         # Get predictions for popular stocks
         results = await prediction_engine.batch_predict(
