@@ -255,7 +255,7 @@ class StockPredictionEngine:
         symbol: str, 
         model_type: ModelType = ModelType.RANDOM_FOREST,
         period: str = "2y"
-    ) -> bool:
+    ) -> Optional[ModelMetrics]:
         """Train prediction model for a symbol"""
         try:
             logger.info(f"Training {model_type.value} model for {symbol}")
@@ -270,18 +270,18 @@ class StockPredictionEngine:
                 df = self._price_history_to_dataframe(price_history)
             except Exception as e:
                 logger.error(f"Failed to get price history for {symbol}: {e}")
-                return False
+                return None
             
             if df.empty:
                 logger.error(f"No data available for {symbol}")
-                return False
+                return None
                 
             # Prepare features
             X, y = self.feature_engine.prepare_features(df)
             
             if X.empty:
                 logger.error(f"No features generated for {symbol}")
-                return False
+                return None
                 
             # Split data (time series split)
             tscv = TimeSeriesSplit(n_splits=5)
@@ -311,11 +311,11 @@ class StockPredictionEngine:
             
             logger.info(f"Model trained for {symbol}. R2: {metrics.r2:.3f}, Accuracy: {metrics.accuracy:.3f}")
             
-            return True
+            return metrics
             
         except Exception as e:
             logger.error(f"Failed to train model for {symbol}: {e}")
-            return False
+            return None
             
     async def predict_price(
         self,

@@ -95,6 +95,10 @@ class FeatureEngineer:
     
     def _add_talib_indicators(self, df: pd.DataFrame, close, high, low, volume):
         """Add TA-Lib based technical indicators."""
+        close = np.array(close, dtype=np.double)
+        high = np.array(high, dtype=np.double)
+        low = np.array(low, dtype=np.double)
+        volume = np.array(volume, dtype=np.double)
         # Moving averages
         df['sma_5'] = talib.SMA(close, timeperiod=5)
         df['sma_10'] = talib.SMA(close, timeperiod=10)

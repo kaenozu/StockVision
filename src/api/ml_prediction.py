@@ -4,8 +4,11 @@ ML Prediction API endpoints.
 import asyncio
 from datetime import datetime, date, timedelta
 from typing import Optional, Dict, Any, List
-import random
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Query, Path, Depends
+
+from ..ml.prediction_engine import prediction_engine, ModelType, PredictionResult, PredictionHorizon
+from ..services.stock_service import get_stock_service
+from ..ml.pipeline import ml_pipeline, PipelineConfig
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
@@ -100,39 +103,37 @@ async def get_ml_prediction(
     try:
         logger.info(f"ML prediction request for {stock_code}, horizon: {prediction_horizon}")
         
-        # If current price not provided, fetch from stock service
-        if current_price is None:
-            try:
-                from ..services.stock_service import get_stock_service
-                stock_service = await get_stock_service()
-                stock_info = await stock_service.get_current_price(stock_code)
-                current_price = float(stock_info.current_price)
-            except Exception as e:
-                logger.warning(f"Failed to fetch current price: {e}")
-                # Use a reasonable default based on stock code
-                random.seed(int(stock_code))
-                current_price = 2500.0 + (random.random() * 1000)
-        
-        # Generate mock prediction data based on stock code for consistency
-        random.seed(int(stock_code))  # Consistent results for same stock code
-        
-        # Generate realistic prediction (±3% for short term)
-        prediction_variance = random.gauss(0, 0.015)  # Normal distribution with 1.5% std dev
-        predicted_price = current_price * (1 + prediction_variance)
-        predicted_return = prediction_variance
-        confidence = 0.65 + (random.random() * 0.25)  # 65-90% confidence
-        
-        # Determine action based on predicted return
-        if predicted_return > 0.02:
-            action = "buy"
-        elif predicted_return < -0.02:
-            action = "sell"
+        if prediction_horizon == "short":
+            horizon_enum = PredictionHorizon.DAILY
+        elif prediction_horizon == "medium":
+            horizon_enum = PredictionHorizon.WEEKLY
+        elif prediction_horizon == "long":
+            horizon_enum = PredictionHorizon.MONTHLY
         else:
-            action = "hold"
+            horizon_enum = PredictionHorizon.DAILY
+
+        try:
+            prediction_result: Optional[PredictionResult] = await prediction_engine.predict_price(
+                symbol=stock_code,
+                horizon=horizon_enum,
+                model_type=ModelType.RANDOM_FOREST
+            )
+        except Exception as e:
+            logger.error(f"Error during prediction_engine.predict_price for {stock_code}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to generate prediction: {e}")
+
+        if not prediction_result:
+            logger.warning(f"Prediction result is None for {stock_code}. This might indicate data issues or model failure.")
+            raise HTTPException(status_code=500, detail=f"Failed to get ML prediction for {stock_code}. No prediction result returned.")
+
+        predicted_price = prediction_result.predicted_price
+        current_price_from_ml = prediction_result.current_price
+        predicted_return = prediction_result.change_percent / 100.0
+        confidence = prediction_result.confidence
+        action = prediction_result.direction
         
         target_date = date.today() + timedelta(days=1)
-        
-        # Build response
+
         response_data = {
             "stock_code": stock_code,
             "prediction_date": date.today().isoformat(),
@@ -141,9 +142,9 @@ async def get_ml_prediction(
                 "short_term": {
                     "predicted_price": predicted_price,
                     "predicted_return": predicted_return,
-                    "prediction": predicted_return,  # For frontend compatibility
                     "confidence": confidence,
-                    "weight": 1.0  # Add weight field for frontend
+                    "prediction": predicted_return,
+                    "weight": 1.0
                 }
             },
             "ensemble_prediction": {
@@ -171,8 +172,8 @@ async def get_ml_prediction(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error in ML prediction: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Unexpected error in ML prediction for {stock_code}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error occurred during ML prediction.")
 
 
 @router.post("/train", response_model=TrainingResponse)
@@ -182,18 +183,36 @@ async def trigger_model_training(
 ):
     """Trigger ML model training process."""
     try:
-        logger.info(f"Training request received")
+        logger.info(f"Training request received for stock codes: {request.stock_codes}, model types: {request.model_types}")
         
-        # Generate training job ID
         training_job_id = f"train_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Mock response for training initiation
+        # --- Start: Replace mock training with actual ML pipeline call ---
+        # Define a function to run the pipeline in the background
+        async def run_training_pipeline(job_id: str, stock_codes: Optional[List[str]]):
+            logger.info(f"Starting background training (Job ID: {job_id})")
+            try:
+                if stock_codes:
+                    for symbol_to_train in stock_codes:
+                        logger.info(f"Running pipeline for {symbol_to_train}")
+                        await ml_pipeline.run_pipeline(symbol_to_train)
+                else:
+                    logger.info("No specific stock codes provided for training. Skipping background training for now.")
+                
+                logger.info(f"Background training (Job ID: {job_id}) completed successfully.")
+            except Exception as e:
+                logger.error(f"Background training (Job ID: {job_id}) failed: {e}")
+
+        # Add the training task to background tasks
+        background_tasks.add_task(run_training_pipeline, training_job_id, request.stock_codes)
+        
         return TrainingResponse(
             training_job_id=training_job_id,
             status="initiated",
-            models_to_train=["short_term_rf", "medium_term_lr"],
-            estimated_duration_minutes=5
+            models_to_train=request.stock_codes if request.stock_codes else ["all_available_models"], # Reflect actual request
+            estimated_duration_minutes=10 # Estimate based on pipeline complexity
         )
+        # --- End: Replace mock training with actual ML pipeline call ---
     
     except HTTPException:
         raise
@@ -206,35 +225,40 @@ async def trigger_model_training(
 async def list_ml_models():
     """List all available ML models with their status."""
     try:
-        # Mock models list
-        models_list = [
-            {
-                "model_id": "short_term_rf",
-                "name": "Short Term Random Forest",
-                "model_type": "short",
-                "algorithm": "random_forest",
-                "version": "1.0.0",
-                "is_trained": True,
-                "feature_count": 15,
-                "performance_metrics": {"accuracy": 0.78, "r2_score": 0.65}
-            },
-            {
-                "model_id": "medium_term_lr",
-                "name": "Medium Term Linear Regression",
-                "model_type": "medium",
-                "algorithm": "linear_regression",
-                "version": "1.0.0",
-                "is_trained": True,
-                "feature_count": 12,
-                "performance_metrics": {"accuracy": 0.72, "r2_score": 0.58}
-            }
-        ]
+        # Get model info from prediction engine
+        model_info = prediction_engine.get_model_info()
+        
+        models_list = []
+        trained_models_count = 0
+        
+        for model_key, metrics in model_info["model_metrics"].items():
+            symbol, model_type = model_key.split("_", 1) # e.g., "AAPL_random_forest"
+            
+            models_list.append({
+                "model_id": model_key,
+                "name": f"{symbol} {model_type.replace('_', ' ').title()}",
+                "model_type": model_type,
+                "algorithm": model_type, # Assuming algorithm is same as model_type for simplicity
+                "version": "1.0.0", # Placeholder, actual versioning needs to be implemented
+                "is_trained": True, # If it's in model_metrics, it's trained
+                "feature_count": 0, # Not directly available from get_model_info, placeholder
+                "performance_metrics": {
+                    "accuracy": metrics.get("accuracy", 0.0),
+                    "r2_score": metrics.get("r2", 0.0),
+                    "mse": metrics.get("mse", 0.0),
+                    "mae": metrics.get("mae", 0.0)
+                }
+            })
+            trained_models_count += 1
+        
+        # Determine last training time (placeholder for now)
+        last_training_time = datetime.now().isoformat() # Placeholder
         
         return ModelsListResponse(
             models=models_list,
-            total_models=2,
-            trained_models=2,
-            last_training="2025-09-09T10:00:00Z"
+            total_models=len(model_info["available_models"]), # Total available model types
+            trained_models=trained_models_count,
+            last_training=last_training_time
         )
     
     except Exception as e:
@@ -249,23 +273,32 @@ async def get_model_status(
 ):
     """Get detailed status and metrics for a specific model."""
     try:
-        # Mock model status
-        if model_id not in ["short_term_rf", "medium_term_lr"]:
-            raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
+        model_info = prediction_engine.get_model_info()
         
+        if model_id not in model_info["model_metrics"]:
+            raise HTTPException(status_code=404, detail=f"Model {model_id} not found or not trained")
+        
+        metrics = model_info["model_metrics"][model_id]
+        
+        # Placeholder for training history - actual history needs to be stored
         training_history = [
             {
-                "trained_at": "2025-09-09T10:00:00Z",
-                "accuracy_score": 0.78 if model_id == "short_term_rf" else 0.72,
-                "version": "1.0.0",
-                "training_period": "2024-09-09 to 2025-09-09"
+                "trained_at": datetime.now().isoformat(), # Placeholder
+                "accuracy_score": metrics.get("accuracy", 0.0),
+                "version": "1.0.0", # Placeholder
+                "training_period": "N/A" # Placeholder
             }
         ]
         
         return ModelStatusResponse(
             model_id=model_id,
-            status="trained",
-            performance_metrics={"accuracy": 0.78 if model_id == "short_term_rf" else 0.72, "r2_score": 0.65 if model_id == "short_term_rf" else 0.58},
+            status="trained", # If it's in model_metrics, it's trained
+            performance_metrics={
+                "accuracy": metrics.get("accuracy", 0.0),
+                "r2_score": metrics.get("r2", 0.0),
+                "mse": metrics.get("mse", 0.0),
+                "mae": metrics.get("mae", 0.0)
+            },
             training_history=training_history
         )
     
