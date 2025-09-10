@@ -90,7 +90,7 @@ export function useCurrentPrice(
   stockCode?: string,
   useRealData: boolean = false,
   autoRefresh: boolean = false,
-  refreshInterval: number = 30000 // 30 seconds
+  refreshInterval: number = 600000 // 10 minutes (was 30 seconds) - prevents rate limiting
 ) {
   const [state, setState] = useState<AsyncState<CurrentPriceResponse>>({
     data: null,

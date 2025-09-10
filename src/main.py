@@ -206,6 +206,7 @@ from .api.watchlist import router as watchlist_router
 from .api.ml_prediction import router as ml_router
 from .api.metrics import router as metrics_router
 from .api.performance import router as performance_router
+from .routers.csv_routes import router as csv_router
 
 api_router = APIRouter(prefix="/api")
 
@@ -318,6 +319,7 @@ api_router.include_router(watchlist_router)
 api_router.include_router(ml_router)
 api_router.include_router(metrics_router)
 api_router.include_router(performance_router)
+api_router.include_router(csv_router)
 
 app.include_router(api_router)
 
