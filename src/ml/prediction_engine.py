@@ -13,6 +13,9 @@ from enum import Enum
 import joblib
 import yfinance as yf
 
+# Import stock service for rate-limited API calls
+from ..services.stock_service import get_stock_service
+
 # ML imports
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression, Ridge
@@ -179,9 +182,54 @@ class StockPredictionEngine:
         self.feature_engine = FeatureEngine()
         self.model_metrics = {}
         self.trained_symbols = set()
+        self.stock_service = None  # Will be initialized async
         
         # Initialize models
         self._initialize_models()
+    
+    async def _ensure_stock_service(self):
+        """Ensure stock service is initialized"""
+        if self.stock_service is None:
+            self.stock_service = await get_stock_service()
+    
+    def _convert_period_to_days(self, period: str) -> int:
+        """Convert yfinance period string to days"""
+        if period.endswith('y'):
+            years = int(period[:-1])
+            return years * 365
+        elif period.endswith('mo'):
+            months = int(period[:-2])
+            return months * 30
+        elif period.endswith('d'):
+            return int(period[:-1])
+        else:
+            # Default to 2 years if unknown format
+            return 730
+    
+    def _price_history_to_dataframe(self, price_history_data) -> pd.DataFrame:
+        """Convert PriceHistoryData to yfinance-compatible DataFrame"""
+        if not price_history_data.history:
+            return pd.DataFrame()
+            
+        # Create list of records
+        records = []
+        for item in price_history_data.history:
+            records.append({
+                'Date': item.date,
+                'Open': float(item.open),
+                'High': float(item.high), 
+                'Low': float(item.low),
+                'Close': float(item.close),
+                'Volume': item.volume
+            })
+        
+        # Create DataFrame
+        df = pd.DataFrame(records)
+        df['Date'] = pd.to_datetime(df['Date'])
+        df.set_index('Date', inplace=True)
+        df.sort_index(inplace=True)
+        
+        return df
         
     def _initialize_models(self):
         """Initialize ML models"""
@@ -207,25 +255,33 @@ class StockPredictionEngine:
         symbol: str, 
         model_type: ModelType = ModelType.RANDOM_FOREST,
         period: str = "2y"
-    ) -> bool:
+    ) -> Optional[ModelMetrics]:
         """Train prediction model for a symbol"""
         try:
             logger.info(f"Training {model_type.value} model for {symbol}")
             
-            # Fetch data
-            ticker = yf.Ticker(symbol)
-            df = ticker.history(period=period, interval="1d")
+            # Ensure stock service is available
+            await self._ensure_stock_service()
+            
+            # Fetch data using stock service instead of direct yfinance
+            days = self._convert_period_to_days(period)
+            try:
+                price_history = await self.stock_service.get_price_history(symbol, days)
+                df = self._price_history_to_dataframe(price_history)
+            except Exception as e:
+                logger.error(f"Failed to get price history for {symbol}: {e}")
+                return None
             
             if df.empty:
                 logger.error(f"No data available for {symbol}")
-                return False
+                return None
                 
             # Prepare features
             X, y = self.feature_engine.prepare_features(df)
             
             if X.empty:
                 logger.error(f"No features generated for {symbol}")
-                return False
+                return None
                 
             # Split data (time series split)
             tscv = TimeSeriesSplit(n_splits=5)
@@ -255,11 +311,11 @@ class StockPredictionEngine:
             
             logger.info(f"Model trained for {symbol}. R2: {metrics.r2:.3f}, Accuracy: {metrics.accuracy:.3f}")
             
-            return True
+            return metrics
             
         except Exception as e:
             logger.error(f"Failed to train model for {symbol}: {e}")
-            return False
+            return None
             
     async def predict_price(
         self,
@@ -280,9 +336,16 @@ class StockPredictionEngine:
                     
             model = self.models[model_key]
             
-            # Get recent data
-            ticker = yf.Ticker(symbol)
-            df = ticker.history(period="1y", interval="1d")
+            # Ensure stock service is available
+            await self._ensure_stock_service()
+            
+            # Get recent data using stock service instead of direct yfinance
+            try:
+                price_history = await self.stock_service.get_price_history(symbol, 365)  # 1 year
+                df = self._price_history_to_dataframe(price_history)
+            except Exception as e:
+                logger.error(f"Failed to get recent data for {symbol}: {e}")
+                return None
             
             if df.empty:
                 logger.error(f"No recent data for {symbol}")
@@ -400,10 +463,16 @@ class StockPredictionEngine:
             ensemble_price = np.average(predictions, weights=weights)
             ensemble_confidence = np.mean(confidences)
             
-            # Get current price for comparison
-            ticker = yf.Ticker(symbol)
-            current_data = ticker.history(period="1d", interval="1d")
-            current_price = current_data['Close'].iloc[-1]
+            # Ensure stock service is available
+            await self._ensure_stock_service()
+            
+            # Get current price for comparison using stock service
+            try:
+                current_price_data = await self.stock_service.get_current_price(symbol)
+                current_price = float(current_price_data.current_price)
+            except Exception as e:
+                logger.error(f"Failed to get current price for {symbol}: {e}")
+                return None
             
             change_percent = (ensemble_price - current_price) / current_price * 100
             direction = 'up' if change_percent > 0.5 else 'down' if change_percent < -0.5 else 'stable'

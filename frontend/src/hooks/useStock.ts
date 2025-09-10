@@ -90,7 +90,7 @@ export function useCurrentPrice(
   stockCode?: string,
   useRealData: boolean = false,
   autoRefresh: boolean = false,
-  refreshInterval: number = 30000 // 30 seconds
+  refreshInterval: number = 600000 // 10 minutes (was 30 seconds) - prevents rate limiting
 ) {
   const [state, setState] = useState<AsyncState<CurrentPriceResponse>>({
     data: null,
@@ -121,15 +121,10 @@ export function useCurrentPrice(
     }
   }, [])
 
-  // Auto-refresh effect
+  // Auto-refresh effect - 自動更新は無効化済み
   useEffect(() => {
-    if (!stockCode || !autoRefresh) return
-
-    const intervalId = setInterval(() => {
-      fetchCurrentPrice(stockCode, useRealData)
-    }, refreshInterval)
-
-    return () => clearInterval(intervalId)
+    // 自動更新を無効にしました - 手動更新のみ対応
+    return
   }, [stockCode, useRealData, autoRefresh, refreshInterval, fetchCurrentPrice])
 
   // Initial fetch

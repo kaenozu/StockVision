@@ -18,11 +18,11 @@ export const API_BASE_URL = (() => {
     : 'http://localhost:8080/api'
 })()
 
-// Cache and refresh intervals (in milliseconds)
+// Cache and refresh intervals (in milliseconds) - Increased to prevent rate limiting
 export const CACHE_INTERVALS = {
-  DEFAULT_REFRESH: 30000, // 30 seconds
-  PRICE_UPDATE: 60000,    // 1 minute
-  CHART_UPDATE: 300000,   // 5 minutes
+  DEFAULT_REFRESH: 300000, // 5 minutes (was 30 seconds)
+  PRICE_UPDATE: 600000,    // 10 minutes (was 1 minute)
+  CHART_UPDATE: 900000,    // 15 minutes (was 5 minutes)
 } as const
 
 // HTTP status codes

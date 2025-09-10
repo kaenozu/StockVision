@@ -74,7 +74,7 @@ export function PriceChart({
   onConfigChange,
   onRefresh,
   stockCode = '',
-  height = 400,
+  height = 300,
   className = ''
 }: PriceChartProps) {
   const { isDark } = useTheme()
