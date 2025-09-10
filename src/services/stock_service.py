@@ -11,7 +11,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from ..config import get_settings, should_use_real_data, get_yahoo_finance_config, get_cache_config
-from ..stock_api.data_models import StockData, CurrentPrice, PriceHistoryData
+from ..stock_api.data_models import StockData, CurrentPrice, PriceHistoryData, PriceHistoryItem
 from ..stock_api.yahoo_client import YahooFinanceClient, YahooFinanceError, StockNotFoundError
 from ..models.stock import Stock
 from ..models.price_history import PriceHistory
@@ -49,7 +49,7 @@ class HybridStockService:
         self.yahoo_config = get_yahoo_finance_config()
         self.cache_config = get_cache_config()
         self.cache = CacheManager()
-        # Mock generator removed - using real data only
+        # Mock generator removed - using data providers and CSV import instead
         self._yahoo_client: Optional[YahooFinanceClient] = None
         self._client_lock = asyncio.Lock()
     
@@ -104,6 +104,29 @@ class HybridStockService:
                 logger.info(f"Using cached stock info for {stock_code}")
                 return cached_data
             
+            # Try to get from database
+            if db:
+                db_stock = db.query(Stock).filter(Stock.stock_code == stock_code).first()
+                if db_stock and db_stock.updated_at:
+                    # Check if data is fresh enough (e.g., within last hour)
+                    from datetime import datetime, timedelta
+                    if datetime.utcnow() - db_stock.updated_at < timedelta(hours=1):
+                        logger.info(f"Using database stock info for {stock_code}")
+                        stock_data = StockData(
+                            stock_code=db_stock.stock_code,
+                            company_name=db_stock.company_name,
+                            current_price=db_stock.current_price,
+                            previous_close=db_stock.previous_close,
+                            price_change=db_stock.price_change,
+                            price_change_pct=db_stock.price_change_pct,
+                            volume=db_stock.volume,
+                            market_cap=db_stock.market_cap,
+                            last_updated=db_stock.updated_at
+                        )
+                        # Also cache it
+                        await self.cache.set("stock_info", stock_code, stock_data)
+                        return stock_data
+            
             # Try to get from real Yahoo Finance API
             try:
                 logger.info(f"Fetching real stock info for {stock_code}")
@@ -138,8 +161,8 @@ class HybridStockService:
             logger.info(f"Using cached mock stock info for {stock_code}")
             return cached_mock_data
         
-        # Generate sample stock data as fallback
-        logger.info(f"Generating sample stock data for {stock_code}")
+        # Generate sample stock data as fallback (CSV import will provide real data)
+        logger.info(f"Generating sample stock data for {stock_code} - consider using CSV import for real data")
         from decimal import Decimal
         from datetime import datetime
         
@@ -207,8 +230,8 @@ class HybridStockService:
             logger.info(f"Using cached mock current price for {stock_code}")
             return cached_mock_price
         
-        # Generate sample current price as fallback
-        logger.info(f"Generating sample current price for {stock_code}")
+        # Generate sample current price as fallback (CSV import will provide real data)
+        logger.info(f"Generating sample current price for {stock_code} - consider using CSV import for real data")
         from decimal import Decimal
         from datetime import datetime
         
@@ -241,6 +264,49 @@ class HybridStockService:
         logger.info(f"Getting price history for {stock_code} (use_real_data={should_use_real})")
         
         if should_use_real:
+
+            # Try cache first
+            cached_data = await self.cache.get(
+                "price_history", stock_code, ttl=self.yahoo_config.cache_ttl, days=days
+            )
+            
+            if cached_data:
+                logger.info(f"Using cached price history for {stock_code}")
+                return cached_data
+            
+            # Try to get from database
+            if db:
+                from datetime import datetime, timedelta
+                start_date = datetime.utcnow().date() - timedelta(days=days)
+                db_history = db.query(PriceHistory).filter(
+                    PriceHistory.stock_code == stock_code,
+                    PriceHistory.date >= start_date
+                ).order_by(PriceHistory.date.desc()).all()
+                
+                if db_history and len(db_history) >= days * 0.7:  # At least 70% of requested days
+                    logger.info(f"Using database price history for {stock_code}: {len(db_history)} records")
+                    history_items = []
+                    for record in db_history:
+                        history_items.append(PriceHistoryItem(
+                            stock_code=record.stock_code,
+                            date=record.date,
+                            open=record.open_price,
+                            high=record.high_price,
+                            low=record.low_price,
+                            close=record.close_price,
+                            volume=record.volume
+                        ))
+                    
+                    history_data = PriceHistoryData(
+                        stock_code=stock_code,
+                        history=history_items,
+                        period_days=days
+                    )
+                    # Also cache it
+                    await self.cache.set("price_history", stock_code, history_data, days=days)
+                    return history_data
+            
+            # Try real API
             try:
                 # Use real Yahoo Finance API
                 logger.info(f"Fetching real price history for {stock_code}")
@@ -249,6 +315,10 @@ class HybridStockService:
                 
                 # Cache the result
                 await self.cache.set("price_history", stock_code, price_history_data, days=days)
+                
+                # Optionally save to database
+                if db:
+                    await self._save_price_history_to_db(price_history_data, db)
                 
                 logger.info(f"Successfully retrieved real price history for {stock_code}")
                 return price_history_data
@@ -266,8 +336,8 @@ class HybridStockService:
             logger.info(f"Using cached mock price history for {stock_code}")
             return cached_mock_history
         
-        # Generate sample price history data as fallback
-        logger.warning(f"Generating sample price history for {stock_code} as fallback")
+        # Generate sample price history data as fallback (CSV import will provide real data)
+        logger.warning(f"Generating sample price history for {stock_code} as fallback - consider using CSV import for real data")
         from datetime import date, timedelta, datetime
         from decimal import Decimal
         from ..stock_api.data_models import PriceHistoryData, PriceHistoryItem
@@ -297,9 +367,7 @@ class HybridStockService:
         return PriceHistoryData(
             stock_code=stock_code,
             history=history_items,
-            start_date=date.today() - timedelta(days=days),
-            end_date=date.today(),
-            total_records=len(history_items)
+            period_days=days
         )
     
     async def _save_stock_to_db(self, stock_data: StockData, db: Session) -> None:

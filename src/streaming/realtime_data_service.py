@@ -65,7 +65,7 @@ class RealtimeDataService:
         self.subscribed_symbols: Set[str] = set()
         self.data_feeds: Dict[str, asyncio.Task] = {}
         self.running = False
-        self.update_interval = 1.0  # seconds
+        self.update_interval = 60.0  # seconds - Much slower to respect rate limits
         
         # Data cache for rate limiting and efficiency
         self.price_cache: Dict[str, StockPrice] = {}
@@ -207,11 +207,14 @@ class RealtimeDataService:
                     # Fetch updates for all subscribed symbols
                     symbols_list = list(self.subscribed_symbols)
                     
-                    # Process in batches to avoid API limits
-                    batch_size = 10
+                    # Process in smaller batches to avoid API limits
+                    batch_size = 3  # Much smaller batches
                     for i in range(0, len(symbols_list), batch_size):
                         batch = symbols_list[i:i + batch_size]
                         await self._update_price_batch(batch)
+                        # Wait between batches to avoid rate limiting
+                        if i + batch_size < len(symbols_list):
+                            await asyncio.sleep(5)  # 5 second delay between batches
                         
                 await asyncio.sleep(self.update_interval)
                 
