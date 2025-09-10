@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Query, Path, Depe
 
 from ..ml.prediction_engine import prediction_engine, ModelType, PredictionResult, PredictionHorizon
 from ..services.stock_service import get_stock_service
+from ..ml.pipeline import ml_pipeline, PipelineConfig
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
@@ -178,18 +179,36 @@ async def trigger_model_training(
 ):
     """Trigger ML model training process."""
     try:
-        logger.info(f"Training request received")
+        logger.info(f"Training request received for stock codes: {request.stock_codes}, model types: {request.model_types}")
         
-        # Generate training job ID
         training_job_id = f"train_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Mock response for training initiation
+        # --- Start: Replace mock training with actual ML pipeline call ---
+        # Define a function to run the pipeline in the background
+        async def run_training_pipeline(job_id: str, stock_codes: Optional[List[str]]):
+            logger.info(f"Starting background training (Job ID: {job_id})")
+            try:
+                if stock_codes:
+                    for symbol_to_train in stock_codes:
+                        logger.info(f"Running pipeline for {symbol_to_train}")
+                        await ml_pipeline.run_pipeline(symbol_to_train)
+                else:
+                    logger.info("No specific stock codes provided for training. Skipping background training for now.")
+                
+                logger.info(f"Background training (Job ID: {job_id}) completed successfully.")
+            except Exception as e:
+                logger.error(f"Background training (Job ID: {job_id}) failed: {e}")
+
+        # Add the training task to background tasks
+        background_tasks.add_task(run_training_pipeline, training_job_id, request.stock_codes)
+        
         return TrainingResponse(
             training_job_id=training_job_id,
             status="initiated",
-            models_to_train=["short_term_rf", "medium_term_lr"],
-            estimated_duration_minutes=5
+            models_to_train=request.stock_codes if request.stock_codes else ["all_available_models"], # Reflect actual request
+            estimated_duration_minutes=10 # Estimate based on pipeline complexity
         )
+        # --- End: Replace mock training with actual ML pipeline call ---
     
     except HTTPException:
         raise
