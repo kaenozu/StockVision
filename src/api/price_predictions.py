@@ -268,7 +268,6 @@ async def get_price_prediction_chart(
         logger.error(f"Error generating chart for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 def analyze_stock_characteristics(symbol: str, symbol_seed: int) -> dict:
     """
     Analyze stock characteristics from real historical data.
@@ -361,7 +360,6 @@ def analyze_stock_characteristics(symbol: str, symbol_seed: int) -> dict:
         'cycles': sector_chars['cycles'],
         'sector': selected_sector
     }
-
 
 def generate_ml_prediction(base_price: float, day: int, characteristics: dict, symbol_seed: int, historical_data: list = None) -> float:
     """

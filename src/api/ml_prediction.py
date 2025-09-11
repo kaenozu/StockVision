@@ -169,7 +169,6 @@ class LSTMTrainResponse(BaseModel):
     total_trained: int
     training_time: str
 
-
 @router.get("/predict/{stock_code}", response_model=PredictionResponse)
 async def get_ml_prediction(
     stock_code: str = Path(..., description="Stock code (4 digits)"),
@@ -977,5 +976,3 @@ async def get_lstm_status():
     except Exception as e:
         logger.error(f"LSTM status check error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get LSTM status: {str(e)}")
-
-
