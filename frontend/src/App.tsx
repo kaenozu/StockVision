@@ -6,13 +6,15 @@
  */
 
 import React, { Suspense } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout/Layout'
 import { LoadingLayout } from './components/Layout/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
 import HomePage from './pages/HomePage'
 import SimplifiedHomePage from './pages/SimplifiedHomePage'
 import StockDetailPage from './pages/StockDetailPage'
+import StockDetailView from './components/StockDetailView'
+import TestStockDetail from './components/TestStockDetail'
 import WatchlistPage from './pages/WatchlistPage'
 import SearchPage from './pages/SearchPage'
 import SettingsPage from './pages/SettingsPage'
@@ -22,6 +24,7 @@ import TradingRecommendationsPage from './pages/TradingRecommendationsPage'
 import TestPage from './pages/TestPage'
 import { PerformancePage } from './pages/PerformancePage'
 import DocumentationPage from './pages/DocumentationPage'
+import MarketTrendsPage from './pages/MarketTrendsPage'
 
 // i18n
 import './i18n/config';
@@ -91,8 +94,7 @@ function App() {
             <Route path="/" element={<Layout onSearch={handleGlobalSearch} />}>
               {/* Main Routes */}
               <Route index element={<SimplifiedHomePage />} />
-              <Route path="stock/:stockCode" element={<StockDetailPage />} />
-              <Route path="stocks/:stockCode/detail" element={<StockDetailPage />} />
+              <Route path="stock/:stockCode" element={<StockDetailView />} />
               <Route path="watchlist" element={<WatchlistPage />} />
               <Route path="search" element={<SearchPage />} />
               <Route path="settings" element={<SettingsPage />} />
@@ -106,6 +108,7 @@ function App() {
               {/* New Feature Routes */}
               <Route path="recommended-stocks" element={<RecommendedStocksPage />} />
               <Route path="trading-recommendations" element={<TradingRecommendationsPage />} />
+              <Route path="market-trends" element={<MarketTrendsPage />} />
               <Route path="performance" element={<PerformancePage />} />
               
               {/* Test Page for debugging */}

@@ -536,6 +536,72 @@ export class StockApiClient {
     return recommendations
   }
 
+  /**
+   * GET /market/trends - Get market trends (surges, crashes, volume spikes)
+   */
+  async getMarketTrends(params: {
+    trend_type?: string
+    alert_level?: string
+    limit?: number
+  } = {}): Promise<unknown> {
+    const response = await this.client.get('/market/trends', { params })
+    return response.data
+  }
+
+  /**
+   * GET /market/summary - Get market summary
+   */
+  async getMarketSummary(): Promise<unknown> {
+    const response = await this.client.get('/market/summary')
+    return response.data
+  }
+
+  /**
+   * GET /market/gainers - Get top gaining stocks
+   */
+  async getTopGainers(limit = 10): Promise<unknown> {
+    const response = await this.client.get('/market/gainers', {
+      params: { limit }
+    })
+    return response.data
+  }
+
+  /**
+   * GET /market/losers - Get top losing stocks
+   */
+  async getTopLosers(limit = 10): Promise<unknown> {
+    const response = await this.client.get('/market/losers', {
+      params: { limit }
+    })
+    return response.data
+  }
+
+  /**
+   * GET /market/volume - Get high volume stocks
+   */
+  async getHighVolumeStocks(limit = 10): Promise<unknown> {
+    const response = await this.client.get('/market/volume', {
+      params: { limit }
+    })
+    return response.data
+  }
+
+  /**
+   * GET /market/alerts/critical - Get critical market alerts
+   */
+  async getCriticalAlerts(): Promise<unknown> {
+    const response = await this.client.get('/market/alerts/critical')
+    return response.data
+  }
+
+  /**
+   * GET /market/health - Check market data health
+   */
+  async getMarketHealth(): Promise<unknown> {
+    const response = await this.client.get('/market/health')
+    return response.data
+  }
+
 
 
   /**

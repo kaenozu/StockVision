@@ -146,6 +146,30 @@ def calculate_technical_indicators(stock_code: str, db: Session, cache_results: 
     rs = avg_gain / avg_loss if avg_loss > 0 else 100
     rsi = 100 - (100 / (1 + rs))
     
+    # Calculate MACD (12, 26, 9)
+    macd = None
+    if len(prices) >= 26:
+        ema12 = prices[0]
+        ema26 = prices[0]
+        
+        # Calculate EMAs
+        for price in prices[1:12]:
+            ema12 = (price * (2/13)) + (ema12 * (11/13))
+        for price in prices[1:26]:
+            ema26 = (price * (2/27)) + (ema26 * (25/27))
+        
+        macd = ema12 - ema26
+    
+    # Calculate Bollinger Bands (20 period, 2 standard deviations)
+    bollinger_upper = None
+    bollinger_lower = None
+    if len(prices) >= 20:
+        sma20_for_bb = sum(prices[:20]) / 20
+        variance = sum([(p - sma20_for_bb) ** 2 for p in prices[:20]]) / 20
+        std_dev = variance ** 0.5
+        bollinger_upper = sma20_for_bb + (2 * std_dev)
+        bollinger_lower = sma20_for_bb - (2 * std_dev)
+    
     # Calculate price change
     if len(recent_prices) > 1:
         price_change = current_price - float(recent_prices[1].close_price)
@@ -159,10 +183,15 @@ def calculate_technical_indicators(stock_code: str, db: Session, cache_results: 
     avg_volume = sum([float(p.volume) for p in recent_prices[:20]]) / 20
     volume_ratio = recent_volume / avg_volume if avg_volume > 0 else 1
     
+    logger.info(f"Technical indicators calculated for {stock_code}: MACD={macd}, Bollinger=({bollinger_upper}, {bollinger_lower})")
+    
     return {
         "rsi": rsi,
+        "macd": macd,
         "sma20": sma20,
         "sma50": sma50,
+        "bollinger_upper": bollinger_upper,
+        "bollinger_lower": bollinger_lower,
         "current_price": current_price,
         "price_change": price_change,
         "price_change_pct": price_change_pct,
@@ -432,8 +461,8 @@ async def get_stock_detail(
         if not stock:
             raise HTTPException(status_code=404, detail=f"Stock {symbol} not found")
         
-        # Calculate technical indicators
-        indicators = calculate_technical_indicators(stock.stock_code, db)
+        # Calculate technical indicators (disable cache for testing)
+        indicators = calculate_technical_indicators(stock.stock_code, db, cache_results=False)
         
         if not indicators:
             # Basic response without indicators

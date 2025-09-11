@@ -168,6 +168,8 @@ app = FastAPI(
     openapi_tags=[
         {"name": "Stocks", "description": "株式情報の取得と管理"},
         {"name": "Watchlist", "description": "ウォッチリストの管理"},
+        {"name": "Market Trends", "description": "市場トレンド・急騰急落株の検出"},
+        {"name": "Data Quality", "description": "データ品質監視・検証システム"},
         {"name": "Health", "description": "アプリケーションとデータベースのヘルスチェック"},
         {"name": "Root", "description": "ルートエンドポイント"}
     ]
@@ -204,9 +206,12 @@ setup_performance_middleware(app)
 from .api.stocks import router as stocks_router
 from .api.watchlist import router as watchlist_router
 from .api.ml_prediction import router as ml_router
-from .api.metrics import router as metrics_router
 from .api.performance import router as performance_router
 from .api.recommendations import router as recommendations_router
+from .api.market_trends import router as market_trends_router
+from .api.data_quality import router as data_quality_router
+from .api.price_predictions import router as price_predictions_router
+from .api.optimized_prediction import router as optimized_prediction_router
 from .routers.csv_routes import router as csv_router
 
 api_router = APIRouter(prefix="/api")
@@ -318,9 +323,12 @@ async def readiness_check(db: Session = Depends(get_db)):
 api_router.include_router(stocks_router)
 api_router.include_router(watchlist_router)
 api_router.include_router(ml_router)
-api_router.include_router(metrics_router)
 api_router.include_router(performance_router)
 api_router.include_router(recommendations_router)
+api_router.include_router(market_trends_router)
+api_router.include_router(data_quality_router)
+api_router.include_router(price_predictions_router)
+api_router.include_router(optimized_prediction_router, prefix="/optimized", tags=["Phase 4B - Optimized Prediction"])
 api_router.include_router(csv_router)
 
 app.include_router(api_router)

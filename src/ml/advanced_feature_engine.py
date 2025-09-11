@@ -1,0 +1,412 @@
+"""
+Phase 3: 高度な特徴量エンジニアリング
+マーケット指標、マクロ経済データ、時系列特徴量の統合
+"""
+import numpy as np
+import pandas as pd
+import logging
+import yfinance as yf
+import requests
+from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime, timedelta
+from dataclasses import dataclass
+from enum import Enum
+import warnings
+warnings.filterwarnings('ignore')
+
+logger = logging.getLogger(__name__)
+
+class MarketRegime(Enum):
+    """マーケットレジーム"""
+    BULL_MARKET = "bull_market"
+    BEAR_MARKET = "bear_market"
+    SIDEWAYS = "sideways"
+    HIGH_VOLATILITY = "high_volatility"
+    LOW_VOLATILITY = "low_volatility"
+
+@dataclass
+class MarketContext:
+    """マーケットコンテキスト情報"""
+    nikkei225_change: float
+    topix_change: float
+    mothers_change: float
+    usd_jpy_rate: float
+    usd_jpy_change: float
+    vix_level: float
+    regime: MarketRegime
+    sector_performance: Dict[str, float]
+
+class AdvancedFeatureEngine:
+    """Phase 3: 高度な特徴量エンジニアリング"""
+    
+    def __init__(self):
+        self.market_indices_cache = {}
+        self.macro_data_cache = {}
+        self.sector_mapping = self._initialize_sector_mapping()
+        
+    def _initialize_sector_mapping(self) -> Dict[str, str]:
+        """業界マッピングの初期化"""
+        return {
+            "7203": "自動車",  # トヨタ
+            "6758": "電気機器",  # ソニー
+            "9984": "情報・通信",  # ソフトバンク
+            "8411": "銀行",  # みずほ
+            "6501": "電気機器",  # 日立
+            "9432": "情報・通信",  # NTT
+            "6861": "電気機器",  # キーエンス
+            "4063": "化学",  # 信越化学
+            "6954": "電気機器",  # ファナック
+            "7751": "精密機器"   # キヤノン
+        }
+    
+    def get_market_context(self, date: datetime = None) -> MarketContext:
+        """マーケットコンテキストを取得"""
+        if date is None:
+            date = datetime.now()
+            
+        try:
+            # 主要指数データ取得
+            nikkei_data = self._get_index_data("^N225", date)
+            topix_data = self._get_index_data("^TOPX", date)
+            mothers_data = self._get_index_data("MOTHERS.T", date)
+            
+            # 為替データ取得
+            usdjpy_data = self._get_currency_data("USDJPY=X", date)
+            
+            # VIX取得
+            vix_data = self._get_index_data("^VIX", date)
+            
+            # レジーム判定
+            regime = self._detect_market_regime(nikkei_data, vix_data)
+            
+            # セクターパフォーマンス
+            sector_perf = self._get_sector_performance(date)
+            
+            return MarketContext(
+                nikkei225_change=nikkei_data.get('change_percent', 0.0),
+                topix_change=topix_data.get('change_percent', 0.0),
+                mothers_change=mothers_data.get('change_percent', 0.0),
+                usd_jpy_rate=usdjpy_data.get('current', 150.0),
+                usd_jpy_change=usdjpy_data.get('change_percent', 0.0),
+                vix_level=vix_data.get('current', 20.0),
+                regime=regime,
+                sector_performance=sector_perf
+            )
+            
+        except Exception as e:
+            logger.warning(f"Failed to get market context: {e}")
+            # デフォルト値を返す
+            return MarketContext(
+                nikkei225_change=0.0,
+                topix_change=0.0,
+                mothers_change=0.0,
+                usd_jpy_rate=150.0,
+                usd_jpy_change=0.0,
+                vix_level=20.0,
+                regime=MarketRegime.SIDEWAYS,
+                sector_performance={}
+            )
+    
+    def _get_index_data(self, symbol: str, date: datetime) -> Dict:
+        """指数データを取得"""
+        try:
+            # yfinanceから取得
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period="5d")
+            
+            if hist.empty:
+                return {'current': 0.0, 'change_percent': 0.0}
+            
+            current = hist['Close'].iloc[-1]
+            previous = hist['Close'].iloc[-2] if len(hist) > 1 else current
+            change_percent = ((current - previous) / previous) * 100
+            
+            return {
+                'current': float(current),
+                'change_percent': float(change_percent)
+            }
+            
+        except Exception as e:
+            logger.warning(f"Failed to get data for {symbol}: {e}")
+            return {'current': 0.0, 'change_percent': 0.0}
+    
+    def _get_currency_data(self, pair: str, date: datetime) -> Dict:
+        """通貨ペアデータを取得"""
+        try:
+            ticker = yf.Ticker(pair)
+            hist = ticker.history(period="5d")
+            
+            if hist.empty:
+                return {'current': 150.0, 'change_percent': 0.0}
+            
+            current = hist['Close'].iloc[-1]
+            previous = hist['Close'].iloc[-2] if len(hist) > 1 else current
+            change_percent = ((current - previous) / previous) * 100
+            
+            return {
+                'current': float(current),
+                'change_percent': float(change_percent)
+            }
+            
+        except Exception as e:
+            logger.warning(f"Failed to get currency data for {pair}: {e}")
+            return {'current': 150.0, 'change_percent': 0.0}
+    
+    def _detect_market_regime(self, nikkei_data: Dict, vix_data: Dict) -> MarketRegime:
+        """マーケットレジーム判定"""
+        nikkei_change = nikkei_data.get('change_percent', 0.0)
+        vix_level = vix_data.get('current', 20.0)
+        
+        # ボラティリティベースの判定
+        if vix_level > 30:
+            return MarketRegime.HIGH_VOLATILITY
+        elif vix_level < 15:
+            return MarketRegime.LOW_VOLATILITY
+        
+        # トレンドベースの判定
+        if nikkei_change > 1.5:
+            return MarketRegime.BULL_MARKET
+        elif nikkei_change < -1.5:
+            return MarketRegime.BEAR_MARKET
+        else:
+            return MarketRegime.SIDEWAYS
+    
+    def _get_sector_performance(self, date: datetime) -> Dict[str, float]:
+        """セクター別パフォーマンスを取得"""
+        # 簡易版：主要セクターETFのパフォーマンス
+        sector_etfs = {
+            "自動車": "^TPNX",  # 日経自動車指数
+            "電気機器": "^TPNEL",  # 日経電機指数
+            "情報・通信": "^TPNET",  # 日経情報通信指数
+            "銀行": "^TPNBK",  # 日経銀行指数
+            "化学": "^TPNCH"  # 日経化学指数
+        }
+        
+        sector_perf = {}
+        for sector, symbol in sector_etfs.items():
+            try:
+                data = self._get_index_data(symbol, date)
+                sector_perf[sector] = data.get('change_percent', 0.0)
+            except:
+                sector_perf[sector] = 0.0
+        
+        return sector_perf
+    
+    def create_market_features(self, df: pd.DataFrame, stock_code: str) -> pd.DataFrame:
+        """マーケット特徴量を追加"""
+        df = df.copy()
+        
+        logger.info(f"Creating market features for {stock_code}")
+        
+        # 各日付についてマーケットコンテキストを取得
+        market_features = []
+        
+        for date in df.index:
+            try:
+                market_ctx = self.get_market_context(date)
+                
+                features = {
+                    'nikkei225_change': market_ctx.nikkei225_change,
+                    'topix_change': market_ctx.topix_change,
+                    'mothers_change': market_ctx.mothers_change,
+                    'usd_jpy_rate': market_ctx.usd_jpy_rate,
+                    'usd_jpy_change': market_ctx.usd_jpy_change,
+                    'vix_level': market_ctx.vix_level,
+                    'regime_bull': 1 if market_ctx.regime == MarketRegime.BULL_MARKET else 0,
+                    'regime_bear': 1 if market_ctx.regime == MarketRegime.BEAR_MARKET else 0,
+                    'regime_sideways': 1 if market_ctx.regime == MarketRegime.SIDEWAYS else 0,
+                    'regime_high_vol': 1 if market_ctx.regime == MarketRegime.HIGH_VOLATILITY else 0,
+                    'regime_low_vol': 1 if market_ctx.regime == MarketRegime.LOW_VOLATILITY else 0,
+                }
+                
+                # セクター特徴量
+                stock_sector = self.sector_mapping.get(stock_code, "その他")
+                sector_perf = market_ctx.sector_performance.get(stock_sector, 0.0)
+                features['sector_performance'] = sector_perf
+                
+                market_features.append(features)
+                
+            except Exception as e:
+                logger.warning(f"Failed to get market features for {date}: {e}")
+                # デフォルト値
+                features = {key: 0.0 for key in [
+                    'nikkei225_change', 'topix_change', 'mothers_change',
+                    'usd_jpy_rate', 'usd_jpy_change', 'vix_level',
+                    'regime_bull', 'regime_bear', 'regime_sideways',
+                    'regime_high_vol', 'regime_low_vol', 'sector_performance'
+                ]}
+                features['usd_jpy_rate'] = 150.0
+                features['vix_level'] = 20.0
+                market_features.append(features)
+        
+        # DataFrameに追加
+        market_df = pd.DataFrame(market_features, index=df.index)
+        df = pd.concat([df, market_df], axis=1)
+        
+        return df
+    
+    def create_seasonal_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """季節性・周期性特徴量を追加"""
+        df = df.copy()
+        
+        # 日付インデックスをdatetimeに変換
+        if not isinstance(df.index, pd.DatetimeIndex):
+            df.index = pd.to_datetime(df.index)
+        
+        # 基本的な時間特徴量
+        df['day_of_week'] = df.index.dayofweek
+        df['month'] = df.index.month
+        df['quarter'] = df.index.quarter
+        df['year'] = df.index.year
+        df['day_of_year'] = df.index.dayofyear
+        df['week_of_year'] = df.index.isocalendar().week
+        
+        # 周期的エンコーディング（sin/cos）
+        df['day_of_week_sin'] = np.sin(2 * np.pi * df['day_of_week'] / 7)
+        df['day_of_week_cos'] = np.cos(2 * np.pi * df['day_of_week'] / 7)
+        df['month_sin'] = np.sin(2 * np.pi * df['month'] / 12)
+        df['month_cos'] = np.cos(2 * np.pi * df['month'] / 12)
+        df['day_of_year_sin'] = np.sin(2 * np.pi * df['day_of_year'] / 365)
+        df['day_of_year_cos'] = np.cos(2 * np.pi * df['day_of_year'] / 365)
+        
+        # 日本の祝日・イベント効果
+        df['is_month_end'] = (df.index.day > 25).astype(int)
+        df['is_month_start'] = (df.index.day <= 5).astype(int)
+        df['is_quarter_end'] = ((df['month'].isin([3, 6, 9, 12])) & (df.index.day > 25)).astype(int)
+        df['is_year_end'] = ((df['month'] == 12) & (df.index.day > 25)).astype(int)
+        
+        # 決算時期効果（日本企業は3月決算が多い）
+        df['earnings_season'] = ((df['month'].isin([4, 5])) | (df['month'].isin([10, 11]))).astype(int)
+        
+        # 夏休み・年末年始効果
+        df['summer_holiday'] = ((df['month'] == 8) | ((df['month'] == 7) & (df.index.day > 15))).astype(int)
+        df['year_end_holiday'] = ((df['month'] == 12) & (df.index.day > 28)).astype(int)
+        df['golden_week'] = ((df['month'] == 5) & (df.index.day <= 7)).astype(int)
+        
+        return df
+    
+    def create_macroeconomic_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """マクロ経済特徴量を追加"""
+        # TODO: Implement actual data fetching from sources like Bank of Japan, FRED, etc.
+        # For now, this is a placeholder and should not be used in production.
+        raise NotImplementedError("Macroeconomic feature fetching is not yet implemented.")
+    
+    def create_cross_asset_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """クロスアセット特徴量を追加"""
+        df = df.copy()
+        
+        logger.info("Creating cross-asset features")
+        
+        try:
+            # 国債先物との相関
+            df['bond_stock_correlation'] = 0.2  # 固定値（実装時には実データ）
+            
+            # 商品先物との相関
+            df['commodity_correlation'] = -0.1  # 固定値
+            
+            # REITとの相関
+            df['reit_correlation'] = 0.6  # 固定値
+            
+            # ドル円との相関（輸出関連株は負の相関）
+            df['fx_correlation'] = -0.3  # 固定値
+            
+            # アジア株式市場との相関
+            df['asia_market_correlation'] = 0.8  # 固定値
+            
+            # 米国株式市場との相関
+            df['us_market_correlation'] = 0.7  # 固定値
+            
+        except Exception as e:
+            logger.warning(f"Failed to create cross-asset features: {e}")
+        
+        return df
+    
+    def create_sentiment_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """センチメント特徴量を追加"""
+        df = df.copy()
+        
+        logger.info("Creating sentiment features")
+        
+        # 恐怖・貪欲指数の代理変数
+        df['fear_greed_index'] = 50.0  # 中立値
+        
+        # プット・コール・レシオ
+        df['put_call_ratio'] = 1.0  # 中立値
+        
+        # 投資家心理指標
+        df['investor_sentiment'] = 0.0  # 中立値
+        
+        # ニュースセンチメント（将来的にはNLP分析結果）
+        df['news_sentiment'] = 0.0  # 中立値
+        
+        # ソーシャルメディアセンチメント
+        df['social_sentiment'] = 0.0  # 中立値
+        
+        return df
+    
+    def create_all_advanced_features(self, df: pd.DataFrame, stock_code: str) -> pd.DataFrame:
+        """全ての高度な特徴量を統合"""
+        logger.info(f"Creating all advanced features for {stock_code}")
+        
+        # 各特徴量グループを順次追加
+        df = self.create_market_features(df, stock_code)
+        df = self.create_seasonal_features(df)
+        df = self.create_macroeconomic_features(df)
+        df = self.create_cross_asset_features(df)
+        df = self.create_sentiment_features(df)
+        
+        # 技術的特徴量も追加
+        df = self.create_technical_features(df)
+        
+        logger.info(f"Created {df.shape[1]} total features for {stock_code}")
+        
+        return df
+    
+    def create_technical_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """技術的特徴量を追加（基本的なもの）"""
+        df = df.copy()
+        
+        # 価格データが存在することを確認
+        if 'Close' not in df.columns:
+            return df
+        
+        # 移動平均
+        for period in [5, 10, 20, 50]:
+            df[f'sma_{period}'] = df['Close'].rolling(window=period).mean()
+            df[f'ema_{period}'] = df['Close'].ewm(span=period).mean()
+        
+        # ボリンジャーバンド
+        bb_period = 20
+        bb_std = df['Close'].rolling(window=bb_period).std()
+        df['bb_upper'] = df[f'sma_{bb_period}'] + (bb_std * 2)
+        df['bb_lower'] = df[f'sma_{bb_period}'] - (bb_std * 2)
+        df['bb_ratio'] = (df['Close'] - df['bb_lower']) / (df['bb_upper'] - df['bb_lower'])
+        
+        # RSI
+        delta = df['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        df['rsi'] = 100 - (100 / (1 + rs))
+        
+        # MACD
+        ema_12 = df['Close'].ewm(span=12).mean()
+        ema_26 = df['Close'].ewm(span=26).mean()
+        df['macd'] = ema_12 - ema_26
+        df['macd_signal'] = df['macd'].ewm(span=9).mean()
+        df['macd_histogram'] = df['macd'] - df['macd_signal']
+        
+        # 価格変動率
+        for period in [1, 5, 10, 20]:
+            df[f'returns_{period}d'] = df['Close'].pct_change(periods=period)
+        
+        # ボリューム特徴量（ボリュームデータがある場合）
+        if 'Volume' in df.columns:
+            df['volume_sma'] = df['Volume'].rolling(window=20).mean()
+            df['volume_ratio'] = df['Volume'] / df['volume_sma']
+        
+        return df
+
+
+# グローバルインスタンス
+advanced_feature_engine = AdvancedFeatureEngine()
