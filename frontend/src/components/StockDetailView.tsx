@@ -36,6 +36,8 @@ interface StockDetail {
       macd: number;
       sma20: number;
       sma50: number;
+      bollinger_upper: number;
+      bollinger_lower: number;
       volume: number;
       volume_ratio: number;
       current_price: number;
@@ -62,7 +64,7 @@ interface StockDetail {
 }
 
 const StockDetailView: React.FC = () => {
-  const { stockId } = useParams<{ stockId: string }>();
+  const { stockCode } = useParams<{ stockCode: string }>();
   const navigate = useNavigate();
   const [stockDetail, setStockDetail] = useState<StockDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,10 +72,10 @@ const StockDetailView: React.FC = () => {
   const [selectedPredictionPeriod, setSelectedPredictionPeriod] = useState<'short' | 'medium'>('short');
 
   useEffect(() => {
-    if (stockId) {
-      fetchStockDetail(stockId);
+    if (stockCode) {
+      fetchStockDetail(stockCode);
     }
-  }, [stockId]);
+  }, [stockCode]);
 
   const fetchStockDetail = async (symbol: string) => {
     try {
@@ -165,7 +167,7 @@ const StockDetailView: React.FC = () => {
           <button onClick={() => navigate(-1)} className="back-button">
             戻る
           </button>
-          <button onClick={() => stockId && fetchStockDetail(stockId)} className="retry-button">
+          <button onClick={() => stockCode && fetchStockDetail(stockCode)} className="retry-button">
             再試行
           </button>
         </div>
@@ -174,8 +176,12 @@ const StockDetailView: React.FC = () => {
   }
 
   if (!stockDetail) {
+    console.log('DEBUG: stockDetail is null, returning null');
     return null;
   }
+
+  console.log('DEBUG: stockDetail loaded:', stockDetail);
+  console.log('DEBUG: About to render main content with chart');
 
   const activePrediction = selectedPredictionPeriod === 'short' 
     ? stockDetail.prediction.shortTerm 
@@ -312,13 +318,19 @@ const StockDetailView: React.FC = () => {
               <div className="indicator-item">
                 <label>ボリンジャー上限</label>
                 <span className="indicator-value">
-                  N/A
+                  {stockDetail.recommendation?.technical_indicators?.bollinger_upper ? 
+                    `¥${formatPrice(stockDetail.recommendation.technical_indicators.bollinger_upper)}` : 
+                    'N/A'
+                  }
                 </span>
               </div>
               <div className="indicator-item">
                 <label>ボリンジャー下限</label>
                 <span className="indicator-value">
-                  N/A
+                  {stockDetail.recommendation?.technical_indicators?.bollinger_lower ? 
+                    `¥${formatPrice(stockDetail.recommendation.technical_indicators.bollinger_lower)}` : 
+                    'N/A'
+                  }
                 </span>
               </div>
             </div>
@@ -389,6 +401,7 @@ const StockDetailView: React.FC = () => {
           {/* Price Chart */}
           <div className="chart-card">
             <h3>価格チャート</h3>
+            {console.log('DEBUG: About to render PricePredictionChart with:', { symbol: stockDetail.stock.symbol, period: selectedPredictionPeriod })}
             <PricePredictionChart 
               symbol={stockDetail.stock.symbol}
               period={selectedPredictionPeriod}

@@ -41,6 +41,7 @@ export function Header({ onSearch }: HeaderProps) {
   const navigationItems = [
     { path: '/', label: t('common.home'), icon: '🏠' },
     { path: '/watchlist', label: t('common.watchlist'), icon: '⭐' },
+    { path: '/market-trends', label: '市場トレンド', icon: '📈' },
     { path: '/performance', label: t('common.performance'), icon: '📊' },
     { path: '/docs', label: t('common.documents'), icon: '📚' },
     { path: '/about', label: t('common.about'), icon: 'ℹ️' }

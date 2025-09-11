@@ -5,7 +5,7 @@
  * multiple timeframes, and Japanese localization.
  */
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useRef, useEffect } from 'react'
 import { useTheme } from '../../contexts/ThemeContext'
 import type { ChartDataset, ChartOptions } from 'chart.js'
 import {
@@ -78,6 +78,7 @@ export function PriceChart({
   className = ''
 }: PriceChartProps) {
   const { isDark } = useTheme()
+  
   const [chartConfig, setChartConfig] = useState<ChartConfig>({
     timeframe: '30d',
     chart_type: 'line',
@@ -88,12 +89,62 @@ export function PriceChart({
   
   const [showMA5, setShowMA5] = useState(false)
   const [showMA20, setShowMA20] = useState(false)
+  const [chartKey, setChartKey] = useState(0)
 
   const updateConfig = (newConfig: Partial<ChartConfig>) => {
+    // Clean up all charts before config change
+    try {
+      Object.values(ChartJS.instances).forEach(chart => {
+        try {
+          chart.destroy()
+        } catch (e) {
+          // Ignore individual chart destruction errors
+        }
+      })
+    } catch (error) {
+      // Ignore global cleanup errors
+    }
+    
     const updatedConfig = { ...chartConfig, ...newConfig }
     setChartConfig(updatedConfig)
     onConfigChange?.(updatedConfig)
+    // Force chart recreation
+    setChartKey(prev => prev + 1)
   }
+
+  // Comprehensive cleanup and recreation
+  useEffect(() => {
+    // Destroy all existing Chart instances to prevent canvas reuse
+    try {
+      // Get all chart instances and destroy them
+      Object.values(ChartJS.instances).forEach(chart => {
+        try {
+          chart.destroy()
+        } catch (e) {
+          // Ignore individual chart destruction errors
+        }
+      })
+    } catch (error) {
+      // Ignore global cleanup errors
+    }
+    
+    setChartKey(prev => prev + 1)
+    
+    return () => {
+      try {
+        // Final cleanup on unmount
+        Object.values(ChartJS.instances).forEach(chart => {
+          try {
+            chart.destroy()
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+        })
+      } catch (error) {
+        // Ignore cleanup errors
+      }
+    }
+  }, [data.length])
 
   // Process data for chart
   const chartData = useMemo((): ChartJSData<'line'> => {
@@ -104,13 +155,20 @@ export function PriceChart({
       }
     }
 
-    // Sort data by date (most recent first, then reverse for chart display)
+    // Sort data by date (chronological order for proper chart display)
     const sortedData = [...data].sort((a, b) => 
       new Date(a.date).getTime() - new Date(b.date).getTime()
     )
 
+    console.log('DEBUG PriceChart: sortedData length:', sortedData.length);
+    console.log('DEBUG PriceChart: first 5 dates:', sortedData.slice(0, 5).map(d => d.date));
+    console.log('DEBUG PriceChart: last 5 dates:', sortedData.slice(-5).map(d => d.date));
+
     const labels = sortedData.map(item => formatDateShort(item.date))
     const closePrices = sortedData.map(item => item.close)
+    
+    console.log('DEBUG PriceChart: first 5 labels:', labels.slice(0, 5));
+    console.log('DEBUG PriceChart: last 5 labels:', labels.slice(-5));
     
     const datasets: ChartDataset<'line', (number | null)[]>[] = []
     
@@ -269,7 +327,32 @@ export function PriceChart({
           font: {
             family: 'Noto Sans JP, sans-serif'
           },
-          color: isDark ? 'rgb(156, 163, 175)' : 'rgb(75, 85, 99)'
+          color: isDark ? 'rgb(156, 163, 175)' : 'rgb(75, 85, 99)',
+          maxTicksLimit: 10,
+          autoSkip: true,
+          callback: function(value: string | number, index: number) {
+            // Chart.jsはlabelsから直接ラベルを取得するので、元のラベルを返す
+            const dataLength = data.length;
+            const chartLabels = chartData.labels;
+            console.log('DEBUG PriceChart X-axis callback: index=', index, 'dataLength=', dataLength, 'value=', value);
+            
+            if (dataLength <= 10) {
+              // 10日以下の場合は全ての日付を表示
+              const result = chartLabels[index] || '';
+              console.log('DEBUG PriceChart: showing all dates, index', index, 'result=', result);
+              return result;
+            } else {
+              // 10日を超える場合は適切な間隔で表示
+              const skip = Math.ceil(dataLength / 10);
+              if (index % skip === 0 || index === dataLength - 1) {
+                const result = chartLabels[index] || '';
+                console.log('DEBUG PriceChart: skip interval, index', index, 'skip=', skip, 'result=', result);
+                return result;
+              }
+              console.log('DEBUG PriceChart: skipping index', index);
+              return '';
+            }
+          }
         },
         grid: {
           color: isDark ? 'rgba(75, 85, 99, 0.3)' : 'rgba(156, 163, 175, 0.3)'
@@ -437,7 +520,12 @@ export function PriceChart({
       {/* Chart */}
       <div className="p-4">
         <div style={{ height }}>
-          <Line data={chartData} options={chartOptions} />
+          <Line 
+            key={`price-chart-${chartKey}`}
+            data={chartData} 
+            options={chartOptions}
+            redraw={true}
+          />
         </div>
       </div>
 
@@ -468,6 +556,27 @@ export function MiniPriceChart({
   height?: number
   className?: string
 }) {
+  const [miniChartKey, setMiniChartKey] = useState(0)
+
+  // Comprehensive cleanup for mini chart
+  useEffect(() => {
+    setMiniChartKey(prev => prev + 1)
+    
+    return () => {
+      try {
+        // Cleanup chart instances
+        Object.values(ChartJS.instances).forEach(chart => {
+          try {
+            chart.destroy()
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+        })
+      } catch (error) {
+        // Ignore cleanup errors
+      }
+    }
+  }, [data.length])
   const chartData = useMemo((): ChartJSData<'line'> => {
     if (!data || data.length === 0) {
       return {
@@ -531,7 +640,12 @@ export function MiniPriceChart({
 
   return (
     <div className={className} style={{ height }}>
-      <Line data={chartData} options={chartOptions} />
+      <Line 
+        key={`mini-chart-${miniChartKey}`}
+        data={chartData} 
+        options={chartOptions}
+        redraw={true}
+      />
     </div>
   )
 }

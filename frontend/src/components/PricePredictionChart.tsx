@@ -79,16 +79,12 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
   const [error, setError] = useState<string | null>(null);
   // ref is not required; omit to avoid type friction across versions
 
-  useEffect(() => {
-    console.log('=== PricePredictionChart mounted ===');
-    console.log('Symbol:', symbol, 'Period:', period);
-    fetchChartData();
-  }, [symbol, period, fetchChartData]);
-
   const fetchChartData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/price-predictions/${symbol}?period=${period}`);
+      // キャッシュ回避のためにタイムスタンプを追加
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/price-predictions/${symbol}?period=${period}&_t=${timestamp}`);
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -113,6 +109,12 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
       setLoading(false);
     }
   }, [symbol, period]);
+
+  useEffect(() => {
+    console.log('=== PricePredictionChart mounted ===');
+    console.log('Symbol:', symbol, 'Period:', period);
+    fetchChartData();
+  }, [symbol, period, fetchChartData]);
 
   const createChartData = () => {
     if (!chartData) return null;
@@ -192,7 +194,8 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
           color: 'rgba(0, 0, 0, 0.1)'
         },
         ticks: {
-          autoSkip: false,
+          autoSkip: true,
+          maxTicksLimit: 10,
           callback: function(value: any, index: number) {
             const labels = chartData?.chartData.labels;
             if (!labels || !labels[index]) {
@@ -200,13 +203,22 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
               return '';
             }
             
-            const dataLength = labels.length;
-            console.log(`DEBUG PricePredictionChart X-axis: index=${index}/${dataLength-1}, date=${labels[index]}`);
+            console.log(`DEBUG PricePredictionChart X-axis: index=${index}, date=${labels[index]}`);
             
-            // 全てのラベルを表示（テスト用）
-            const dateObj = new Date(labels[index]);
-            const result = dateObj.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
-            console.log(`DEBUG PricePredictionChart: ✓ SHOWING index ${index}: ${labels[index]} → ${result}`);
+            // 日付をパースして表示形式を統一
+            const dateStr = labels[index];
+            const dateObj = new Date(dateStr + 'T00:00:00');  // タイムゾーン問題を回避
+            
+            if (isNaN(dateObj.getTime())) {
+              console.error('Invalid date:', dateStr);
+              return dateStr;
+            }
+            
+            const month = dateObj.getMonth() + 1;
+            const day = dateObj.getDate();
+            const result = `${month}/${day}`;
+            
+            console.log(`DEBUG PricePredictionChart: ✓ SHOWING index ${index}: ${dateStr} → ${result}`);
             return result;
           }
         }
