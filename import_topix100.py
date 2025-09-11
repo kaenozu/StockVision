@@ -146,7 +146,7 @@ def import_topix100_data(csv_path: str, clear_existing: bool = True):
     return True
 
 if __name__ == "__main__":
-    csv_path = r"C:\Users\neoen\Dropbox\PC\Downloads\topix100_stock_data_2024_20250910_043227.csv"
+    csv_path = None
     
     if len(sys.argv) > 1:
         csv_path = sys.argv[1]

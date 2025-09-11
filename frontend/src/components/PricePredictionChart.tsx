@@ -65,15 +65,11 @@ interface PricePredictionChartProps {
   height?: number;
 }
 
-console.log('DEBUG: PricePredictionChart module is being loaded');
-
 const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
   symbol,
   period,
   height = 400
 }) => {
-  console.log('DEBUG: PricePredictionChart component is being rendered with:', { symbol, period, height });
-  
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

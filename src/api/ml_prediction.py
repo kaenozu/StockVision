@@ -405,9 +405,11 @@ async def get_scenario_predictions(
                 stock_info = await stock_service.get_current_price(stock_code)
                 current_price = float(stock_info.current_price)
             except Exception as e:
-                logger.warning(f"Failed to fetch current price: {e}")
-                random.seed(int(stock_code))
-                current_price = 2500.0 + (random.random() * 1000)
+                logger.error(f"Failed to fetch current price for {stock_code}: {e}")
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Failed to retrieve current price for {stock_code}. The external data source may be unavailable."
+                )
         
         # 銘柄に基づいた一貫性のある予測を生成
         random.seed(int(stock_code))

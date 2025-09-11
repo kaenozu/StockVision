@@ -287,48 +287,9 @@ class AdvancedFeatureEngine:
     
     def create_macroeconomic_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """マクロ経済特徴量を追加"""
-        df = df.copy()
-        
-        # 実装時には以下のデータソースを使用
-        # - 日本銀行統計データ
-        # - 内閣府経済統計
-        # - FRED（米国経済データ）
-        # - Bloomberg API
-        
-        # 現在は簡易版として固定値またはダミーデータ
-        logger.info("Creating macroeconomic features (simplified version)")
-        
-        # 長期金利（10年国債利回り）の代理変数
-        df['long_term_rate'] = 0.5  # 固定値（実装時にはAPI取得）
-        
-        # インフレ率の代理変数
-        df['inflation_rate'] = 2.0  # 固定値
-        
-        # 失業率の代理変数
-        df['unemployment_rate'] = 2.5  # 固定値
-        
-        # GDP成長率の代理変数
-        df['gdp_growth'] = 1.0  # 固定値
-        
-        # 消費者信頼指数の代理変数
-        df['consumer_confidence'] = 45.0  # 固定値
-        
-        # 景気先行指数の代理変数
-        df['leading_indicators'] = 102.0  # 固定値
-        
-        # 円の実効為替レート（名目）の代理変数
-        df['yen_neer'] = 70.0  # 固定値
-        
-        # 日米金利差の代理変数
-        df['interest_rate_diff'] = 4.5  # 固定値
-        
-        # 原油価格の代理変数（WTI）
-        df['oil_price'] = 80.0  # 固定値
-        
-        # 金価格の代理変数
-        df['gold_price'] = 2000.0  # 固定値
-        
-        return df
+        # TODO: Implement actual data fetching from sources like Bank of Japan, FRED, etc.
+        # For now, this is a placeholder and should not be used in production.
+        raise NotImplementedError("Macroeconomic feature fetching is not yet implemented.")
     
     def create_cross_asset_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """クロスアセット特徴量を追加"""
