@@ -103,6 +103,14 @@ class ScenarioBasedPredictionResponse(BaseModel):
     overall_confidence: float
     recommendation: Dict[str, Any]
 
+class PriceHistoryData(BaseModel):
+    date: date
+    open_price: float
+    high_price: float
+    low_price: float
+    close_price: float
+    volume: int
+
 class EnhancedPredictionResponse(BaseModel):
     model_config = {"protected_namespaces": ()}
     
@@ -117,6 +125,7 @@ class EnhancedPredictionResponse(BaseModel):
     enhanced_metrics: Dict[str, Any]
     features_used: List[str]
     recommendation: Dict[str, Any]
+    price_history: List[PriceHistoryData]
 
 class BacktestRequest(BaseModel):
     """バックテストリクエストモデル"""
@@ -395,57 +404,49 @@ async def get_scenario_predictions(
     """シナリオベースの価格予測を取得します。楽観的・現実的・悲観的シナリオとそれぞれの確率を返します。"""
     try:
         logger.info(f"Scenario prediction request for {stock_code}, days: {prediction_days}")
+
+        # Get prediction from the enhanced engine
+        prediction_response = await get_enhanced_ml_prediction(
+            stock_code=stock_code,
+            model_type="ensemble_voting",
+            optimize_params=True,
+            period="2y"
+        )
+
+        if not prediction_response:
+            raise HTTPException(status_code=500, detail="Failed to get prediction for scenario generation.")
+
+        # Extract values from the prediction
+        predicted_price = prediction_response.predicted_price
+        confidence = prediction_response.confidence
+        current_price = (await get_stock_service().get_current_price(stock_code)).current_price
+
+        # Define scenarios based on the prediction and confidence
+        realistic_price = predicted_price
         
-        # 現在価格の取得
-        if current_price is None:
-            try:
-                from ..services.stock_service import get_stock_service
-                stock_service = await get_stock_service()
-                stock_info = await stock_service.get_current_price(stock_code)
-                current_price = float(stock_info.current_price)
-            except Exception as e:
-                logger.error(f"Failed to fetch current price for {stock_code}: {e}")
-                raise HTTPException(
-                    status_code=503,
-                    detail=f"Failed to retrieve current price for {stock_code}. The external data source may be unavailable."
-                )
+        # Use confidence to determine the range for optimistic and pessimistic scenarios
+        # A higher confidence leads to a smaller range
+        price_range = predicted_price * (1 - confidence) * 0.5 
         
-        # 銘柄に基づいた一貫性のある予測を生成
-        random.seed(int(stock_code))
-        
-        # 基本的な市場トレンドの生成（ボラティリティは期間に応じて調整）
-        base_volatility = 0.015 * (prediction_days / 7) ** 0.5  # 日数に応じてボラティリティ調整
-        market_trend = random.uniform(-0.02, 0.02)  # 基本的な市場トレンド
-        
-        # 3つのシナリオを生成
-        scenarios = []
-        
-        # 楽観的シナリオ（上昇傾向）
-        optimistic_return = market_trend + abs(random.gauss(0.05, base_volatility))
-        optimistic_price = current_price * (1 + optimistic_return)
-        
-        # 現実的シナリオ（市場トレンドに近い）
-        realistic_return = market_trend + random.gauss(0, base_volatility)
-        realistic_price = current_price * (1 + realistic_return)
-        
-        # 悲観的シナリオ（下降傾向）
-        pessimistic_return = market_trend - abs(random.gauss(0.05, base_volatility))
-        pessimistic_price = current_price * (1 + pessimistic_return)
-        
-        # 確率の計算（現実的シナリオが最も高い確率）
-        # ボラティリティが高いほど極端なシナリオの確率が上がる
-        volatility_factor = min(base_volatility * 10, 0.4)  # 0-0.4の範囲
-        
-        realistic_prob = 0.6 - volatility_factor * 0.3  # 0.6-0.45の範囲
-        extreme_prob = (1.0 - realistic_prob) / 2  # 残りを楽観/悲観で等分
-        
+        optimistic_price = predicted_price + price_range
+        pessimistic_price = predicted_price - price_range
+
+        realistic_return = (realistic_price - current_price) / current_price if current_price > 0 else 0
+        optimistic_return = (optimistic_price - current_price) / current_price if current_price > 0 else 0
+        pessimistic_return = (pessimistic_price - current_price) / current_price if current_price > 0 else 0
+
+        # Probabilities based on confidence
+        realistic_prob = confidence
+        optimistic_prob = (1 - confidence) / 2
+        pessimistic_prob = (1 - confidence) / 2
+
         scenarios = [
             ScenarioData(
                 scenario_name="楽観的",
-                probability=round(extreme_prob, 3),
+                probability=round(optimistic_prob, 3),
                 predicted_price=round(optimistic_price, 2),
                 predicted_return=round(optimistic_return, 4),
-                description=f"{prediction_days}日後に株価が大幅上昇する可能性",
+                description="モデルの信頼区間に基づく楽観的なシナリオ",
                 risk_level="高"
             ),
             ScenarioData(
@@ -453,51 +454,28 @@ async def get_scenario_predictions(
                 probability=round(realistic_prob, 3),
                 predicted_price=round(realistic_price, 2),
                 predicted_return=round(realistic_return, 4),
-                description=f"現在の市場状況が継続する最も可能性の高いシナリオ",
+                description="MLモデルによる最も可能性の高い予測",
                 risk_level="中"
             ),
             ScenarioData(
                 scenario_name="悲観的",
-                probability=round(extreme_prob, 3),
+                probability=round(pessimistic_prob, 3),
                 predicted_price=round(pessimistic_price, 2),
                 predicted_return=round(pessimistic_return, 4),
-                description=f"{prediction_days}日後に株価が大幅下落する可能性",
+                description="モデルの信頼区間に基づく悲観的なシナリオ",
                 risk_level="高"
             )
         ]
-        
-        # 最も可能性の高いシナリオを決定
+
+        # Determine most likely scenario
         most_likely = max(scenarios, key=lambda s: s.probability)
-        
-        # 総合信頼度（現実的シナリオの確率に基づく）
-        overall_confidence = realistic_prob * 0.8 + 0.2  # 0.2-1.0の範囲
-        
-        # 推奨アクションの決定
-        expected_return = (
-            optimistic_return * extreme_prob +
-            realistic_return * realistic_prob +
-            pessimistic_return * extreme_prob
-        )
-        
-        if expected_return > 0.03:
-            action = "buy"
-            action_jp = "買い"
-        elif expected_return < -0.03:
-            action = "sell"
-            action_jp = "売り"
-        else:
-            action = "hold"
-            action_jp = "保有"
-        
-        recommendation = {
-            "action": action,
-            "action_jp": action_jp,
-            "expected_return": round(expected_return, 4),
-            "reasoning": f"期待リターン: {expected_return*100:.2f}%, 最有力シナリオ: {most_likely.scenario_name} ({most_likely.probability*100:.1f}%)",
-            "risk_assessment": f"ボラティリティ: {'高' if base_volatility > 0.025 else '中' if base_volatility > 0.015 else '低'}",
-            "confidence": round(overall_confidence, 3)
-        }
-        
+
+        # Overall confidence
+        overall_confidence = confidence
+
+        # Recommendation
+        recommendation = prediction_response.recommendation
+
         return ScenarioBasedPredictionResponse(
             stock_code=stock_code,
             current_price=round(current_price, 2),
@@ -507,7 +485,7 @@ async def get_scenario_predictions(
             overall_confidence=round(overall_confidence, 3),
             recommendation=recommendation
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -647,6 +625,9 @@ async def get_enhanced_ml_prediction(
         
         target_date = date.today() + timedelta(days=1)
         
+        # Get price history
+        price_history_data = await stock_service.get_price_history(stock_code, 365)
+
         return EnhancedPredictionResponse(
             stock_code=stock_code,
             prediction_date=date.today().isoformat(),
@@ -658,7 +639,8 @@ async def get_enhanced_ml_prediction(
             model_type=model_type_enum.value,
             enhanced_metrics=enhanced_metrics_dict,
             features_used=feature_columns[:10] if len(feature_columns) > 10 else feature_columns,
-            recommendation=recommendation
+            recommendation=recommendation,
+            price_history=price_history_data
         )
         
     except HTTPException:
