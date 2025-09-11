@@ -65,23 +65,17 @@ interface PricePredictionChartProps {
   height?: number;
 }
 
-console.log('DEBUG: PricePredictionChart module is being loaded');
-
 const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
   symbol,
   period,
   height = 400
 }) => {
-  console.log('DEBUG: PricePredictionChart component is being rendered with:', { symbol, period, height });
-  
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // ref is not required; omit to avoid type friction across versions
 
   useEffect(() => {
-    console.log('=== PricePredictionChart mounted ===');
-    console.log('Symbol:', symbol, 'Period:', period);
     fetchChartData();
   }, [symbol, period, fetchChartData]);
 
