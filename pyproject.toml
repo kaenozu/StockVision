@@ -47,3 +47,14 @@ stock-cli = "src.stock_cli.__main__:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["src.*"]
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = "E203"

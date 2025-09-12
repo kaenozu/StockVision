@@ -52,7 +52,7 @@ Yahoo Finance APIを利用した現代的な日本株式情報監視Webアプリ
 ├── tests/                  # テストコード
 │   ├── contract/           # APIコントラクトテスト
 │   ├── integration/        # 統合テスト
-│   ├── unit/               # ユニットテスト
+│   └── unit/               # ユニットテスト
 ├── data/                   # SQLiteデータベース格納
 ├── logs/                   # アプリケーションログ
 ├── requirements.txt        # 依存関係

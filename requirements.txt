@@ -68,4 +68,4 @@ mkdocs-gen-files==0.5.0
 fastapi-cli==0.0.5
 brotli
 
-pre-commit
+pre-commit==3.7.1
