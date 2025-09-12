@@ -52,7 +52,7 @@ Yahoo Finance APIを利用した現代的な日本株式情報監視Webアプリ
 ├── tests/                  # テストコード
 │   ├── contract/           # APIコントラクトテスト
 │   ├── integration/        # 統合テスト
-│   └── unit/               # ユニットテスト
+│   ├── unit/               # ユニットテスト
 ├── data/                   # SQLiteデータベース格納
 ├── logs/                   # アプリケーションログ
 ├── requirements.txt        # 依存関係
@@ -83,14 +83,28 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. データベースのセットアップ
+### 3. Pre-commitフックのセットアップ
+
+コードの品質と一貫性を保つため、pre-commitフックの利用を推奨します。これにより、コミット前に自動的にコードのフォーマット、リンティング、型チェックが実行されます。
+
+```bash
+# pre-commitをインストール
+pip install pre-commit
+
+# pre-commitフックを有効化
+pre-commit install
+```
+
+初回コミット時、またはフックの定義が更新された際に、必要なツールが自動的にインストールされます。
+
+### 4. データベースのセットアップ
 
 ```bash
 # マイグレーションの実行（後で実装）
 # alembic upgrade head
 ```
 
-### 4. アプリケーションの実行
+### 5. アプリケーションの実行
 
 ```bash
 # 開発サーバーの起動
@@ -264,7 +278,7 @@ VITE_API_BASE_URL=http://localhost:8000
 ## 🤝 貢献
 
 1. フォークして機能ブランチを作成
-2. 変更をコミット (`git commit -am 'Add feature'`)
+2. 変更をコミット (`git commit -am 'Add feature'`) 
 3. ブランチにプッシュ (`git push origin feature`)
 4. プルリクエストを作成
 

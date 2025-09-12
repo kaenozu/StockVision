@@ -13,7 +13,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    # Backend tests
+    # Backend setup and tests
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -23,13 +23,33 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest
+        pip install pytest flake8 black isort mypy
+    
+    - name: Install pre-commit hooks
+      run: |
+        pre-commit install
+    
+    - name: Run Flake8
+      run: |
+        flake8 .
+    
+    - name: Run Black check
+      run: |
+        black --check .
+    
+    - name: Run Isort check
+      run: |
+        isort --check-only .
+    
+    - name: Run Mypy
+      run: |
+        mypy .
     
     - name: Run backend tests
       run: |
-        python -m pytest tests/ -v || true
+        python -m pytest tests/ -v
     
-    # Frontend build
+    # Frontend setup and build
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -43,4 +63,4 @@ jobs:
     - name: Build frontend
       run: |
         cd frontend
-        npm run build || true
+        npm run build
