@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, AlertTriangle, Brain, Target, Calendar, BarChart3 } from 'lucide-react'
+import { getEnhancedPrediction } from '../../services/api'; // Import the new service
+import axios from 'axios';
 
 // Types based on backend API contract
 interface MLPrediction {
@@ -35,31 +37,24 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
   const [prediction, setPrediction] = useState<MLPrediction | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedHorizon, setSelectedHorizon] = useState<'short' | 'medium' | 'long' | 'all'>('all')
 
   const fetchPrediction = async () => {
     setLoading(true)
     setError(null)
     
     try {
-      const response = await fetch(
-        `/api/ml/enhanced-predict/${stockCode}`
-      )
-      
-      if (response.status === 503) {
-        const errorData = await response.json()
-        setError(`予測サービス利用不可: ${errorData.detail}`)
-        return
-      }
-      
-      if (!response.ok) {
-        throw new Error('予測の取得に失敗しました')
-      }
-      
-      const data = await response.json()
-      setPrediction(data)
+      const response = await getEnhancedPrediction(stockCode);
+      setPrediction(response.data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '予測の取得に失敗しました')
+      if (axios.isAxiosError(err) && err.response) {
+        if (err.response.status === 503) {
+          setError(`予測サービス利用不可: ${err.response.data.detail}`);
+        } else {
+          setError(`予測の取得に失敗しました: ${err.response.status}`);
+        }
+      } else {
+        setError(err instanceof Error ? err.message : '予測の取得に失敗しました');
+      }
     } finally {
       setLoading(false)
     }
@@ -67,7 +62,7 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
 
   useEffect(() => {
     fetchPrediction()
-  }, [stockCode, selectedHorizon])
+  }, [stockCode])
 
   const getActionIcon = (action: string) => {
     switch (action) {
@@ -82,15 +77,6 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
       case 'buy': return 'text-green-600 bg-green-50 border-green-200'
       case 'sell': return 'text-red-600 bg-red-50 border-red-200'
       default: return 'text-gray-600 bg-gray-50 border-gray-200'
-    }
-  }
-
-  const getAnomalyColor = (level: string) => {
-    switch (level) {
-      case 'critical': return 'text-red-600 bg-red-50 border-red-200'
-      case 'high': return 'text-orange-600 bg-orange-50 border-orange-200'
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200'
-      default: return 'text-green-600 bg-green-50 border-green-200'
     }
   }
 
@@ -260,4 +246,4 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
   )
 }
 
-export default MLPredictionCard
+export default MLPredictionCard;

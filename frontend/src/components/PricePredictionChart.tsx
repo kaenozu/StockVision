@@ -13,6 +13,8 @@ import {
 import { Line } from 'react-chartjs-2';
 import type { ChartOptions } from 'chart.js';
 import './PricePredictionChart.css';
+import { getEnhancedPrediction } from '../../services/api'; // Import the new service
+import axios from 'axios';
 
 ChartJS.register(
   CategoryScale,
@@ -67,19 +69,18 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
   const fetchChartData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/ml/enhanced-predict/${symbol}`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('指定された銘柄のチャートデータが見つかりません');
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data: EnhancedPredictionResponse = await response.json();
-      setChartData(data);
+      const response = await getEnhancedPrediction(symbol); // Use the new service
+      setChartData(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'チャートデータの取得に失敗しました');
+      if (axios.isAxiosError(err) && err.response) {
+        if (err.response.status === 404) {
+          setError('指定された銘柄のチャートデータが見つかりません');
+        } else {
+          setError(`HTTP error! status: ${err.response.status}`);
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'チャートデータの取得に失敗しました');
+      }
     } finally {
       setLoading(false);
     }
