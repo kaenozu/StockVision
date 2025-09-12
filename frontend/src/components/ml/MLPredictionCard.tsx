@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, AlertTriangle, Brain, Target, Calendar, BarChart3 } from 'lucide-react'
 import { getEnhancedPrediction } from '../../services/api'; // Import the new service
+import axios from 'axios';
 
 // Types based on backend API contract
 interface MLPrediction {
@@ -45,7 +46,15 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
       const response = await getEnhancedPrediction(stockCode);
       setPrediction(response.data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '予測の取得に失敗しました')
+      if (axios.isAxiosError(err) && err.response) {
+        if (err.response.status === 503) {
+          setError(`予測サービス利用不可: ${err.response.data.detail}`);
+        } else {
+          setError(`予測の取得に失敗しました: ${err.response.status}`);
+        }
+      } else {
+        setError(err instanceof Error ? err.message : '予測の取得に失敗しました');
+      }
     } finally {
       setLoading(false)
     }
