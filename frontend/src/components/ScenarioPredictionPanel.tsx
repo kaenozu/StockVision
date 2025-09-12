@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './ScenarioPredictionPanel.css';
-import { getScenarios } from '../../services/api'; // Import the new service
+import { getScenarios } from '../services/api'; // Import the new service
 
 interface ScenarioData {
   scenario_name: string;

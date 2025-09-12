@@ -24,7 +24,6 @@ import TradingRecommendationsPage from './pages/TradingRecommendationsPage'
 import TestPage from './pages/TestPage'
 import { PerformancePage } from './pages/PerformancePage'
 import DocumentationPage from './pages/DocumentationPage'
-import MarketTrendsPage from './pages/MarketTrendsPage'
 
 // i18n
 import './i18n/config';
@@ -108,7 +107,7 @@ function App() {
               {/* New Feature Routes */}
               <Route path="recommended-stocks" element={<RecommendedStocksPage />} />
               <Route path="trading-recommendations" element={<TradingRecommendationsPage />} />
-              <Route path="market-trends" element={<MarketTrendsPage />} />
+              
               <Route path="performance" element={<PerformancePage />} />
               
               {/* Test Page for debugging */}
