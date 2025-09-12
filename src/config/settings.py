@@ -147,8 +147,13 @@ class AppConfig(BaseModel):
     def from_env(cls) -> "AppConfig":
         """Create configuration from environment variables."""
         # Import here to avoid circular imports
-        from ..constants.api import (API_HOST, API_PORT, DEV_CORS_ORIGINS,
-                                     ENVIRONMENT, PROD_ORIGINS)
+        from ..constants.api import (
+            API_HOST,
+            API_PORT,
+            DEV_CORS_ORIGINS,
+            ENVIRONMENT,
+            PROD_ORIGINS,
+        )
 
         # Determine CORS origins based on environment
         cors_origins = []

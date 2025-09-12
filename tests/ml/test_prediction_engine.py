@@ -10,9 +10,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.ml.prediction_engine import (FeatureEngine, ModelMetrics, ModelType,
-                                      PredictionHorizon, PredictionResult,
-                                      StockPredictionEngine)
+from src.ml.prediction_engine import (
+    FeatureEngine,
+    ModelMetrics,
+    ModelType,
+    PredictionHorizon,
+    PredictionResult,
+    StockPredictionEngine,
+)
 
 
 @pytest.fixture
@@ -173,8 +178,7 @@ class TestStockPredictionEngine:
         assert ModelType.RIDGE_REGRESSION in prediction_engine.models
 
         # Check model types
-        from sklearn.ensemble import (GradientBoostingRegressor,
-                                      RandomForestRegressor)
+        from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
         from sklearn.linear_model import LinearRegression, Ridge
 
         assert isinstance(

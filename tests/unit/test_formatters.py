@@ -9,8 +9,12 @@ from decimal import Decimal
 import pytest
 
 from src.stock_api.data_models import CurrentPrice, StockData
-from src.stock_display.formatters import (CompactFormatter, JSONFormatter,
-                                          StockFormatter, TableFormatter)
+from src.stock_display.formatters import (
+    CompactFormatter,
+    JSONFormatter,
+    StockFormatter,
+    TableFormatter,
+)
 
 
 class TestStockFormatter:

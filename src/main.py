@@ -8,24 +8,27 @@ from fastapi.openapi.utils import get_openapi
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from .api.data_quality import router as data_quality_router
-from .api.market_trends import router as market_trends_router
+
 from .api.ml_prediction import router as ml_router
-from .api.optimized_prediction import router as optimized_prediction_router
+
 from .api.performance import router as performance_router
 from .api.price_predictions import router as price_predictions_router
 from .api.recommendations import router as recommendations_router
+
 # Import and include API routes (Moved from line 202 onwards)
 from .api.stocks import router as stocks_router
 from .api.watchlist import router as watchlist_router
 from .config import get_settings
-from .constants import (DEFAULT_HOST, DEFAULT_PORT, DOCS_URL, OPENAPI_URL,
-                        REDOC_URL)
+from .constants import DEFAULT_HOST, DEFAULT_PORT, DOCS_URL, OPENAPI_URL, REDOC_URL
 from .middleware.performance import setup_performance_middleware
 from .routers.csv_routes import router as csv_router
 from .services.stock_service import cleanup_stock_service
-from .stock_storage.database import (close_database, get_database_stats,
-                                     get_session_scope, init_db)
+from .stock_storage.database import (
+    close_database,
+    get_database_stats,
+    get_session_scope,
+    init_db,
+)
 from .utils.cache import get_cache_stats, set_cache_ttls
 from .utils.logging import setup_logging
 
@@ -340,14 +343,10 @@ api_router.include_router(watchlist_router)
 api_router.include_router(ml_router)
 api_router.include_router(performance_router)
 api_router.include_router(recommendations_router)
-api_router.include_router(market_trends_router)
-api_router.include_router(data_quality_router)
+
+
 api_router.include_router(price_predictions_router)
-api_router.include_router(
-    optimized_prediction_router,
-    prefix="/optimized",
-    tags=["Phase 4B - Optimized Prediction"],
-)
+
 api_router.include_router(csv_router)
 
 app.include_router(api_router)

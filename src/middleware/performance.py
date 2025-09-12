@@ -27,10 +27,18 @@ from fastapi.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ..config import get_middleware_config
-from ..constants import (API_PRICE_PREDICTIONS, API_RECOMMENDED_STOCKS,
-                         API_STOCKS_CURRENT, API_STOCKS_HISTORY,
-                         API_TRADING_RECOMMENDATIONS, API_WATCHLIST, CacheTTL,
-                         PerformanceThresholds, SWRTime, TimeConstants)
+from ..constants import (
+    API_PRICE_PREDICTIONS,
+    API_RECOMMENDED_STOCKS,
+    API_STOCKS_CURRENT,
+    API_STOCKS_HISTORY,
+    API_TRADING_RECOMMENDATIONS,
+    API_WATCHLIST,
+    CacheTTL,
+    PerformanceThresholds,
+    SWRTime,
+    TimeConstants,
+)
 from ..utils.performance_monitor import record_request_metrics
 
 
@@ -535,8 +543,7 @@ def generate_cache_key(prefix: str, *args, **kwargs) -> str:
     This is a legacy function maintained for backward compatibility.
     New code should use the cache_key_generator module directly.
     """
-    from ..utils.cache_key_generator import \
-        generate_cache_key as new_generate_cache_key
+    from ..utils.cache_key_generator import generate_cache_key as new_generate_cache_key
 
     # Convert legacy format to new format
     primary_key = args[0] if args else "default"

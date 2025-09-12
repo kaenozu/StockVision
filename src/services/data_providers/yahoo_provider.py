@@ -8,10 +8,12 @@ from typing import Optional
 
 from ...config import get_yahoo_finance_config
 from ...stock_api.data_models import CurrentPrice, PriceHistoryData, StockData
-from ...stock_api.yahoo_client import (StockNotFoundError, YahooFinanceClient,
-                                       YahooFinanceError)
-from .base_provider import (BaseDataProvider, DataNotFoundError,
-                            DataProviderError)
+from ...stock_api.yahoo_client import (
+    StockNotFoundError,
+    YahooFinanceClient,
+    YahooFinanceError,
+)
+from .base_provider import BaseDataProvider, DataNotFoundError, DataProviderError
 
 logger = logging.getLogger(__name__)
 

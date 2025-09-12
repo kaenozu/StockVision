@@ -10,11 +10,14 @@ from unittest.mock import patch
 
 import pytest
 
-from src.utils.cache_key_generator import (CacheKeyConfig, CacheKeyGenerator,
-                                           generate_api_cache_key,
-                                           generate_cache_key,
-                                           generate_stock_cache_key,
-                                           get_cache_key_info)
+from src.utils.cache_key_generator import (
+    CacheKeyConfig,
+    CacheKeyGenerator,
+    generate_api_cache_key,
+    generate_cache_key,
+    generate_stock_cache_key,
+    get_cache_key_info,
+)
 
 
 class TestCacheKeyGenerator:

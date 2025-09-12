@@ -12,14 +12,25 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
-from ..config import (get_cache_config, get_settings, get_yahoo_finance_config,
-                      should_use_real_data)
+from ..config import (
+    get_cache_config,
+    get_settings,
+    get_yahoo_finance_config,
+    should_use_real_data,
+)
 from ..models.price_history import PriceHistory
 from ..models.stock import Stock
-from ..stock_api.data_models import (CurrentPrice, PriceHistoryData,
-                                     PriceHistoryItem, StockData)
-from ..stock_api.yahoo_client import (StockNotFoundError, YahooFinanceClient,
-                                      YahooFinanceError)
+from ..stock_api.data_models import (
+    CurrentPrice,
+    PriceHistoryData,
+    PriceHistoryItem,
+    StockData,
+)
+from ..stock_api.yahoo_client import (
+    StockNotFoundError,
+    YahooFinanceClient,
+    YahooFinanceError,
+)
 from .cache import CacheManager
 
 logger = logging.getLogger(__name__)
@@ -277,7 +288,6 @@ class HybridStockService:
         )
 
         if should_use_real:
-
             # Try cache first
             cached_data = await self.cache.get(
                 "price_history", stock_code, ttl=self.yahoo_config.cache_ttl, days=days

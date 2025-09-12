@@ -6,8 +6,18 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
-from sqlalchemy import (DECIMAL, Boolean, CheckConstraint, Date, DateTime,
-                        ForeignKey, Index, Integer, String, Text)
+from sqlalchemy import (
+    DECIMAL,
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates

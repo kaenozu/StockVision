@@ -10,8 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.ml.prediction_engine import (ModelType, PredictionHorizon,
-                                      StockPredictionEngine)
+from src.ml.prediction_engine import ModelType, PredictionHorizon, StockPredictionEngine
 
 
 class TestMLPerformance:

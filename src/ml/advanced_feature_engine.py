@@ -316,103 +316,109 @@ class AdvancedFeatureEngine:
 
     def create_macroeconomic_features(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
-        
+
         import os
         from fredapi import Fred
-        
+
         api_key = os.environ.get("FRED_API_KEY")
-        
+
         if not api_key:
-            logger.warning("FRED_API_KEY not found in environment variables. Skipping macroeconomic features.")
+            logger.warning(
+                "FRED_API_KEY not found in environment variables. Skipping macroeconomic features."
+            )
             # Add placeholder columns to maintain consistent feature set
-            df['jp_interest_rate'] = 0.0
-            df['us_interest_rate'] = 0.0
+            df["jp_interest_rate"] = 0.0
+            df["us_interest_rate"] = 0.0
             return df
 
         try:
             fred = Fred(api_key=api_key)
-            
+
             start_date = df.index.min()
             end_date = df.index.max()
-            
+
             # Fetch data
-            jp_rate_series = fred.get_series('IRLTLT01JPM156N', start_date, end_date)
-            us_rate_series = fred.get_series('DGS10', start_date, end_date)
-            
+            jp_rate_series = fred.get_series("IRLTLT01JPM156N", start_date, end_date)
+            us_rate_series = fred.get_series("DGS10", start_date, end_date)
+
             # Rename and join
-            jp_rate_df = jp_rate_series.to_frame(name='jp_interest_rate')
-            us_rate_df = us_rate_series.to_frame(name='us_interest_rate')
-            
-            df = df.join(jp_rate_df, how='left')
-            df = df.join(us_rate_df, how='left')
-            
+            jp_rate_df = jp_rate_series.to_frame(name="jp_interest_rate")
+            us_rate_df = us_rate_series.to_frame(name="us_interest_rate")
+
+            df = df.join(jp_rate_df, how="left")
+            df = df.join(us_rate_df, how="left")
+
             # Forward-fill missing values (as macro data is not daily)
-            df['jp_interest_rate'] = df['jp_interest_rate'].ffill()
-            df['us_interest_rate'] = df['us_interest_rate'].ffill()
+            df["jp_interest_rate"] = df["jp_interest_rate"].ffill()
+            df["us_interest_rate"] = df["us_interest_rate"].ffill()
 
             # Backward-fill any remaining NaNs at the beginning
-            df['jp_interest_rate'] = df['jp_interest_rate'].bfill()
-            df['us_interest_rate'] = df['us_interest_rate'].bfill()
+            df["jp_interest_rate"] = df["jp_interest_rate"].bfill()
+            df["us_interest_rate"] = df["us_interest_rate"].bfill()
 
             # If still NaN, fill with 0
-            df['jp_interest_rate'] = df['jp_interest_rate'].fillna(0)
-            df['us_interest_rate'] = df['us_interest_rate'].fillna(0)
+            df["jp_interest_rate"] = df["jp_interest_rate"].fillna(0)
+            df["us_interest_rate"] = df["us_interest_rate"].fillna(0)
 
             logger.info("Successfully added macroeconomic features.")
 
         except Exception as e:
             logger.error(f"Failed to fetch or process macroeconomic data: {e}")
             # Add placeholder columns on failure
-            df['jp_interest_rate'] = 0.0
-            df['us_interest_rate'] = 0.0
+            df["jp_interest_rate"] = 0.0
+            df["us_interest_rate"] = 0.0
 
         return df
-    
+
     def create_cross_asset_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """クロスアセット特徴量を追加"""
         df = df.copy()
 
         logger.info("Creating cross-asset features")
-        
+
         cross_asset_tickers = {
             "jgb_10y": "1326.T",  # iShares Core Japan Govt Bond ETF
-            "commodities": "GSG",   # iShares S&P GSCI Commodity-Indexed Trust
-            "reit_jp": "^TREIT",   # Tokyo Stock Exchange REIT Index
-            "hang_seng": "^HSI",   # Hang Seng Index
+            "commodities": "GSG",  # iShares S&P GSCI Commodity-Indexed Trust
+            "reit_jp": "^TREIT",  # Tokyo Stock Exchange REIT Index
+            "hang_seng": "^HSI",  # Hang Seng Index
             "shanghai": "000001.SS",  # Shanghai Composite Index
-            "sp500": "^GSPC"      # S&P 500
+            "sp500": "^GSPC",  # S&P 500
         }
 
         # Ensure the DataFrame index is timezone-aware or convert it
         if df.index.tz is None:
-            df.index = df.index.tz_localize('Asia/Tokyo')
+            df.index = df.index.tz_localize("Asia/Tokyo")
 
         start_date = df.index.min() - timedelta(days=1)
         end_date = df.index.max() + timedelta(days=1)
 
-        stock_returns = df['Close'].pct_change()
+        stock_returns = df["Close"].pct_change()
 
         for name, ticker in cross_asset_tickers.items():
             try:
-                asset_data = yf.download(ticker, start=start_date, end=end_date, progress=False)
+                asset_data = yf.download(
+                    ticker, start=start_date, end=end_date, progress=False
+                )
                 if not asset_data.empty:
-                    asset_returns = asset_data['Close'].pct_change()
-                    
+                    asset_returns = asset_data["Close"].pct_change()
+
                     # Align indices
-                    aligned_stock, aligned_asset = stock_returns.align(asset_returns, join='inner')
-                    
+                    aligned_stock, aligned_asset = stock_returns.align(
+                        asset_returns, join="inner"
+                    )
+
                     if len(aligned_stock) > 1:
                         correlation = aligned_stock.corr(aligned_asset)
-                        df[f'{name}_correlation'] = correlation
+                        df[f"{name}_correlation"] = correlation
                     else:
-                        df[f'{name}_correlation'] = 0.0
+                        df[f"{name}_correlation"] = 0.0
 
                 else:
-                    df[f'{name}_correlation'] = 0.0
+                    df[f"{name}_correlation"] = 0.0
             except Exception as e:
                 logger.warning(f"Failed to fetch or process data for {ticker}: {e}")
-                df[f'{name}_correlation'] = 0.0
-        
+                df[f"{name}_correlation"] = 0.0
+
         return df
 
     def create_sentiment_features(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -420,31 +426,31 @@ class AdvancedFeatureEngine:
         df = df.copy()
 
         logger.info("Creating sentiment features")
-        
+
         # VIXを恐怖・貪欲指数の代理変数として使用
-        if 'vix_level' in df.columns:
+        if "vix_level" in df.columns:
             # VIXレベルを0-100のスケールに正規化（簡易版）
             # 10以下を「極端な貪欲」、50以上を「極端な恐怖」と仮定
-            vix_scaled = (df['vix_level'] - 10) / (50 - 10) * 100
-            df['fear_greed_index_vix_proxy'] = 100 - np.clip(vix_scaled, 0, 100)
+            vix_scaled = (df["vix_level"] - 10) / (50 - 10) * 100
+            df["fear_greed_index_vix_proxy"] = 100 - np.clip(vix_scaled, 0, 100)
         else:
-            df['fear_greed_index_vix_proxy'] = 50.0  # VIXが利用できない場合は中立値
+            df["fear_greed_index_vix_proxy"] = 50.0  # VIXが利用できない場合は中立値
 
         # --- 以下のセンチメント指標は現在プレースホルダーです ---
         # 将来的に実際のデータソース（例：ニュースセンチメントAPI）との連携が必要です
 
         # プット・コール・レシオ
-        df['put_call_ratio'] = 1.0  # 中立値 (プレースホルダー)
-        
+        df["put_call_ratio"] = 1.0  # 中立値 (プレースホルダー)
+
         # 投資家心理指標
-        df['investor_sentiment'] = 0.0  # 中立値 (プレースホルダー)
-        
+        df["investor_sentiment"] = 0.0  # 中立値 (プレースホルダー)
+
         # ニュースセンチメント（将来的にはNLP分析結果）
-        df['news_sentiment'] = 0.0  # 中立値 (プレースホルダー)
-        
+        df["news_sentiment"] = 0.0  # 中立値 (プレースホルダー)
+
         # ソーシャルメディアセンチメント
-        df['social_sentiment'] = 0.0  # 中立値 (プレースホルダー)
-        
+        df["social_sentiment"] = 0.0  # 中立値 (プレースホルダー)
+
         return df
 
     def create_all_advanced_features(

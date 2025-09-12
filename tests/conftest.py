@@ -3,7 +3,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.main import app as fastapi_app  # FastAPI アプリケーションと get_db をインポート
+from src.main import (
+    app as fastapi_app,
+)  # FastAPI アプリケーションと get_db をインポート
 from src.main import get_db
 from src.models.stock import Base
 

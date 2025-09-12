@@ -8,8 +8,13 @@ from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import DECIMAL, DateTime, Index, Integer, String
-from sqlalchemy.orm import (DeclarativeBase, Mapped, mapped_column,
-                            relationship, validates)
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+    validates,
+)
 
 
 class Base(DeclarativeBase):

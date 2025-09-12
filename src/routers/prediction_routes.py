@@ -9,8 +9,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from ..ml.prediction_engine import (ModelType, PredictionHorizon,
-                                    prediction_engine)
+from ..ml.prediction_engine import ModelType, PredictionHorizon, prediction_engine
 
 logger = logging.getLogger(__name__)
 

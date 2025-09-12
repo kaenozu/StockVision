@@ -9,10 +9,13 @@ from sqlalchemy.orm import Session
 
 from ...models.price_history import PriceHistory
 from ...models.stock import Stock
-from ...stock_api.data_models import (CurrentPrice, PriceHistoryData,
-                                      PriceHistoryItem, StockData)
-from .base_provider import (BaseDataProvider, DataNotFoundError,
-                            DataProviderError)
+from ...stock_api.data_models import (
+    CurrentPrice,
+    PriceHistoryData,
+    PriceHistoryItem,
+    StockData,
+)
+from .base_provider import BaseDataProvider, DataNotFoundError, DataProviderError
 
 logger = logging.getLogger(__name__)
 

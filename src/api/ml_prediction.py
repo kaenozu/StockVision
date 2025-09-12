@@ -8,18 +8,24 @@ from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import tensorflow as tf  # Added this line
-from fastapi import (APIRouter, BackgroundTasks, Depends, HTTPException, Path,
-                     Query)
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..ml.enhanced_prediction_engine import (EnhancedModelType,
-                                             enhanced_prediction_engine)
+from ..ml.enhanced_prediction_engine import (
+    EnhancedModelType,
+    enhanced_prediction_engine,
+)
 from ..ml.pipeline import ml_pipeline
-from ..ml.prediction_engine import (ModelType, PredictionHorizon,
-                                    PredictionResult, prediction_engine)
+from ..ml.prediction_engine import (
+    ModelType,
+    PredictionHorizon,
+    PredictionResult,
+    prediction_engine,
+)
 from ..models.stock import Stock
-from ..services.backtester import PredictionBacktester
+
+# from ..services.backtester import PredictionBacktester
 from ..stock_storage.database import get_session_scope
 
 logger = logging.getLogger(__name__)
@@ -469,40 +475,60 @@ async def get_scenario_predictions(
 ):
     """シナリオベースの価格予測を取得します。楽観的・現実的・悲観的シナリオとそれぞれの確率を返します。"""
     try:
-        logger.info(f"Scenario prediction request for {stock_code}, days: {prediction_days}")
+        logger.info(
+            f"Scenario prediction request for {stock_code}, days: {prediction_days}"
+        )
 
         # Get prediction from the enhanced engine
         prediction_response = await get_enhanced_ml_prediction(
             stock_code=stock_code,
             model_type="ensemble_voting",
             optimize_params=True,
-            period="2y"
+            period="2y",
         )
 
         if not prediction_response:
-            raise HTTPException(status_code=500, detail="Failed to get prediction for scenario generation.")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to get prediction for scenario generation.",
+            )
 
         # Extract values from the prediction
         predicted_price = prediction_response.predicted_price
         confidence = prediction_response.confidence
         # Import inside the function to avoid circular imports
         from src.api.dependencies import get_stock_service
+
         stock_service = get_stock_service()
-        current_price = (await stock_service.get_current_price(stock_code)).current_price
+        current_price = (
+            await stock_service.get_current_price(stock_code)
+        ).current_price
 
         # Define scenarios based on the prediction and confidence
         realistic_price = predicted_price
-        
+
         # Use confidence to determine the range for optimistic and pessimistic scenarios
         # A higher confidence leads to a smaller range
-        price_range = predicted_price * (1 - confidence) * 0.5 
-        
+        price_range = predicted_price * (1 - confidence) * 0.5
+
         optimistic_price = predicted_price + price_range
         pessimistic_price = predicted_price - price_range
 
-        realistic_return = (realistic_price - current_price) / current_price if current_price > 0 else 0
-        optimistic_return = (optimistic_price - current_price) / current_price if current_price > 0 else 0
-        pessimistic_return = (pessimistic_price - current_price) / current_price if current_price > 0 else 0
+        realistic_return = (
+            (realistic_price - current_price) / current_price
+            if current_price > 0
+            else 0
+        )
+        optimistic_return = (
+            (optimistic_price - current_price) / current_price
+            if current_price > 0
+            else 0
+        )
+        pessimistic_return = (
+            (pessimistic_price - current_price) / current_price
+            if current_price > 0
+            else 0
+        )
 
         # Probabilities based on confidence
         realistic_prob = confidence
@@ -517,7 +543,7 @@ async def get_scenario_predictions(
                 predicted_price=round(optimistic_price, 2),
                 predicted_return=round(optimistic_return, 4),
                 description="モデルの信頼区間に基づく楽観的なシナリオ",
-                risk_level="高"
+                risk_level="高",
             ),
             ScenarioData(
                 scenario_name="現実的",
@@ -525,7 +551,7 @@ async def get_scenario_predictions(
                 predicted_price=round(realistic_price, 2),
                 predicted_return=round(realistic_return, 4),
                 description="MLモデルによる最も可能性の高い予測",
-                risk_level="中"
+                risk_level="中",
             ),
             ScenarioData(
                 scenario_name="悲観的",
@@ -533,8 +559,8 @@ async def get_scenario_predictions(
                 predicted_price=round(pessimistic_price, 2),
                 predicted_return=round(pessimistic_return, 4),
                 description="モデルの信頼区間に基づく悲観的なシナリオ",
-                risk_level="高"
-            )
+                risk_level="高",
+            ),
         ]
 
         # Determine most likely scenario
@@ -757,9 +783,11 @@ async def get_enhanced_ml_prediction(
             direction=direction,
             model_type=model_type_enum.value,
             enhanced_metrics=enhanced_metrics_dict,
-            features_used=feature_columns[:10] if len(feature_columns) > 10 else feature_columns,
+            features_used=(
+                feature_columns[:10] if len(feature_columns) > 10 else feature_columns
+            ),
             recommendation=recommendation,
-            price_history=price_history_data
+            price_history=price_history_data,
         )
 
     except HTTPException:
@@ -1147,4 +1175,5 @@ async def get_lstm_status():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(router, host="0.0.0.0", port=8000)

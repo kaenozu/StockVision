@@ -340,7 +340,6 @@ class MarketAnomalyDetector:
 
         # Detect reversal (opposite signs with significant magnitude)
         if trend_20d * trend_5d < 0 and abs(trend_5d) > abs(trend_20d) * 1.5:
-
             reversal_strength = abs(trend_5d) / (abs(trend_20d) + 1e-8)
             anomaly_level = "high" if reversal_strength > 3.0 else "medium"
 

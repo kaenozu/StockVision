@@ -17,8 +17,7 @@ try:
     import tensorflow as tf
     from tensorflow import keras
     from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-    from tensorflow.keras.layers import (LSTM, BatchNormalization, Dense,
-                                         Dropout)
+    from tensorflow.keras.layers import LSTM, BatchNormalization, Dense, Dropout
     from tensorflow.keras.models import Sequential
     from tensorflow.keras.optimizers import Adam
 

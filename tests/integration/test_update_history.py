@@ -10,8 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.models.price_history import \
-    PriceHistory as StockHistory  # Added this line
+from src.models.price_history import PriceHistory as StockHistory  # Added this line
 from src.stock_api.data_models import StockData
 from src.stock_cli.cli import StockCLI
 from src.stock_storage.database import DatabaseManager as Database

@@ -8,8 +8,7 @@ from datetime import datetime
 from typing import Dict, Tuple
 
 from .ensemble_predictor import EnsemblePredictionResult, ensemble_predictor
-from .lstm_predictor import (TENSORFLOW_AVAILABLE, LSTMPredictionResult,
-                             lstm_predictor)
+from .lstm_predictor import TENSORFLOW_AVAILABLE, LSTMPredictionResult, lstm_predictor
 
 logger = logging.getLogger(__name__)
 
@@ -138,9 +137,10 @@ class IntegratedPredictor:
 
             # 適応的重み計算
             if use_adaptive_weights:
-                final_lstm_weight, final_ensemble_weight = (
-                    self.adaptive_weight_calculation(lstm_result, ensemble_result)
-                )
+                (
+                    final_lstm_weight,
+                    final_ensemble_weight,
+                ) = self.adaptive_weight_calculation(lstm_result, ensemble_result)
                 method_used = "adaptive_weighted"
             else:
                 final_lstm_weight = self.lstm_weight

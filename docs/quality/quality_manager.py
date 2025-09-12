@@ -20,8 +20,11 @@ import yaml
 from nltk.corpus import stopwords
 from nltk.sentiment import SentimentIntensityAnalyzer
 from nltk.tokenize import sent_tokenize, word_tokenize
-from textstat import (automated_readability_index, flesch_kincaid_grade,
-                      flesch_reading_ease)
+from textstat import (
+    automated_readability_index,
+    flesch_kincaid_grade,
+    flesch_reading_ease,
+)
 
 logger = logging.getLogger(__name__)
 

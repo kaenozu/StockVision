@@ -6,8 +6,16 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import (DECIMAL, Boolean, DateTime, ForeignKey, Index, Integer,
-                        String, Text)
+from sqlalchemy import (
+    DECIMAL,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from .stock import Base

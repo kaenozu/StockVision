@@ -8,8 +8,15 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import (BackgroundTasks, FastAPI, File,  # Moved from bottom
-                     HTTPException, UploadFile, WebSocket, WebSocketDisconnect)
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    File,  # Moved from bottom
+    HTTPException,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles

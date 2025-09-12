@@ -11,7 +11,11 @@ from fastapi.testclient import TestClient
 
 from src.main import app
 from src.ml.prediction_engine import (  # Added PredictionHorizon, ModelType
-    ModelMetrics, ModelType, PredictionHorizon, PredictionResult)
+    ModelMetrics,
+    ModelType,
+    PredictionHorizon,
+    PredictionResult,
+)
 
 client = TestClient(app)
 

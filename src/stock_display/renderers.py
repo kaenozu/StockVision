@@ -17,8 +17,7 @@ from ..models.price_history import PriceHistory
 from ..models.stock import Stock
 from ..models.watchlist import Watchlist
 from ..stock_api.data_models import CurrentPrice, PriceHistoryItem, StockData
-from .formatters import (CompactFormatter, JSONFormatter, TableFormatter,
-                         get_formatter)
+from .formatters import CompactFormatter, JSONFormatter, TableFormatter, get_formatter
 
 
 class StockRenderer:
@@ -514,7 +513,6 @@ class ProgressRenderer:
             TextColumn("[progress.description]{task.description}"),
             console=self.console,
         ) as progress:
-
             for task_name in tasks:
                 task = progress.add_task(f"実行中: {task_name}", total=None)
 
@@ -546,7 +544,6 @@ class ProgressRenderer:
             TextColumn(f"[progress.description]{message}"),
             console=self.console,
         ) as progress:
-
             task = progress.add_task(message, total=None)
             try:
                 result = task_func(*args, **kwargs)

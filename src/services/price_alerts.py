@@ -12,8 +12,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from ..services.realtime_provider import (RealTimeDataPoint,
-                                          RealTimeDataProvider)
+from ..services.realtime_provider import RealTimeDataPoint, RealTimeDataProvider
 from ..websocket.websocket_manager import websocket_manager
 
 logger = logging.getLogger(__name__)

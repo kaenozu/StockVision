@@ -11,9 +11,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
 # ML imports
-from sklearn.ensemble import (BaggingRegressor, GradientBoostingRegressor,
-                              RandomForestRegressor, VotingRegressor)
+from sklearn.ensemble import (
+    BaggingRegressor,
+    GradientBoostingRegressor,
+    RandomForestRegressor,
+    VotingRegressor,
+)
 from sklearn.feature_selection import SelectKBest, f_regression
 from sklearn.linear_model import ElasticNet, Lasso, LinearRegression, Ridge
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score

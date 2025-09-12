@@ -13,7 +13,7 @@ import pandas as pd
 import pytest
 
 # Test configuration
-pytest_plugins = ["pytest_asyncio"]
+
 
 # Note: Using pytest-asyncio's built-in event_loop fixture instead of custom one
 

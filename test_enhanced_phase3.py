@@ -19,8 +19,7 @@ def test_enhanced_phase3_system():
     try:
         # 依存関係のインポート
         from src.ml.advanced_feature_engine import advanced_feature_engine
-        from src.ml.enhanced_integrated_predictor import \
-            enhanced_integrated_predictor
+        from src.ml.enhanced_integrated_predictor import enhanced_integrated_predictor
 
         # テスト用銘柄
         test_stock = "7203"  # トヨタ自動車

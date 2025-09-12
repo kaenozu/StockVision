@@ -15,11 +15,18 @@ import click
 from rich.console import Console
 
 from ..stock_api.yahoo_client import YahooFinanceClient, YahooFinanceError
-from ..stock_display.renderers import (InteractiveRenderer,
-                                       PriceHistoryRenderer, ProgressRenderer,
-                                       StockRenderer, WatchlistRenderer)
-from ..stock_storage.storage_service import (StockNotFoundError,
-                                             StockStorageService, StorageError)
+from ..stock_display.renderers import (
+    InteractiveRenderer,
+    PriceHistoryRenderer,
+    ProgressRenderer,
+    StockRenderer,
+    WatchlistRenderer,
+)
+from ..stock_storage.storage_service import (
+    StockNotFoundError,
+    StockStorageService,
+    StorageError,
+)
 
 console = Console()
 

@@ -10,8 +10,7 @@ from typing import Dict, List
 import pandas as pd
 
 from ..models.stock import Stock
-from ..stock_api.data_models import (PriceHistoryData, PriceHistoryItem,
-                                     StockData)
+from ..stock_api.data_models import PriceHistoryData, PriceHistoryItem, StockData
 from ..stock_storage.database import get_session_scope
 
 logger = logging.getLogger(__name__)

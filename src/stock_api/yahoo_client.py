@@ -16,11 +16,20 @@ from typing import Any, Dict, List, Optional
 import yfinance as yf
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
-from ..utils.cache import (cache_current_price, cache_price_history,
-                           cache_stock_data,
-                           configure_cache_ttls_from_settings)
-from .data_models import (APIResponse, BulkStockInfoResponse, CurrentPrice,
-                          PriceHistoryData, PriceHistoryItem, StockData)
+from ..utils.cache import (
+    cache_current_price,
+    cache_price_history,
+    cache_stock_data,
+    configure_cache_ttls_from_settings,
+)
+from .data_models import (
+    APIResponse,
+    BulkStockInfoResponse,
+    CurrentPrice,
+    PriceHistoryData,
+    PriceHistoryItem,
+    StockData,
+)
 
 logger = logging.getLogger(__name__)
 
