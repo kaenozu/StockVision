@@ -1,34 +1,26 @@
 import React, { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, AlertTriangle, Brain, Target, Calendar, BarChart3 } from 'lucide-react'
+import { getEnhancedPrediction } from '../../services/api'; // Import the new service
+import axios from 'axios';
 
 // Types based on backend API contract
 interface MLPrediction {
-  stock_code: string
-  prediction_date: string
-  target_date: string
-  predictions: Record<string, any>
-  ensemble_prediction: {
-    predicted_price: number
-    predicted_return: number
-    confidence_score: number
-  }
-  anomaly_status: {
-    overall_anomaly_level: string
-    prediction_gate_action: string
-    anomalies_detected: Array<{
-      type: string
-      level: string
-      description: string
-    }>
-  }
-  model_confidence: number
+  stock_code: string;
+  prediction_date: string;
+  target_date: string;
+  predicted_price: number;
+  predicted_return: number;
+  confidence: number;
+  direction: string;
+  model_type: string;
+  enhanced_metrics: Record<string, any>;
+  features_used: string[];
   recommendation: {
-    action: 'buy' | 'sell' | 'hold'
-    reasoning: string
-    risk_level: string
-    target_price: number
-    confidence: number
-  }
+    action: 'buy' | 'sell' | 'hold';
+    reasoning: string;
+    confidence: number;
+    expected_return: number;
+  };
 }
 
 interface MLPredictionCardProps {
@@ -45,39 +37,24 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
   const [prediction, setPrediction] = useState<MLPrediction | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedHorizon, setSelectedHorizon] = useState<'short' | 'medium' | 'long' | 'all'>('all')
 
   const fetchPrediction = async () => {
     setLoading(true)
     setError(null)
     
-    console.log('ML Prediction - Current Price:', currentPrice)
-    
-    if (!currentPrice || currentPrice === 0) {
-      setError('現在価格が取得できていません。しばらく待ってから再度お試しください。')
-      setLoading(false)
-      return
-    }
-    
     try {
-      const response = await fetch(
-        `/api/ml/predict/${stockCode}?prediction_horizon=${selectedHorizon}&include_confidence=true&current_price=${currentPrice}`
-      )
-      
-      if (response.status === 503) {
-        const errorData = await response.json()
-        setError(`予測サービス利用不可: ${errorData.detail}`)
-        return
-      }
-      
-      if (!response.ok) {
-        throw new Error('予測の取得に失敗しました')
-      }
-      
-      const data = await response.json()
-      setPrediction(data)
+      const response = await getEnhancedPrediction(stockCode);
+      setPrediction(response.data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '予測の取得に失敗しました')
+      if (axios.isAxiosError(err) && err.response) {
+        if (err.response.status === 503) {
+          setError(`予測サービス利用不可: ${err.response.data.detail}`);
+        } else {
+          setError(`予測の取得に失敗しました: ${err.response.status}`);
+        }
+      } else {
+        setError(err instanceof Error ? err.message : '予測の取得に失敗しました');
+      }
     } finally {
       setLoading(false)
     }
@@ -85,7 +62,7 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
 
   useEffect(() => {
     fetchPrediction()
-  }, [stockCode, selectedHorizon])
+  }, [stockCode])
 
   const getActionIcon = (action: string) => {
     switch (action) {
@@ -100,15 +77,6 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
       case 'buy': return 'text-green-600 bg-green-50 border-green-200'
       case 'sell': return 'text-red-600 bg-red-50 border-red-200'
       default: return 'text-gray-600 bg-gray-50 border-gray-200'
-    }
-  }
-
-  const getAnomalyColor = (level: string) => {
-    switch (level) {
-      case 'critical': return 'text-red-600 bg-red-50 border-red-200'
-      case 'high': return 'text-orange-600 bg-orange-50 border-orange-200'
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200'
-      default: return 'text-green-600 bg-green-50 border-green-200'
     }
   }
 
@@ -182,7 +150,7 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
     return null
   }
 
-  const predictedChange = prediction.ensemble_prediction.predicted_price - currentPrice
+  const predictedChange = prediction.predicted_price - currentPrice
   const predictedChangePercent = (predictedChange / currentPrice) * 100
 
   return (
@@ -194,17 +162,6 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
         </div>
         
         <div className="flex items-center space-x-2">
-          <select 
-            value={selectedHorizon}
-            onChange={(e) => setSelectedHorizon(e.target.value as any)}
-            className="text-sm border-gray-300 rounded-md"
-          >
-            <option value="all">全期間</option>
-            <option value="short">短期</option>
-            <option value="medium">中期</option>
-            <option value="long">長期</option>
-          </select>
-          
           <button
             onClick={fetchPrediction}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium"
@@ -214,23 +171,6 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
         </div>
       </div>
 
-      {/* Anomaly Status */}
-      {prediction.anomaly_status.overall_anomaly_level !== 'normal' && (
-        <div className={`rounded-lg p-3 mb-4 border ${getAnomalyColor(prediction.anomaly_status.overall_anomaly_level)}`}>
-          <div className="flex items-center space-x-2 mb-2">
-            <AlertTriangle className="w-4 h-4" />
-            <span className="font-medium text-sm">
-              市場異常検知: {prediction.anomaly_status.overall_anomaly_level}
-            </span>
-          </div>
-          {prediction.anomaly_status.anomalies_detected.map((anomaly, index) => (
-            <p key={index} className="text-xs opacity-80">
-              • {anomaly.description}
-            </p>
-          ))}
-        </div>
-      )}
-
       {/* Main Prediction */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-gray-50 rounded-lg p-4">
@@ -239,7 +179,7 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
             <span className="text-sm font-medium text-gray-700">予測価格</span>
           </div>
           <div className="text-2xl font-bold text-gray-900">
-            ¥{formatPrice(prediction.ensemble_prediction.predicted_price)}
+            ¥{formatPrice(prediction.predicted_price)}
           </div>
           <div className={`text-sm ${predictedChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {predictedChange >= 0 ? '+' : ''}{formatPrice(predictedChange)} 
@@ -253,12 +193,12 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
             <span className="text-sm font-medium text-gray-700">信頼度</span>
           </div>
           <div className="text-2xl font-bold text-gray-900">
-            {formatPercentage(prediction.model_confidence)}
+            {formatPercentage(prediction.confidence)}
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
             <div 
               className="bg-blue-600 h-2 rounded-full" 
-              style={{ width: `${prediction.model_confidence * 100}%` }}
+              style={{ width: `${prediction.confidence * 100}%` }}
             ></div>
           </div>
         </div>
@@ -286,41 +226,14 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
               推奨アクション: {prediction.recommendation.action.toUpperCase()}
             </span>
           </div>
-          
-          <div className={`px-2 py-1 rounded-full text-xs font-medium ${getRiskColor(prediction.recommendation.risk_level)}`}>
-            リスク: {prediction.recommendation.risk_level}
-          </div>
         </div>
         
         <p className="text-sm mb-3">{prediction.recommendation.reasoning}</p>
         
         <div className="flex items-center justify-between text-xs text-gray-600">
-          <span>目標価格: ¥{formatPrice(prediction.recommendation.target_price)}</span>
           <span>推奨信頼度: {formatPercentage(prediction.recommendation.confidence)}</span>
         </div>
       </div>
-
-      {/* Individual Model Predictions */}
-      {Object.keys(prediction.predictions).length > 0 && (
-        <div className="mt-6">
-          <h4 className="font-medium text-gray-900 mb-3">個別モデル予測</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {Object.entries(prediction.predictions).map(([modelKey, modelPred]: [string, any]) => (
-              <div key={modelKey} className="bg-gray-50 rounded-lg p-3">
-                <div className="font-medium text-sm text-gray-900 mb-1">
-                  {modelKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </div>
-                <div className="text-sm text-gray-600">
-                  予測: {formatPercentage(modelPred.prediction)}
-                </div>
-                <div className="text-xs text-gray-500">
-                  信頼度: {formatPercentage(modelPred.confidence)} | 重み: {formatPercentage(modelPred.weight)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Footer */}
       <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500">
@@ -333,4 +246,4 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
   )
 }
 
-export default MLPredictionCard
+export default MLPredictionCard;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './ScenarioPredictionPanel.css';
+import { getScenarios } from '../../services/api'; // Import the new service
 
 interface ScenarioData {
   scenario_name: string;
@@ -48,14 +49,9 @@ const ScenarioPredictionPanel: React.FC<ScenarioPredictionPanelProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`/api/ml/scenarios/${stockCode}?prediction_days=${predictionDays}`);
+      const response = await getScenarios(stockCode, predictionDays);
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setScenarioData(data);
+      setScenarioData(response.data);
     } catch (error) {
       console.error('Error fetching scenario data:', error);
       setError('シナリオ予測データの取得に失敗しました');
