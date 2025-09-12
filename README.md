@@ -127,7 +127,7 @@ curl http://localhost:8000/stocks/7203
 curl http://localhost:8000/stocks/7203/current
 
 # 株価履歴の取得（デフォルト30日）
-curl http://localhost:8000/stocks/7203/history
+curl http://localhost:8000/stocks/7200/history
 
 # 指定日数の履歴
 curl http://localhost:8000/stocks/7203/history?days=7
