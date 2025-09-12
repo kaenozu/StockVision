@@ -123,29 +123,20 @@ class ScenarioBasedPredictionResponse(BaseModel):
     overall_confidence: float
     recommendation: Dict[str, Any]
 
+
 class PriceHistoryData(BaseModel):
     date: date
     open_price: float
     high_price: float
     low_price: float
-    close_price: float
-    volume: int
+
 
 class EnhancedPredictionResponse(BaseModel):
-    model_config = {"protected_namespaces": ()}
-
     stock_code: str
     prediction_date: str
     target_date: str
     predicted_price: float
     predicted_return: float
-    confidence: float
-    direction: str
-    model_type: str
-    enhanced_metrics: Dict[str, Any]
-    features_used: List[str]
-    recommendation: Dict[str, Any]
-    price_history: List[PriceHistoryData]
 
 
 class BacktestRequest(BaseModel):
@@ -494,7 +485,10 @@ async def get_scenario_predictions(
         # Extract values from the prediction
         predicted_price = prediction_response.predicted_price
         confidence = prediction_response.confidence
-        current_price = (await get_stock_service().get_current_price(stock_code)).current_price
+        # Import inside the function to avoid circular imports
+        from src.api.dependencies import get_stock_service
+        stock_service = get_stock_service()
+        current_price = (await stock_service.get_current_price(stock_code)).current_price
 
         # Define scenarios based on the prediction and confidence
         realistic_price = predicted_price
@@ -512,8 +506,9 @@ async def get_scenario_predictions(
 
         # Probabilities based on confidence
         realistic_prob = confidence
-        optimistic_prob = (1 - confidence) / 2
-        pessimistic_prob = (1 - confidence) / 2
+        extreme_prob = (1 - confidence) / 2
+        optimistic_prob = extreme_prob
+        pessimistic_prob = extreme_prob
 
         scenarios = [
             ScenarioData(
@@ -530,7 +525,8 @@ async def get_scenario_predictions(
                 predicted_price=round(realistic_price, 2),
                 predicted_return=round(realistic_return, 4),
                 description="MLモデルによる最も可能性の高い予測",
-                risk_level="中",
+                risk_level="中"
+            ),
             ScenarioData(
                 scenario_name="悲観的",
                 probability=round(pessimistic_prob, 3),
@@ -549,34 +545,6 @@ async def get_scenario_predictions(
 
         # Recommendation
         recommendation = prediction_response.recommendation
-            ScenarioData(
-                scenario_name="現実的",
-                probability=round(realistic_prob, 3),
-                predicted_price=round(realistic_price, 2),
-                predicted_return=round(realistic_return, 4),
-<<<<<<< HEAD
-                description="現在の市場状況が継続する最も可能性の高いシナリオ",
-                risk_level="中",
-=======
-                description="MLモデルによる最も可能性の高い予測",
-                risk_level="中"
->>>>>>> origin/main
-            ),
-            ScenarioData(
-                scenario_name="悲観的",
-                probability=round(pessimistic_prob, 3),
-                predicted_price=round(pessimistic_price, 2),
-                predicted_return=round(pessimistic_return, 4),
-<<<<<<< HEAD
-                description=f"{prediction_days}日後に株価が大幅下落する可能性",
-                risk_level="高",
-            ),
-        ]
-
-        # 最も可能性の高いシナリオを決定
-        most_likely = max(scenarios, key=lambda s: s.probability)
-
-        # 総合信頼度（現実的シナリオの確率に基づく）
         overall_confidence = realistic_prob * 0.8 + 0.2  # 0.2-1.0の範囲
 
         # 推奨アクションの決定
@@ -601,24 +569,9 @@ async def get_scenario_predictions(
             "action_jp": action_jp,
             "expected_return": round(expected_return, 4),
             "reasoning": f"期待リターン: {expected_return*100:.2f}%, 最有力シナリオ: {most_likely.scenario_name} ({most_likely.probability*100:.1f}%)",
-            "risk_assessment": f"ボラティリティ: {'高' if base_volatility > 0.025 else '中' if base_volatility > 0.015 else '低'}",
+            "risk_assessment": f"ボラティリティ: {'高' if prediction_response.volatility > 0.025 else '中' if prediction_response.volatility > 0.015 else '低'}",
             "confidence": round(overall_confidence, 3),
         }
-=======
-                description="モデルの信頼区間に基づく悲観的なシナリオ",
-                risk_level="高"
-            )
-        ]
-
-        # Determine most likely scenario
-        most_likely = max(scenarios, key=lambda s: s.probability)
-
-        # Overall confidence
-        overall_confidence = confidence
-
-        # Recommendation
-        recommendation = prediction_response.recommendation
->>>>>>> origin/main
 
         return ScenarioBasedPredictionResponse(
             stock_code=stock_code,
@@ -791,12 +744,8 @@ async def get_enhanced_ml_prediction(
         }
 
         target_date = date.today() + timedelta(days=1)
-<<<<<<< HEAD
-=======
-        
         # Get price history
         price_history_data = await stock_service.get_price_history(stock_code, 365)
->>>>>>> origin/main
 
         return EnhancedPredictionResponse(
             stock_code=stock_code,
@@ -1194,3 +1143,8 @@ async def get_lstm_status():
         raise HTTPException(
             status_code=500, detail=f"Failed to get LSTM status: {str(e)}"
         )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(router, host="0.0.0.0", port=8000)
