@@ -379,7 +379,7 @@ class AdvancedFeatureEngine:
             "commodities": "GSG",   # iShares S&P GSCI Commodity-Indexed Trust
             "reit_jp": "^TREIT",   # Tokyo Stock Exchange REIT Index
             "hang_seng": "^HSI",   # Hang Seng Index
-            "shanghai": "000001.SS",# Shanghai Composite Index
+            "shanghai": "000001.SS",  # Shanghai Composite Index
             "sp500": "^GSPC"      # S&P 500
         }
 

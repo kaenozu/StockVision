@@ -530,8 +530,7 @@ async def get_scenario_predictions(
                 predicted_price=round(realistic_price, 2),
                 predicted_return=round(realistic_return, 4),
                 description="MLモデルによる最も可能性の高い予測",
-                risk_level="中"
-            ),
+                risk_level="中",
             ScenarioData(
                 scenario_name="悲観的",
                 probability=round(pessimistic_prob, 3),
