@@ -549,15 +549,6 @@ async def get_scenario_predictions(
 
         # Recommendation
         recommendation = prediction_response.recommendation
-        scenarios = [
-            ScenarioData(
-                scenario_name="楽観的",
-                probability=round(optimistic_prob, 3),
-                predicted_price=round(optimistic_price, 2),
-                predicted_return=round(optimistic_return, 4),
-                description="モデルの信頼区間に基づく楽観的なシナリオ",
-                risk_level="高"
-            ),
             ScenarioData(
                 scenario_name="現実的",
                 probability=round(realistic_prob, 3),
