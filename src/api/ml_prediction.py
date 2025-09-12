@@ -556,13 +556,8 @@ async def get_scenario_predictions(
                 probability=round(optimistic_prob, 3),
                 predicted_price=round(optimistic_price, 2),
                 predicted_return=round(optimistic_return, 4),
-<<<<<<< HEAD
-                description=f"{prediction_days}日後に株価が大幅上昇する可能性",
-                risk_level="高",
-=======
                 description="モデルの信頼区間に基づく楽観的なシナリオ",
                 risk_level="高"
->>>>>>> origin/main
             ),
             ScenarioData(
                 scenario_name="現実的",

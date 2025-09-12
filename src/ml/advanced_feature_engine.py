@@ -6,7 +6,7 @@ Phase 3: 高度な特徴量エンジニアリング
 import logging
 import warnings
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Dict
 
@@ -377,8 +377,8 @@ class AdvancedFeatureEngine:
         cross_asset_tickers = {
             "jgb_10y": "1326.T",  # iShares Core Japan Govt Bond ETF
             "commodities": "GSG",   # iShares S&P GSCI Commodity-Indexed Trust
-            "reit_jp": "^TREIT",  # Tokyo Stock Exchange REIT Index
-            "hang_seng": "^HSI",    # Hang Seng Index
+            "reit_jp": "^TREIT",   # Tokyo Stock Exchange REIT Index
+            "hang_seng": "^HSI",   # Hang Seng Index
             "shanghai": "000001.SS",# Shanghai Composite Index
             "sp500": "^GSPC"      # S&P 500
         }
