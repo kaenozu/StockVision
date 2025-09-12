@@ -1,14 +1,15 @@
 """
 Admin TTL update API test.
 """
+
 import os
+
 from fastapi.testclient import TestClient
 
 os.environ.setdefault("USE_REAL_YAHOO_API", "false")
 os.environ["ADMIN_TOKEN"] = "test-token"
 
 from src.main import app  # noqa: E402
-
 
 client = TestClient(app)
 

@@ -12,4 +12,3 @@ def test_live_endpoints():
     r2 = client.get("/api/live")
     assert r2.status_code == 200
     assert r2.json().get("status") in {"alive", "ok", "ready"}
-

@@ -71,7 +71,7 @@ Yahoo Finance APIを利用した現代的な日本株式情報監視Webアプリ
 python -m venv venv
 
 # 仮想環境の有効化 (Windows)
-venv\Scripts\activate
+virtualenv\Scripts\activate
 
 # 仮想環境の有効化 (Linux/macOS)
 source venv/bin/activate
@@ -83,14 +83,28 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. データベースのセットアップ
+### 3. Pre-commitフックのセットアップ
+
+コードの品質と一貫性を保つため、pre-commitフックの利用を推奨します。これにより、コミット前に自動的にコードのフォーマット、リンティング、型チェックが実行されます。
+
+```bash
+# pre-commitをインストール
+pip install pre-commit
+
+# pre-commitフックを有効化
+pre-commit install
+```
+
+初回コミット時、またはフックの定義が更新された際に、必要なツールが自動的にインストールされます。
+
+### 4. データベースのセットアップ
 
 ```bash
 # マイグレーションの実行（後で実装）
 # alembic upgrade head
 ```
 
-### 4. アプリケーションの実行
+### 5. アプリケーションの実行
 
 ```bash
 # 開発サーバーの起動
@@ -113,7 +127,7 @@ curl http://localhost:8000/stocks/7203
 curl http://localhost:8000/stocks/7203/current
 
 # 株価履歴の取得（デフォルト30日）
-curl http://localhost:8000/stocks/7203/history
+curl http://localhost:8000/stocks/7200/history
 
 # 指定日数の履歴
 curl http://localhost:8000/stocks/7203/history?days=7
@@ -264,8 +278,8 @@ VITE_API_BASE_URL=http://localhost:8000
 ## 🤝 貢献
 
 1. フォークして機能ブランチを作成
-2. 変更をコミット (`git commit -am 'Add feature'`)
-3. ブランチにプッシュ (`git push origin feature`)
+2. 変更をコミット (`git commit -am 'Add feature'`) 
+3. ブランチにプッシュ (`git push origin feature`) 
 4. プルリクエストを作成
 
 ## 📝 ライセンス

@@ -1,15 +1,19 @@
 import os
-import pytest
 from importlib import reload
 
+import pytest
 
-@pytest.mark.skip(reason="Metrics endpoint not implemented in current application version")
+
+@pytest.mark.skip(
+    reason="Metrics endpoint not implemented in current application version"
+)
 def test_metrics_endpoint_enabled(monkeypatch):
     # Enable metrics via env
     os.environ["ENABLE_METRICS"] = "true"
 
     # Reload app to pick env
     from src import main as main_mod
+
     reload(main_mod)
 
     from fastapi.testclient import TestClient
@@ -25,4 +29,3 @@ def test_metrics_endpoint_enabled(monkeypatch):
     # Should include our metric family names when enabled
     assert "http_requests_total" in text
     assert "http_request_duration_seconds" in text
-

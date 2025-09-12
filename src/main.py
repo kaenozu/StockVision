@@ -1,27 +1,36 @@
-"""
-FastAPI application entry point for stock tracking application.
-"""
 import logging
+import os  # Moved from line 33
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends, APIRouter, Header
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.openapi.utils import get_openapi
-from sqlalchemy.orm import Session
-from sqlalchemy import text
 
-from .stock_storage.database import init_db, close_database, check_database_health, get_database_stats, get_session_scope
-from .middleware.performance import setup_performance_middleware
-from .utils.logging import setup_logging
-from .utils.cache import get_cache_stats, set_cache_ttls
-from .services.stock_service import cleanup_stock_service
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+
+from .api.ml_prediction import router as ml_router
+
+from .api.performance import router as performance_router
+from .api.price_predictions import router as price_predictions_router
+from .api.recommendations import router as recommendations_router
+
+# Import and include API routes (Moved from line 202 onwards)
+from .api.stocks import router as stocks_router
+from .api.watchlist import router as watchlist_router
 from .config import get_settings
-from .constants import (
-    DEFAULT_HOST, DEFAULT_PORT, API_HOST, API_PORT, ENVIRONMENT,
-    FRONTEND_DEV_PORT, FRONTEND_PROD_PORT,
-    DOCS_URL, REDOC_URL, OPENAPI_URL,
-    PerformanceThresholds
+from .constants import DEFAULT_HOST, DEFAULT_PORT, DOCS_URL, OPENAPI_URL, REDOC_URL
+from .middleware.performance import setup_performance_middleware
+from .routers.csv_routes import router as csv_router
+from .services.stock_service import cleanup_stock_service
+from .stock_storage.database import (
+    close_database,
+    get_database_stats,
+    get_session_scope,
+    init_db,
 )
+from .utils.cache import get_cache_stats, set_cache_ttls
+from .utils.logging import setup_logging
 
 
 @asynccontextmanager
@@ -30,61 +39,58 @@ async def lifespan(app: FastAPI):
     # Startup
     setup_logging()
     logger = logging.getLogger(__name__)
-    
+
     try:
         # Load settings
         settings = get_settings()
-        logger.info(f"Loaded application settings (Yahoo Finance API enabled: {settings.yahoo_finance.enabled})")
-        
+        logger.info(
+            f"Loaded application settings (Yahoo Finance API enabled: {settings.yahoo_finance.enabled})"
+        )
+
         init_db()
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
         raise
-    
+
     logger.info("Stock Test API started")
-    
+
     yield
-    
+
     # Shutdown
     await cleanup_stock_service()
     close_database()
     logger.info("Stock Test API shutdown complete")
 
 
-import os
-
 def generate_server_url(host: str, port: int, protocol: str = "http") -> str:
     """
     Generate a server URL with proper handling of standard ports.
-    
+
     Args:
         host: Server hostname or IP address
         port: Server port number
         protocol: Protocol (http or https)
-        
+
     Returns:
         Properly formatted server URL
-        
+
     Raises:
         ValueError: If invalid parameters are provided
     """
     # Validation
     if not host or not isinstance(host, str):
         raise ValueError("Host must be a non-empty string")
-    
+
     if not isinstance(port, int) or port <= 0 or port > 65535:
         raise ValueError("Port must be an integer between 1 and 65535")
-    
+
     if protocol not in ["http", "https"]:
         raise ValueError("Protocol must be 'http' or 'https'")
-    
+
     # Standard port mapping
-    standard_ports = {
-        "http": 80,
-        "https": 443
-    }
-    
+    standard_ports = {"http": 80, "https": 443}
+
     # Omit port if it's the standard port for the protocol
     if port == standard_ports.get(protocol):
         return f"{protocol}://{host}"
@@ -95,66 +101,84 @@ def generate_server_url(host: str, port: int, protocol: str = "http") -> str:
 def get_openapi_servers() -> list[dict[str, str]]:
     """
     Get OpenAPI server configuration based on environment.
-    
+
     Returns:
         List of server configurations for OpenAPI documentation
-        
+
     Raises:
         ValueError: If server configuration is invalid
     """
     settings = get_settings()
-    
+
     # Use explicitly configured server URL if available
     if settings.server_url:
         return [{"url": settings.server_url, "description": "Configured server"}]
-    
+
     servers = []
-    
+
     try:
         if settings.environment == "production":
             # Production: prefer HTTPS, include HTTP as fallback
-            servers.append({
-                "url": generate_server_url(settings.api_host, settings.api_port, "https"),
-                "description": "Production HTTPS server"
-            })
-            
+            servers.append(
+                {
+                    "url": generate_server_url(
+                        settings.api_host, settings.api_port, "https"
+                    ),
+                    "description": "Production HTTPS server",
+                }
+            )
+
             # Add HTTP fallback only if not using standard HTTPS port
             if settings.api_port != 443:
-                servers.append({
-                    "url": generate_server_url(settings.api_host, settings.api_port, "http"),
-                    "description": "Production HTTP server"
-                })
+                servers.append(
+                    {
+                        "url": generate_server_url(
+                            settings.api_host, settings.api_port, "http"
+                        ),
+                        "description": "Production HTTP server",
+                    }
+                )
         else:
             # Development/staging: HTTP first, with common development URLs
-            servers.extend([
-                {
-                    "url": generate_server_url(settings.api_host, settings.api_port, "http"),
-                    "description": "Development server"
-                },
-                {
-                    "url": generate_server_url("localhost", DEFAULT_PORT, "http"),
-                    "description": "Local development server"
-                }
-            ])
-            
+            servers.extend(
+                [
+                    {
+                        "url": generate_server_url(
+                            settings.api_host, settings.api_port, "http"
+                        ),
+                        "description": "Development server",
+                    },
+                    {
+                        "url": generate_server_url("localhost", DEFAULT_PORT, "http"),
+                        "description": "Local development server",
+                    },
+                ]
+            )
+
             # Add loopback if different from localhost
             if settings.api_host != "localhost" and settings.api_host != "127.0.0.1":
-                servers.append({
-                    "url": generate_server_url("127.0.0.1", DEFAULT_PORT, "http"),
-                    "description": "Local loopback server"
-                })
-    
+                servers.append(
+                    {
+                        "url": generate_server_url("127.0.0.1", DEFAULT_PORT, "http"),
+                        "description": "Local loopback server",
+                    }
+                )
+
     except ValueError as e:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.error(f"Error generating OpenAPI server URLs: {e}")
         # Fallback to a basic localhost configuration
-        servers = [{
-            "url": f"http://localhost:{DEFAULT_PORT}",
-            "description": "Fallback development server"
-        }]
-    
+        servers = [
+            {
+                "url": f"http://localhost:{DEFAULT_PORT}",
+                "description": "Fallback development server",
+            }
+        ]
+
     return servers
+
 
 app = FastAPI(
     title="Stock Test API",
@@ -170,9 +194,12 @@ app = FastAPI(
         {"name": "Watchlist", "description": "ウォッチリストの管理"},
         {"name": "Market Trends", "description": "市場トレンド・急騰急落株の検出"},
         {"name": "Data Quality", "description": "データ品質監視・検証システム"},
-        {"name": "Health", "description": "アプリケーションとデータベースのヘルスチェック"},
-        {"name": "Root", "description": "ルートエンドポイント"}
-    ]
+        {
+            "name": "Health",
+            "description": "アプリケーションとデータベースのヘルスチェック",
+        },
+        {"name": "Root", "description": "ルートエンドポイント"},
+    ],
 )
 
 # ミドルウェア設定
@@ -184,10 +211,10 @@ settings = get_settings()
 # Temporary direct CORS configuration for debugging
 cors_origins = [
     "http://localhost:3004",
-    "http://localhost:3003", 
+    "http://localhost:3003",
     "http://localhost:3002",
     "http://localhost:3001",
-    "http://localhost:3000"
+    "http://localhost:3000",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -202,29 +229,20 @@ app.add_middleware(
 # 詳細は docs/middleware-architecture.md を参照
 setup_performance_middleware(app)
 
-# Import and include API routes
-from .api.stocks import router as stocks_router
-from .api.watchlist import router as watchlist_router
-from .api.ml_prediction import router as ml_router
-from .api.performance import router as performance_router
-from .api.recommendations import router as recommendations_router
-from .api.market_trends import router as market_trends_router
-from .api.data_quality import router as data_quality_router
-from .api.price_predictions import router as price_predictions_router
-from .api.optimized_prediction import router as optimized_prediction_router
-from .routers.csv_routes import router as csv_router
-
 api_router = APIRouter(prefix="/api")
+
 
 def get_db():
     """Database dependency function."""
     with get_session_scope() as session:
         yield session
 
+
 @api_router.get("/health", tags=["Health"])
 async def health_check():
     """Simple health check endpoint."""
     return {"status": "ok"}
+
 
 @api_router.get("/cors-debug", tags=["Debug"])
 async def cors_debug():
@@ -236,14 +254,16 @@ async def cors_debug():
         "cors_config": {
             "allow_credentials": settings.cors.allow_credentials,
             "allow_methods": settings.cors.allow_methods,
-            "allow_headers": settings.cors.allow_headers
-        }
+            "allow_headers": settings.cors.allow_headers,
+        },
     }
+
 
 @api_router.get("/live", tags=["Health"])
 async def live_check():
     """Liveness probe endpoint: process is alive."""
     return {"status": "alive"}
+
 
 @api_router.get("/status", tags=["Health"])
 async def status_check(db: Session = Depends(get_db)):
@@ -254,37 +274,32 @@ async def status_check(db: Session = Depends(get_db)):
         db_healthy = True
     except Exception:
         db_healthy = False
-    
+
     if not db_healthy:
         raise HTTPException(status_code=503, detail="Database connection failed")
-    
+
     db_stats = get_database_stats()
-    
+
     # Get configuration and service stats
     settings = get_settings()
-    
+
     # Get stock service cache stats
     from .services.stock_service import get_stock_service
+
     try:
         stock_service = await get_stock_service()
         service_cache_stats = stock_service.get_cache_stats()
     except Exception:
         service_cache_stats = {"entries": 0, "size_bytes": 0}
-    
+
     return {
         "status": "healthy",
-        "database": {
-            "healthy": db_healthy,
-            "stats": db_stats
-        },
-        "cache": {
-            "general": get_cache_stats(),
-            "yahoo_api": service_cache_stats
-        },
+        "database": {"healthy": db_healthy, "stats": db_stats},
+        "cache": {"general": get_cache_stats(), "yahoo_api": service_cache_stats},
         "configuration": {
             "yahoo_finance_api_enabled": settings.yahoo_finance.enabled,
             "debug_mode": settings.debug,
-            "log_level": settings.log_level
+            "log_level": settings.log_level,
         },
         "performance": {
             "optimizations_enabled": [
@@ -292,18 +307,20 @@ async def status_check(db: Session = Depends(get_db)):
                 f"yahoo_finance_api_{'enabled' if settings.yahoo_finance.enabled else 'disabled'}",
                 "intelligent_caching",
                 "in_memory_caching",
-                "database_connection_pooling", 
+                "database_connection_pooling",
                 "gzip_compression",
-                "sqlite_performance_tuning"
+                "sqlite_performance_tuning",
             ]
         },
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
+
 
 @api_router.get("/ready", tags=["Health"])
 async def readiness_check(db: Session = Depends(get_db)):
     """Readiness probe: checks DB connectivity and returns quick status."""
     import time as _t
+
     start = _t.perf_counter()
     try:
         db.execute(text("SELECT 1"))
@@ -320,15 +337,16 @@ async def readiness_check(db: Session = Depends(get_db)):
         "yahoo_finance_enabled": settings.yahoo_finance.enabled,
     }
 
+
 api_router.include_router(stocks_router)
 api_router.include_router(watchlist_router)
 api_router.include_router(ml_router)
 api_router.include_router(performance_router)
 api_router.include_router(recommendations_router)
-api_router.include_router(market_trends_router)
-api_router.include_router(data_quality_router)
+
+
 api_router.include_router(price_predictions_router)
-api_router.include_router(optimized_prediction_router, prefix="/optimized", tags=["Phase 4B - Optimized Prediction"])
+
 api_router.include_router(csv_router)
 
 app.include_router(api_router)
@@ -339,10 +357,12 @@ async def root():
     """Root endpoint."""
     return {"message": "Stock Test API is running", "version": "1.0.0"}
 
+
 # Backward-compatible health endpoints at root
 @app.get("/live", tags=["Health"])
 async def root_live_check():
     return await live_check()
+
 
 @app.get("/ready", tags=["Health"])
 async def root_ready_check(db: Session = Depends(get_db)):
@@ -353,7 +373,7 @@ async def root_ready_check(db: Session = Depends(get_db)):
 @app.post("/api/admin/cache/ttl", tags=["Admin"])
 async def update_cache_ttls(
     payload: dict,
-    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token")
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
 ):
     """Update in-memory cache TTLs at runtime (admin only).
 
@@ -364,7 +384,6 @@ async def update_cache_ttls(
 
     Authorization: provide X-Admin-Token header matching ADMIN_TOKEN env (if set).
     """
-    import os
 
     required = os.getenv("ADMIN_TOKEN")
     if required:
@@ -393,6 +412,7 @@ async def update_cache_ttls(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to update TTLs: {e}")
 
+
 @app.get("/openapi.json", include_in_schema=False)
 async def get_openapi_json():
     """OpenAPIスキーマをJSON形式で返すエンドポイント"""
@@ -408,6 +428,7 @@ async def get_openapi_json():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "src.main:app",
         host=DEFAULT_HOST,

@@ -13,7 +13,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import type { ChartOptions } from 'chart.js';
 import './PricePredictionChart.css';
-import { getEnhancedPrediction } from '../../services/api'; // Import the new service
+import { getEnhancedPrediction } from '../services/api'; // Import the new service
 import axios from 'axios';
 
 ChartJS.register(
@@ -186,6 +186,10 @@ const PricePredictionChart: React.FC<PricePredictionChartProps> = ({
   }
 
   const data = createChartData();
+
+  if (!data) {
+    return <div>No chart data available</div>;
+  }
 
   return (
     <div className="price-prediction-chart-container">

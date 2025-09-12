@@ -2,19 +2,19 @@
 表示フォーマッターのユニットテスト
 """
 
-import pytest
 import json
-from decimal import Decimal
 from datetime import datetime
-from io import StringIO
+from decimal import Decimal
 
+import pytest
+
+from src.stock_api.data_models import CurrentPrice, StockData
 from src.stock_display.formatters import (
-    StockFormatter,
-    TableFormatter, 
+    CompactFormatter,
     JSONFormatter,
-    CompactFormatter
+    StockFormatter,
+    TableFormatter,
 )
-from src.stock_api.data_models import StockData, CurrentPrice
 
 
 class TestStockFormatter:
@@ -29,7 +29,7 @@ class TestStockFormatter:
         """format メソッドが未実装であることの確認"""
         formatter = StockFormatter()
         # 基底クラスのformatメソッドが実装されている場合はスキップ
-        if hasattr(formatter, 'format') and callable(getattr(formatter, 'format')):
+        if hasattr(formatter, "format") and callable(getattr(formatter, "format")):
             try:
                 result = formatter.format([])
                 # 実装されている場合は結果を確認
@@ -54,18 +54,18 @@ class TestTableFormatter:
                 price_change=Decimal("50.50"),
                 price_change_pct=Decimal("1.84"),
                 volume=1000000,
-                market_cap=Decimal("37000000000000")
+                market_cap=Decimal("37000000000000"),
             ),
             StockData(
                 stock_code="4689",
-                company_name="Yahoo Japan Corporation", 
+                company_name="Yahoo Japan Corporation",
                 current_price=Decimal("350.00"),
                 previous_close=Decimal("345.00"),
                 price_change=Decimal("5.00"),
                 price_change_pct=Decimal("1.45"),
                 volume=500000,
-                market_cap=Decimal("800000000000")
-            )
+                market_cap=Decimal("800000000000"),
+            ),
         ]
 
     def test_table_formatter_initialization(self):
@@ -77,10 +77,10 @@ class TestTableFormatter:
         """株式データのテーブルフォーマット"""
         formatter = TableFormatter()
         result = formatter.format_stock_list(sample_stock_data)
-        
+
         assert isinstance(result, str)
         assert len(result) > 0
-        
+
         # データが含まれていることを確認
         assert "7203" in result
         assert "Toyota Motor Corporation" in result
@@ -91,14 +91,14 @@ class TestTableFormatter:
         """空データのフォーマット"""
         formatter = TableFormatter()
         result = formatter.format_stock_list([])
-        
+
         assert isinstance(result, str)
 
     def test_format_single_item(self, sample_stock_data):
         """単一アイテムのフォーマット"""
         formatter = TableFormatter()
         result = formatter.format_stock_list([sample_stock_data[0]])
-        
+
         assert isinstance(result, str)
         assert "7203" in result
         assert "Toyota Motor Corporation" in result
@@ -119,7 +119,7 @@ class TestJSONFormatter:
             price_change_pct=Decimal("1.84"),
             volume=1000000,
             market_cap=Decimal("37000000000000"),
-            timestamp=datetime(2023, 12, 1, 15, 30, 0)
+            timestamp=datetime(2023, 12, 1, 15, 30, 0),
         )
 
     def test_json_formatter_initialization(self):
@@ -131,9 +131,9 @@ class TestJSONFormatter:
         """単一アイテムのJSONフォーマット"""
         formatter = JSONFormatter()
         result = formatter.format_current_price(sample_current_price)
-        
+
         assert isinstance(result, str)
-        
+
         # 有効なJSONかどうかを確認
         parsed = json.loads(result)
         assert isinstance(parsed, dict)
@@ -146,9 +146,9 @@ class TestJSONFormatter:
         data = [sample_current_price]
         formatter = JSONFormatter()
         result = formatter.format_json(data)
-        
+
         assert isinstance(result, str)
-        
+
         parsed = json.loads(result)
         assert isinstance(parsed, list)
         assert len(parsed) == 1
@@ -158,9 +158,9 @@ class TestJSONFormatter:
         """空リストのJSONフォーマット"""
         formatter = JSONFormatter()
         result = formatter.format_json([])
-        
+
         assert isinstance(result, str)
-        
+
         parsed = json.loads(result)
         assert isinstance(parsed, list)
         assert len(parsed) == 0
@@ -169,7 +169,7 @@ class TestJSONFormatter:
         """datetime型のシリアライゼーション"""
         formatter = JSONFormatter()
         result = formatter.format_current_price(sample_current_price)
-        
+
         parsed = json.loads(result)
         # timestampがISO形式の文字列になっていることを確認
         assert isinstance(parsed["timestamp"], str)
@@ -179,7 +179,7 @@ class TestJSONFormatter:
         """Decimal型のシリアライゼーション"""
         formatter = JSONFormatter()
         result = formatter.format_current_price(sample_current_price)
-        
+
         parsed = json.loads(result)
         # Decimal値がfloatになっていることを確認
         assert isinstance(parsed["current_price"], float)
@@ -201,18 +201,18 @@ class TestCompactFormatter:
                 price_change=Decimal("50.50"),
                 price_change_pct=Decimal("1.84"),
                 volume=1000000,
-                market_cap=Decimal("37000000000000")
+                market_cap=Decimal("37000000000000"),
             ),
             StockData(
                 stock_code="4689",
-                company_name="Yahoo Japan Corporation", 
+                company_name="Yahoo Japan Corporation",
                 current_price=Decimal("350.00"),
                 previous_close=Decimal("345.00"),
                 price_change=Decimal("5.00"),
                 price_change_pct=Decimal("1.45"),
                 volume=500000,
-                market_cap=Decimal("800000000000")
-            )
+                market_cap=Decimal("800000000000"),
+            ),
         ]
 
     def test_compact_formatter_initialization(self):
@@ -224,9 +224,9 @@ class TestCompactFormatter:
         """株式データのコンパクトフォーマット"""
         formatter = CompactFormatter()
         result = formatter.format_stock_list(sample_stock_list)
-        
+
         assert isinstance(result, str)
-        
+
         # データが含まれていることを確認
         assert "7203" in result
         assert "Toyota Motor Corporation" in result
@@ -236,7 +236,7 @@ class TestCompactFormatter:
         """空データのコンパクトフォーマット"""
         formatter = CompactFormatter()
         result = formatter.format_stock_list([])
-        
+
         assert isinstance(result, str)
 
 
@@ -252,17 +252,16 @@ class TestFormatterPerformance:
                 stock_code=f"{1000+i}",
                 company_name=f"Company {i}",
                 current_price=Decimal(f"{1000+i}.00"),
-                previous_close=Decimal(f"{990+i}.00"),
-                price_change=Decimal(f"{10}.00"),
                 price_change_pct=Decimal("1.01"),
                 volume=100000 + i * 1000,
-                market_cap=Decimal(f"{1000000000 + i * 1000000}")
+                market_cap=Decimal(f"{1000000000 + i * 1000000}"),
             )
             large_dataset.append(stock)
 
         formatter = TableFormatter()
-        
+
         import time
+
         start_time = time.time()
         result = formatter.format_stock_list(large_dataset)
         end_time = time.time()
@@ -285,13 +284,14 @@ class TestFormatterPerformance:
                 price_change=Decimal("10.00"),
                 price_change_pct=Decimal("1.01"),
                 volume=100000 + i * 1000,
-                market_cap=Decimal(f"{1000000000 + i * 1000000}")
+                market_cap=Decimal(f"{1000000000 + i * 1000000}"),
             )
             large_dataset.append(stock)
 
         formatter = JSONFormatter()
-        
+
         import time
+
         start_time = time.time()
         result = formatter.format_json(large_dataset)
         end_time = time.time()
@@ -299,7 +299,7 @@ class TestFormatterPerformance:
         # 1秒以内に完了することを確認
         assert (end_time - start_time) < 1.0
         assert isinstance(result, str)
-        
+
         # 有効なJSONであることを確認
         parsed = json.loads(result)
         assert len(parsed) == 100
@@ -319,20 +319,20 @@ class TestFormatterErrorHandling:
                 price_change=Decimal("50.50"),
                 price_change_pct=Decimal("1.84"),
                 volume=1000000,
-                market_cap=None  # None値
+                market_cap=None,  # None値
             )
         ]
-        
+
         formatter = TableFormatter()
         result = formatter.format_stock_list(data_with_nulls)
-        
+
         assert isinstance(result, str)
         assert "7203" in result
 
     def test_json_formatter_with_invalid_data(self):
         """無効なデータでのJSONフォーマット"""
         formatter = JSONFormatter()
-        
+
         # None値をフォーマット
         result = formatter.format_json(None)
         assert result is not None
@@ -348,12 +348,12 @@ class TestFormatterErrorHandling:
                 price_change=Decimal("50.50"),
                 price_change_pct=Decimal("1.84"),
                 volume=1000000,
-                market_cap=Decimal("37000000000000")
+                market_cap=Decimal("37000000000000"),
             )
         ]
-        
+
         formatter = CompactFormatter()
         result = formatter.format_stock_list(unicode_data)
-        
+
         assert isinstance(result, str)
         assert "トヨタ自動車株式会社" in result

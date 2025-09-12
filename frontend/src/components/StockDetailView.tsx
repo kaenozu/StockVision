@@ -187,6 +187,9 @@ const StockDetailView: React.FC = () => {
     ? stockDetail.prediction.shortTerm 
     : stockDetail.prediction.mediumTerm;
 
+  const rsi = stockDetail.recommendation?.technical_indicators?.rsi;
+  const rsiClass = rsi === undefined ? 'normal' : rsi > 70 ? 'high' : rsi < 30 ? 'low' : 'normal';
+
   return (
     <div className="stock-detail-container">
       {/* Header */}
@@ -263,7 +266,7 @@ const StockDetailView: React.FC = () => {
                     <span className="target-price">¥{formatPrice(stockDetail.recommendation.targetPrice)}</span>
                   </div>
                 )}
-                {stockDetail.recommendation.stopLoss && (
+                {stockDetail.recommendation.stopLoss !== null && (
                   <div className="target-item">
                     <label>ストップロス:</label>
                     <span className="stop-loss">¥{formatPrice(stockDetail.recommendation.stopLoss)}</span>
@@ -293,8 +296,8 @@ const StockDetailView: React.FC = () => {
             <div className="indicators-grid">
               <div className="indicator-item">
                 <label>RSI</label>
-                <span className={`indicator-value ${stockDetail.recommendation?.technical_indicators?.rsi > 70 ? 'high' : stockDetail.recommendation?.technical_indicators?.rsi < 30 ? 'low' : 'normal'}`}>
-                  {stockDetail.recommendation?.technical_indicators?.rsi?.toFixed(1) ?? 'N/A'}
+                <span className={`indicator-value ${rsiClass}`}>
+                  {rsi?.toFixed(1) ?? 'N/A'}
                 </span>
               </div>
               <div className="indicator-item">
