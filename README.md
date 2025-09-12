@@ -71,7 +71,7 @@ Yahoo Finance APIを利用した現代的な日本株式情報監視Webアプリ
 python -m venv venv
 
 # 仮想環境の有効化 (Windows)
-venv\Scripts\activate
+virtualenv\Scripts\activate
 
 # 仮想環境の有効化 (Linux/macOS)
 source venv/bin/activate
