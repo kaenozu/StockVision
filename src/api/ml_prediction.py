@@ -24,8 +24,6 @@ from ..ml.prediction_engine import (
     prediction_engine,
 )
 from ..models.stock import Stock
-
-# from ..services.backtester import PredictionBacktester
 from ..stock_storage.database import get_session_scope
 
 logger = logging.getLogger(__name__)
@@ -808,142 +806,7 @@ async def run_prediction_backtest(request: BacktestRequest):
             f"期間={request.test_days}日, 予想対象={request.prediction_horizon}日後"
         )
 
-        request_id = f"backtest_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        backtester = PredictionBacktester()
-
-        # テスト対象銘柄の決定
-        test_stocks = request.stock_codes
-        if not test_stocks:
-            # 全銘柄から有効なデータを持つ銘柄を取得
-            with get_session_scope() as db:
-                stocks = db.query(Stock).limit(20).all()  # 処理時間を考慮して最大20銘柄
-                test_stocks = [stock.stock_code for stock in stocks]
-
-        # 複数銘柄のバックテストを実行
-        try:
-            backtest_results = backtester.run_multi_stock_backtest(
-                stock_codes=test_stocks,
-                test_days=request.test_days,
-                prediction_horizon=request.prediction_horizon,
-            )
-        except Exception as e:
-            logger.error(f"バックテスト実行エラー: {e}")
-            raise HTTPException(status_code=500, detail=f"バックテスト実行エラー: {e}")
-
-        if not backtest_results:
-            raise HTTPException(
-                status_code=404, detail="バックテスト結果が取得できませんでした"
-            )
-
-        # レスポンス用のデータを構築
-        stock_results = []
-        for stock_code, result in backtest_results.items():
-            stock_results.append(
-                BacktestResponseItem(
-                    stock_code=result.stock_code,
-                    test_period_days=result.test_period_days,
-                    total_predictions=result.total_predictions,
-                    rmse=result.rmse,
-                    mae=result.mae,
-                    mape=result.mape,
-                    directional_accuracy=result.directional_accuracy,
-                    avg_error=result.avg_error,
-                    max_error=result.max_error,
-                    min_error=result.min_error,
-                )
-            )
-
-        # 統合レポートを生成
-        summary_report = backtester.generate_summary_report(backtest_results)
-
-        # 全体的なメトリクス計算
-        overall_metrics = {
-            "tested_stocks": len(backtest_results),
-            "successful_stocks": len(
-                [r for r in backtest_results.values() if r.total_predictions > 0]
-            ),
-            "total_predictions": sum(
-                r.total_predictions for r in backtest_results.values()
-            ),
-            "average_directional_accuracy": summary_report.get(
-                "average_directional_accuracy", 0
-            ),
-            "average_rmse": summary_report.get("average_rmse", 0),
-            "average_mae": summary_report.get("average_mae", 0),
-            "average_mape": summary_report.get("average_mape", 0),
-            "performance_breakdown": summary_report.get("performance_distribution", {}),
-            "best_performers": {
-                "by_accuracy": (
-                    summary_report.get("best_stock", {}).get(
-                        "by_directional", ["N/A", None]
-                    )[0]
-                    if summary_report.get("best_stock")
-                    else "N/A"
-                ),
-                "by_rmse": (
-                    summary_report.get("best_stock", {}).get("by_rmse", ["N/A", None])[
-                        0
-                    ]
-                    if summary_report.get("best_stock")
-                    else "N/A"
-                ),
-            },
-            "worst_performers": {
-                "by_accuracy": (
-                    summary_report.get("worst_stock", {}).get(
-                        "by_directional", ["N/A", None]
-                    )[0]
-                    if summary_report.get("worst_stock")
-                    else "N/A"
-                ),
-                "by_rmse": (
-                    summary_report.get("worst_stock", {}).get("by_rmse", ["N/A", None])[
-                        0
-                    ]
-                    if summary_report.get("worst_stock")
-                    else "N/A"
-                ),
-            },
-        }
-
-        test_summary = {
-            "test_configuration": {
-                "test_period_days": request.test_days,
-                "prediction_horizon_days": request.prediction_horizon,
-                "tested_stock_count": len(test_stocks),
-            },
-            "execution_info": {
-                "started_at": datetime.now().isoformat(),
-                "status": "completed",
-                "processing_time_seconds": "N/A",  # 実際の処理時間計測は後で実装
-            },
-            "data_quality": {
-                "stocks_with_sufficient_data": len(backtest_results),
-                "stocks_skipped": len(test_stocks) - len(backtest_results),
-                "average_predictions_per_stock": (
-                    sum(r.total_predictions for r in backtest_results.values())
-                    / len(backtest_results)
-                    if backtest_results
-                    else 0
-                ),
-            },
-        }
-
-        response = BacktestResponse(
-            request_id=request_id,
-            test_summary=test_summary,
-            stock_results=stock_results,
-            overall_metrics=overall_metrics,
-            generated_at=datetime.now().isoformat(),
-        )
-
-        logger.info(
-            f"バックテスト完了: ID={request_id}, "
-            f"テスト銘柄数={len(backtest_results)}, "
-            f"平均方向性精度={overall_metrics['average_directional_accuracy']:.1f}%"
-        )
-
-        return response
+        raise HTTPException(status_code=501, detail="Backtesting feature is not implemented yet.")
 
     except HTTPException:
         raise
@@ -965,41 +828,7 @@ async def run_single_stock_backtest(
     try:
         logger.info(f"単一銘柄バックテスト開始: {stock_code}, 期間={test_days}日")
 
-        backtester = PredictionBacktester()
-
-        try:
-            result = backtester.run_backtest(
-                stock_code=stock_code,
-                test_days=test_days,
-                prediction_horizon=prediction_horizon,
-            )
-        except Exception as e:
-            logger.error(f"銘柄 {stock_code} のバックテスト実行エラー: {e}")
-            raise HTTPException(
-                status_code=400,
-                detail=f"銘柄 {stock_code} のバックテストに失敗しました: {e}",
-            )
-
-        response = BacktestResponseItem(
-            stock_code=result.stock_code,
-            test_period_days=result.test_period_days,
-            total_predictions=result.total_predictions,
-            rmse=result.rmse,
-            mae=result.mae,
-            mape=result.mape,
-            directional_accuracy=result.directional_accuracy,
-            avg_error=result.avg_error,
-            max_error=result.max_error,
-            min_error=result.min_error,
-        )
-
-        logger.info(
-            f"単一銘柄バックテスト完了: {stock_code}, "
-            f"方向性精度={result.directional_accuracy:.1f}%, "
-            f"予想数={result.total_predictions}"
-        )
-
-        return response
+        raise HTTPException(status_code=501, detail="Backtesting feature is not implemented yet.")
 
     except HTTPException:
         raise
