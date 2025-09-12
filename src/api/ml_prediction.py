@@ -45,6 +45,8 @@ def get_db():
 
 
 # Request/Response Models
+
+
 class PredictionResponse(BaseModel):
     model_config = {"protected_namespaces": ()}
 
