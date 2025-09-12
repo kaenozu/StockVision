@@ -12,9 +12,11 @@ __all__ = [
     "cleanup_stock_service",
 ]
 
+
 # Lazy accessors to avoid import side effects
 def __getattr__(name):
     if name in __all__:
         from . import stock_service as _svc
+
         return getattr(_svc, name)
     raise AttributeError(name)

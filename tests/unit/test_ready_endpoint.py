@@ -10,4 +10,3 @@ def test_ready_endpoint_returns_ready_and_latency():
     data = res.json()
     assert data.get("status") == "ready"
     assert isinstance(data.get("db_ping_ms"), (int, float))
-

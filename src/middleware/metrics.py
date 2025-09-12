@@ -17,11 +17,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 try:
-    from prometheus_client import Counter, Histogram, CONTENT_TYPE_LATEST, generate_latest
+    from prometheus_client import (CONTENT_TYPE_LATEST, Counter, Histogram,
+                                   generate_latest)
 except Exception:  # pragma: no cover - optional dependency path
     Counter = None  # type: ignore
     Histogram = None  # type: ignore
     CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"  # type: ignore
+
     def generate_latest():  # type: ignore
         return b""  # minimal fallback
 
@@ -87,7 +89,9 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
 
         try:
             REQUEST_COUNT.labels(method=method, path=path_tmpl, status=status).inc()
-            REQUEST_LATENCY.labels(method=method, path=path_tmpl, status=status).observe(duration)
+            REQUEST_LATENCY.labels(
+                method=method, path=path_tmpl, status=status
+            ).observe(duration)
         except Exception:
             # Metrics must never break request handling
             pass
@@ -111,4 +115,3 @@ def setup_metrics(app: FastAPI) -> None:
     async def metrics_endpoint() -> Response:
         content = generate_latest()
         return Response(content=content, media_type=CONTENT_TYPE_LATEST)
-

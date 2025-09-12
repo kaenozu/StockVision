@@ -5,6 +5,7 @@ This module provides a lightweight `StockCLI` class to satisfy imports in
 integration tests. Methods are async and raise NotImplementedError by default.
 Extend incrementally as features are implemented.
 """
+
 from __future__ import annotations
 
 from typing import Any, List, Optional
@@ -42,4 +43,3 @@ class StockCLI:
 
     async def get_watchlist(self) -> List[Any]:
         raise NotImplementedError("get_watchlist is not implemented yet")
-

@@ -2,16 +2,13 @@
 入力検証のためのユニットテスト
 """
 
-import pytest
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
+
+import pytest
 from pydantic import ValidationError
 
-from src.stock_api.data_models import (
-    StockData, 
-    CurrentPrice, 
-    PriceHistoryItem
-)
+from src.stock_api.data_models import CurrentPrice, PriceHistoryItem, StockData
 
 
 class TestStockDataValidation:
@@ -27,9 +24,9 @@ class TestStockDataValidation:
             "price_change": Decimal("50.50"),
             "price_change_pct": Decimal("1.84"),
             "volume": 1000000,
-            "market_cap": Decimal("37000000000000")
+            "market_cap": Decimal("37000000000000"),
         }
-        
+
         stock = StockData(**data)
         assert stock.stock_code == "7203"
         assert stock.company_name == "Toyota Motor Corporation"
@@ -47,7 +44,7 @@ class TestStockDataValidation:
                 "previous_close": Decimal("950"),
                 "price_change": Decimal("50"),
                 "price_change_pct": Decimal("5.26"),
-                "volume": 100000
+                "volume": 100000,
             }
             stock = StockData(**data)
             assert stock.stock_code == code
@@ -62,7 +59,7 @@ class TestStockDataValidation:
                 "previous_close": Decimal("950"),
                 "price_change": Decimal("50"),
                 "price_change_pct": Decimal("5.26"),
-                "volume": 100000
+                "volume": 100000,
             }
             with pytest.raises(ValidationError):
                 StockData(**data)
@@ -74,18 +71,34 @@ class TestStockDataValidation:
             "company_name": "Test Company",
             "price_change": Decimal("50"),
             "price_change_pct": Decimal("5.26"),
-            "volume": 100000
+            "volume": 100000,
         }
 
         # 負の価格は許可されない
         with pytest.raises(ValidationError):
-            StockData(**{**base_data, "current_price": Decimal("-100"), "previous_close": Decimal("950")})
-        
+            StockData(
+                **{
+                    **base_data,
+                    "current_price": Decimal("-100"),
+                    "previous_close": Decimal("950"),
+                }
+            )
+
         with pytest.raises(ValidationError):
-            StockData(**{**base_data, "current_price": Decimal("1000"), "previous_close": Decimal("-50")})
+            StockData(
+                **{
+                    **base_data,
+                    "current_price": Decimal("1000"),
+                    "previous_close": Decimal("-50"),
+                }
+            )
 
         # ゼロは許可される
-        valid_data = {**base_data, "current_price": Decimal("0"), "previous_close": Decimal("0")}
+        valid_data = {
+            **base_data,
+            "current_price": Decimal("0"),
+            "previous_close": Decimal("0"),
+        }
         stock = StockData(**valid_data)
         assert stock.current_price == Decimal("0")
 
@@ -97,7 +110,7 @@ class TestStockDataValidation:
             "current_price": Decimal("1000"),
             "previous_close": Decimal("950"),
             "price_change": Decimal("50"),
-            "price_change_pct": Decimal("5.26")
+            "price_change_pct": Decimal("5.26"),
         }
 
         # 負の出来高は許可されない
@@ -117,7 +130,7 @@ class TestStockDataValidation:
             "previous_close": Decimal("950"),
             "price_change": Decimal("50"),
             "price_change_pct": Decimal("5.26"),
-            "volume": 100000
+            "volume": 100000,
         }
 
         # 空の会社名は許可されない
@@ -143,9 +156,9 @@ class TestCurrentPriceValidation:
             "price_change": Decimal("50.50"),
             "price_change_pct": Decimal("1.84"),
             "volume": 1000000,
-            "market_cap": Decimal("37000000000000")
+            "market_cap": Decimal("37000000000000"),
         }
-        
+
         price = CurrentPrice(**data)
         assert price.stock_code == "7203"
         assert isinstance(price.timestamp, datetime)
@@ -159,7 +172,7 @@ class TestCurrentPriceValidation:
             "previous_close": Decimal("2750.00"),
             "price_change": Decimal("50.50"),
             "price_change_pct": Decimal("1.84"),
-            "volume": 1000000
+            "volume": 1000000,
         }
 
         # 正の時価総額
@@ -192,9 +205,9 @@ class TestPriceHistoryValidation:
             "high": Decimal("2850.00"),
             "low": Decimal("2780.00"),
             "close": Decimal("2820.00"),
-            "volume": 1500000
+            "volume": 1500000,
         }
-        
+
         history = PriceHistoryItem(**data)
         assert history.stock_code == "7203"
         assert history.open == Decimal("2800.00")
@@ -204,17 +217,17 @@ class TestPriceHistoryValidation:
         # high >= open, close >= low などの関係は
         # ビジネスロジックレベルで検証されるべき
         # ここでは基本的なバリデーションのみテスト
-        
+
         data = {
             "stock_code": "7203",
             "date": datetime(2023, 12, 1),
             "open": Decimal("2800.00"),
             "high": Decimal("2700.00"),  # high < open (異常だが技術的には可能)
-            "low": Decimal("2900.00"),   # low > high (異常だが技術的には可能) 
+            "low": Decimal("2900.00"),  # low > high (異常だが技術的には可能)
             "close": Decimal("2820.00"),
-            "volume": 1500000
+            "volume": 1500000,
         }
-        
+
         # 基本的なPydanticバリデーションは通る
         history = PriceHistoryItem(**data)
         assert history.stock_code == "7203"
@@ -233,9 +246,9 @@ class TestDecimalFieldValidation:
             "previous_close": Decimal("2750.654321"),
             "price_change": Decimal("49.469135"),
             "price_change_pct": Decimal("1.798876"),
-            "volume": 1000000
+            "volume": 1000000,
         }
-        
+
         stock = StockData(**data)
         # Decimal値が保持されることを確認
         assert isinstance(stock.current_price, Decimal)
@@ -248,11 +261,11 @@ class TestDecimalFieldValidation:
             "company_name": "Test Company",
             "current_price": 2800.50,  # float
             "previous_close": 2750.00,  # float
-            "price_change": 50.50,      # float
-            "price_change_pct": 1.84,   # float
-            "volume": 1000000
+            "price_change": 50.50,  # float
+            "price_change_pct": 1.84,  # float
+            "volume": 1000000,
         }
-        
+
         stock = StockData(**data)
         # float値がDecimalに変換されることを確認
         assert isinstance(stock.current_price, Decimal)
@@ -265,7 +278,7 @@ class TestDateTimeValidation:
     def test_datetime_fields(self):
         """datetime型フィールドの処理"""
         specific_time = datetime(2023, 12, 1, 15, 30, 0)
-        
+
         data = {
             "stock_code": "7203",
             "date": specific_time,
@@ -273,9 +286,9 @@ class TestDateTimeValidation:
             "high": Decimal("2850.00"),
             "low": Decimal("2780.00"),
             "close": Decimal("2820.00"),
-            "volume": 1500000
+            "volume": 1500000,
         }
-        
+
         history = PriceHistoryItem(**data)
         assert history.date == specific_time
 
@@ -288,13 +301,13 @@ class TestDateTimeValidation:
             "previous_close": Decimal("2750.00"),
             "price_change": Decimal("50.50"),
             "price_change_pct": Decimal("1.84"),
-            "volume": 1000000
+            "volume": 1000000,
         }
-        
+
         before_creation = datetime.utcnow()
         price = CurrentPrice(**data)
         after_creation = datetime.utcnow()
-        
+
         # timestampがデフォルト値で設定されていることを確認
         assert before_creation <= price.timestamp <= after_creation
 
@@ -312,12 +325,12 @@ class TestModelSerialization:
             "price_change": Decimal("50.50"),
             "price_change_pct": Decimal("1.84"),
             "volume": 1000000,
-            "market_cap": Decimal("37000000000000")
+            "market_cap": Decimal("37000000000000"),
         }
-        
+
         price = CurrentPrice(**data)
         json_data = price.model_dump()
-        
+
         # Decimal値がfloatに変換されることを確認
         assert isinstance(json_data["current_price"], float)
         assert json_data["current_price"] == 2800.5
@@ -331,12 +344,12 @@ class TestModelSerialization:
             "previous_close": Decimal("2750.00"),
             "price_change": Decimal("50.50"),
             "price_change_pct": Decimal("1.84"),
-            "volume": 1000000
+            "volume": 1000000,
         }
-        
+
         stock = StockData(**data)
         dict_data = stock.model_dump()
-        
+
         assert dict_data["stock_code"] == "7203"
         assert dict_data["company_name"] == "Toyota Motor Corporation"
         assert isinstance(dict_data["current_price"], float)

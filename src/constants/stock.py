@@ -2,7 +2,6 @@
 Stock market related constants for the StockVision application.
 """
 
-from decimal import Decimal
 
 # Stock price constants
 class StockPrice:
@@ -11,16 +10,19 @@ class StockPrice:
     MIN_MARKET_CAP_MULTIPLIER = 1000000
     MAX_MARKET_CAP_MULTIPLIER = 100000000
 
+
 # Volume formatting thresholds
 class VolumeFormat:
     MAN_THRESHOLD = 10000  # 万 (10 thousand)
-    
+
+
 # Stock market status
 class MarketStatus:
     OPEN = "open"
     CLOSED = "closed"
-    PRE_MARKET = "pre_market" 
+    PRE_MARKET = "pre_market"
     AFTER_HOURS = "after_hours"
+
 
 # Stock data fields
 class StockFields:
@@ -37,6 +39,7 @@ class StockFields:
     LOW = "low"
     CLOSE = "close"
 
+
 # Default stock codes (for testing/demo)
 class DefaultStocks:
     TOYOTA = "7203"
@@ -45,5 +48,5 @@ class DefaultStocks:
     NINTENDO = "7974"
     KEYENCE = "6861"
     FAST_RETAILING = "9983"
-    
+
     ALL_CODES = [TOYOTA, SOFTBANK, SONY, NINTENDO, KEYENCE, FAST_RETAILING]

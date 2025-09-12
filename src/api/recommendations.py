@@ -1,45 +1,46 @@
 """
 Stock Recommendations API endpoints.
 """
-from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Query, Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-import random
-import logging
-import asyncio
-import concurrent.futures
-from functools import lru_cache
 
-from ..stock_storage.database import get_session_scope
-from ..models.stock import Stock
+import concurrent.futures
+import logging
+from datetime import datetime, timedelta
+from functools import lru_cache
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
 from ..models.price_history import PriceHistory
+from ..models.stock import Stock
+from ..stock_storage.database import get_session_scope
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/recommended-stocks", tags=["Recommendations"])
+
 
 def get_db():
     """Database session dependency."""
     with get_session_scope() as session:
         yield session
 
+
 def process_stock_recommendation(stock_data: tuple) -> dict:
     """
     Process recommendation for a single stock (for parallel processing).
-    
+
     Args:
         stock_data: Tuple of (stock, db_session_data)
-    
+
     Returns:
         Dictionary containing recommendation data
     """
     stock, session = stock_data
-    
+
     # Calculate technical indicators
     indicators = calculate_technical_indicators(stock.stock_code, session)
-    
+
     if not indicators:
         # If no enough data, create basic recommendation
         return {
@@ -51,7 +52,7 @@ def process_stock_recommendation(stock_data: tuple) -> dict:
                 "changePercent": float(stock.price_change_pct),
                 "dayHigh": None,
                 "dayLow": None,
-                "volume": int(stock.volume)
+                "volume": int(stock.volume),
             },
             "recommendation": {
                 "symbol": stock.stock_code,
@@ -62,13 +63,13 @@ def process_stock_recommendation(stock_data: tuple) -> dict:
                 "stopLoss": None,
                 "timeHorizon": "medium_term",
                 "riskLevel": "medium",
-                "validUntil": (datetime.now() + timedelta(days=7)).isoformat()
-            }
+                "validUntil": (datetime.now() + timedelta(days=7)).isoformat(),
+            },
         }
-    
+
     # Generate recommendation based on indicators
     rec_data = generate_recommendation(stock, indicators)
-    
+
     return {
         "symbol": stock.stock_code,
         "name": stock.company_name,
@@ -78,10 +79,11 @@ def process_stock_recommendation(stock_data: tuple) -> dict:
             "changePercent": indicators["price_change_pct"],
             "dayHigh": None,
             "dayLow": None,
-            "volume": int(stock.volume)
+            "volume": int(stock.volume),
         },
-        "recommendation": rec_data
+        "recommendation": rec_data,
     }
+
 
 @lru_cache(maxsize=128, typed=True)
 def get_cached_recommendations(stock_ids: tuple, cache_timestamp: str) -> List[dict]:
@@ -93,83 +95,87 @@ def get_cached_recommendations(stock_ids: tuple, cache_timestamp: str) -> List[d
     # The actual processing is done in the main endpoint
     return []
 
-def calculate_technical_indicators(stock_code: str, db: Session, cache_results: bool = True) -> Dict[str, Any]:
+
+def calculate_technical_indicators(
+    stock_code: str, db: Session, cache_results: bool = True
+) -> Dict[str, Any]:
     """
     Calculate technical indicators for a stock with performance optimizations.
-    
+
     Args:
         stock_code: Stock code to analyze
         db: Database session
         cache_results: Whether to cache results for performance
-    
+
     Returns:
         Dictionary containing technical indicators
     """
     # Get recent price history with optimized query
-    recent_prices = db.query(
-        PriceHistory.close_price, 
-        PriceHistory.volume,
-        PriceHistory.date
-    ).filter(
-        PriceHistory.stock_code == stock_code
-    ).order_by(PriceHistory.date.desc()).limit(50).all()
-    
+    recent_prices = (
+        db.query(PriceHistory.close_price, PriceHistory.volume, PriceHistory.date)
+        .filter(PriceHistory.stock_code == stock_code)
+        .order_by(PriceHistory.date.desc())
+        .limit(50)
+        .all()
+    )
+
     if len(recent_prices) < 20:
-        logger.warning(f"Insufficient price data for {stock_code}: {len(recent_prices)} records")
+        logger.warning(
+            f"Insufficient price data for {stock_code}: {len(recent_prices)} records"
+        )
         return {}
-    
+
     # Extract prices and volumes more efficiently
     prices = [float(p.close_price) for p in recent_prices]
-    volumes = [int(p.volume) if p.volume else 0 for p in recent_prices]
-    
+
     current_price = prices[0]
-    current_volume = volumes[0]
-    
+    # current_volume = volumes[0] # Commented out as it's unused
+
     # Calculate SMAs
     sma20 = sum(prices[:20]) / 20
     sma50 = sum(prices[:50]) / 50 if len(prices) >= 50 else sma20
-    
+
     # Calculate RSI (optimized version)
     gains = []
     losses = []
     for i in range(1, min(15, len(prices))):  # 14 periods + current
-        diff = prices[i-1] - prices[i]
+        diff = prices[i - 1] - prices[i]
         if diff > 0:
             gains.append(diff)
             losses.append(0)
         else:
             gains.append(0)
             losses.append(abs(diff))
-    
+
     avg_gain = sum(gains) / len(gains) if gains else 0
     avg_loss = sum(losses) / len(losses) if losses else 0
     rs = avg_gain / avg_loss if avg_loss > 0 else 100
     rsi = 100 - (100 / (1 + rs))
-    
+
     # Calculate MACD (12, 26, 9)
     macd = None
     if len(prices) >= 26:
         ema12 = prices[0]
         ema26 = prices[0]
-        
+
         # Calculate EMAs
         for price in prices[1:12]:
-            ema12 = (price * (2/13)) + (ema12 * (11/13))
+            ema12 = (price * (2 / 13)) + (ema12 * (11 / 13))
         for price in prices[1:26]:
-            ema26 = (price * (2/27)) + (ema26 * (25/27))
-        
+            ema26 = (price * (2 / 27)) + (ema26 * (25 / 27))
+
         macd = ema12 - ema26
-    
+
     # Calculate Bollinger Bands (20 period, 2 standard deviations)
     bollinger_upper = None
     bollinger_lower = None
     if len(prices) >= 20:
         sma20_for_bb = sum(prices[:20]) / 20
         variance = sum([(p - sma20_for_bb) ** 2 for p in prices[:20]]) / 20
-        std_dev = variance ** 0.5
+        std_dev = variance**0.5
         bollinger_upper = sma20_for_bb + (2 * std_dev)
         bollinger_lower = sma20_for_bb - (2 * std_dev)
-    
+
     # Calculate price change
     if len(recent_prices) > 1:
         price_change = current_price - float(recent_prices[1].close_price)
@@ -177,14 +183,16 @@ def calculate_technical_indicators(stock_code: str, db: Session, cache_results: 
     else:
         price_change = 0
         price_change_pct = 0
-    
+
     # Volume analysis
     recent_volume = float(recent_prices[0].volume)
     avg_volume = sum([float(p.volume) for p in recent_prices[:20]]) / 20
     volume_ratio = recent_volume / avg_volume if avg_volume > 0 else 1
-    
-    logger.info(f"Technical indicators calculated for {stock_code}: MACD={macd}, Bollinger=({bollinger_upper}, {bollinger_lower})")
-    
+
+    logger.info(
+        f"Technical indicators calculated for {stock_code}: MACD={macd}, Bollinger=({bollinger_upper}, {bollinger_lower})"
+    )
+
     return {
         "rsi": rsi,
         "macd": macd,
@@ -197,17 +205,20 @@ def calculate_technical_indicators(stock_code: str, db: Session, cache_results: 
         "price_change_pct": price_change_pct,
         "volume_ratio": volume_ratio,
         "price_vs_sma20": ((current_price - sma20) / sma20) * 100 if sma20 else 0,
-        "price_vs_sma50": ((current_price - sma50) / sma50) * 100 if sma50 and sma50 > 0 else None
+        "price_vs_sma50": (
+            ((current_price - sma50) / sma50) * 100 if sma50 and sma50 > 0 else None
+        ),
     }
+
 
 def generate_recommendation(stock: Stock, indicators: Dict[str, Any]) -> Dict[str, Any]:
     """Generate trading recommendation based on technical indicators."""
-    
+
     # Initialize scores
     buy_score = 0
     sell_score = 0
     hold_score = 0
-    
+
     # RSI analysis
     if "rsi" in indicators:
         rsi = indicators["rsi"]
@@ -221,7 +232,7 @@ def generate_recommendation(stock: Stock, indicators: Dict[str, Any]) -> Dict[st
             sell_score += 1
         else:
             hold_score += 1
-    
+
     # Moving average analysis
     if "price_vs_sma20" in indicators:
         if indicators["price_vs_sma20"] > 5:
@@ -232,7 +243,7 @@ def generate_recommendation(stock: Stock, indicators: Dict[str, Any]) -> Dict[st
             buy_score += 2  # Price significantly below MA (potential bounce)
         else:
             hold_score += 1
-    
+
     # Volume analysis
     if "volume_ratio" in indicators:
         if indicators["volume_ratio"] > 1.5:
@@ -240,14 +251,14 @@ def generate_recommendation(stock: Stock, indicators: Dict[str, Any]) -> Dict[st
                 buy_score += 2  # High volume with price increase
             else:
                 sell_score += 1  # High volume with price decrease
-    
+
     # Price momentum
     if "price_change_pct" in indicators:
         if indicators["price_change_pct"] > 3:
             buy_score += 1
         elif indicators["price_change_pct"] < -3:
             sell_score += 1
-    
+
     # Determine signal
     total_score = buy_score + sell_score + hold_score
     if total_score == 0:
@@ -263,7 +274,7 @@ def generate_recommendation(stock: Stock, indicators: Dict[str, Any]) -> Dict[st
         else:
             signal = "hold"
             confidence = 5 + (hold_score / total_score) * 3
-    
+
     # Generate reasoning
     reasons = []
     if signal == "buy":
@@ -281,9 +292,9 @@ def generate_recommendation(stock: Stock, indicators: Dict[str, Any]) -> Dict[st
     else:
         reasons.append("明確なトレンドなし")
         reasons.append("様子見推奨")
-    
+
     reasoning = "、".join(reasons) if reasons else "テクニカル指標に基づく判断"
-    
+
     # Risk assessment
     volatility = abs(indicators.get("price_change_pct", 0))
     if volatility > 5:
@@ -292,7 +303,7 @@ def generate_recommendation(stock: Stock, indicators: Dict[str, Any]) -> Dict[st
         risk_level = "medium"
     else:
         risk_level = "low"
-    
+
     # Target price (simplified)
     current_price = indicators.get("current_price", 0)
     if signal == "buy":
@@ -304,13 +315,13 @@ def generate_recommendation(stock: Stock, indicators: Dict[str, Any]) -> Dict[st
     else:
         target_price = None
         stop_loss = None
-    
+
     # Time horizon
     if abs(indicators.get("price_change_pct", 0)) > 3:
         time_horizon = "short_term"
     else:
         time_horizon = "medium_term"
-    
+
     return {
         "symbol": stock.stock_code,
         "signal": signal,
@@ -321,15 +332,20 @@ def generate_recommendation(stock: Stock, indicators: Dict[str, Any]) -> Dict[st
         "timeHorizon": time_horizon,
         "riskLevel": risk_level,
         "validUntil": (datetime.now() + timedelta(days=7)).isoformat(),
-        "technical_indicators": indicators
+        "technical_indicators": indicators,
     }
+
 
 @router.get("")
 async def get_recommended_stocks(
-    sort_by: Optional[str] = Query("signal", description="Sort by: signal, confidence, change"),
+    sort_by: Optional[str] = Query(
+        "signal", description="Sort by: signal, confidence, change"
+    ),
     limit: Optional[int] = Query(20, ge=1, le=100),
-    use_parallel: Optional[bool] = Query(True, description="Use parallel processing for better performance"),
-    db: Session = Depends(get_db)
+    use_parallel: Optional[bool] = Query(
+        True, description="Use parallel processing for better performance"
+    ),
+    db: Session = Depends(get_db),
 ):
     """
     Get list of recommended stocks with buy/sell/hold signals.
@@ -337,70 +353,78 @@ async def get_recommended_stocks(
     Optimized for 100+ stocks with parallel processing.
     """
     start_time = datetime.now()
-    
+
     try:
         # Get all stocks from database
         stocks = db.query(Stock).all()
-        
+
         if not stocks:
             return {
-                "stocks": [], 
-                "totalCount": 0, 
+                "stocks": [],
+                "totalCount": 0,
                 "timestamp": datetime.now().isoformat(),
-                "processingTime": "0.00s"
+                "processingTime": "0.00s",
             }
-        
+
         logger.info(f"Processing recommendations for {len(stocks)} stocks")
-        
+
         recommendations = []
-        
+
         if use_parallel and len(stocks) > 5:  # Use parallel processing for 5+ stocks
             # Parallel processing for better performance with large datasets
             max_workers = min(10, len(stocks))  # Limit concurrent threads
-            
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=max_workers
+            ) as executor:
                 # Create separate DB sessions for each thread
                 def get_stock_with_session(stock):
                     with get_session_scope() as thread_session:
                         return process_stock_recommendation((stock, thread_session))
-                
+
                 # Process stocks in parallel
                 future_to_stock = {
-                    executor.submit(get_stock_with_session, stock): stock 
+                    executor.submit(get_stock_with_session, stock): stock
                     for stock in stocks
                 }
-                
+
                 for future in concurrent.futures.as_completed(future_to_stock):
                     try:
-                        recommendation = future.result(timeout=5.0)  # 5 second timeout per stock
+                        recommendation = future.result(
+                            timeout=5.0
+                        )  # 5 second timeout per stock
                         recommendations.append(recommendation)
                     except concurrent.futures.TimeoutError:
                         stock = future_to_stock[future]
                         logger.warning(f"Timeout processing {stock.stock_code}")
                         # Add basic recommendation for timed-out stocks
-                        recommendations.append({
-                            "symbol": stock.stock_code,
-                            "name": stock.company_name,
-                            "price": {
-                                "current": float(stock.current_price),
-                                "change": float(stock.price_change),
-                                "changePercent": float(stock.price_change_pct),
-                                "dayHigh": None,
-                                "dayLow": None,
-                                "volume": int(stock.volume)
-                            },
-                            "recommendation": {
+                        recommendations.append(
+                            {
                                 "symbol": stock.stock_code,
-                                "signal": "hold",
-                                "confidence": 5,
-                                "reasoning": "処理タイムアウトのため様子見",
-                                "targetPrice": None,
-                                "stopLoss": None,
-                                "timeHorizon": "medium_term",
-                                "riskLevel": "medium",
-                                "validUntil": (datetime.now() + timedelta(days=7)).isoformat()
+                                "name": stock.company_name,
+                                "price": {
+                                    "current": float(stock.current_price),
+                                    "change": float(stock.price_change),
+                                    "changePercent": float(stock.price_change_pct),
+                                    "dayHigh": None,
+                                    "dayLow": None,
+                                    "volume": int(stock.volume),
+                                },
+                                "recommendation": {
+                                    "symbol": stock.stock_code,
+                                    "signal": "hold",
+                                    "confidence": 5,
+                                    "reasoning": "処理タイムアウトのため様子見",
+                                    "targetPrice": None,
+                                    "stopLoss": None,
+                                    "timeHorizon": "medium_term",
+                                    "riskLevel": "medium",
+                                    "validUntil": (
+                                        datetime.now() + timedelta(days=7)
+                                    ).isoformat(),
+                                },
                             }
-                        })
+                        )
                     except Exception as e:
                         stock = future_to_stock[future]
                         logger.error(f"Error processing {stock.stock_code}: {e}")
@@ -409,61 +433,63 @@ async def get_recommended_stocks(
             for stock in stocks:
                 recommendation = process_stock_recommendation((stock, db))
                 recommendations.append(recommendation)
-        
+
         # Sort recommendations - BUY signals first, then by confidence
         def sort_key(rec):
             signal = rec["recommendation"]["signal"]
             confidence = rec["recommendation"]["confidence"]
-            
+
             # Priority: buy=3, hold=2, sell=1
             signal_priority = {"buy": 3, "hold": 2, "sell": 1}.get(signal, 0)
-            
+
             if sort_by == "confidence":
                 return (-confidence, -signal_priority)  # Higher confidence first
             elif sort_by == "change":
                 return (-abs(rec["price"]["changePercent"]), -signal_priority)
             else:  # Default: sort by signal
                 return (-signal_priority, -confidence)
-        
+
         recommendations.sort(key=sort_key)
-        
+
         # Apply limit
         recommendations = recommendations[:limit]
-        
+
         # Calculate processing time
         processing_time = (datetime.now() - start_time).total_seconds()
-        
-        logger.info(f"Recommendations processed in {processing_time:.3f}s for {len(stocks)} stocks")
-        
+
+        logger.info(
+            f"Recommendations processed in {processing_time:.3f}s for {len(stocks)} stocks"
+        )
+
         return {
             "stocks": recommendations,
             "totalCount": len(recommendations),
             "timestamp": datetime.now().isoformat(),
             "processingTime": f"{processing_time:.3f}s",
             "totalStocks": len(stocks),
-            "parallelProcessing": use_parallel and len(stocks) > 5
+            "parallelProcessing": use_parallel and len(stocks) > 5,
         }
-    
+
     except Exception as e:
         logger.error(f"Error generating recommendations: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/{symbol}/detail")
-async def get_stock_detail(
-    symbol: str,
-    db: Session = Depends(get_db)
-):
+async def get_stock_detail(symbol: str, db: Session = Depends(get_db)):
     """Get detailed information and recommendation for a specific stock."""
     try:
         # Get stock from database
         stock = db.query(Stock).filter(Stock.stock_code == symbol).first()
-        
+
         if not stock:
             raise HTTPException(status_code=404, detail=f"Stock {symbol} not found")
-        
+
         # Calculate technical indicators (disable cache for testing)
-        indicators = calculate_technical_indicators(stock.stock_code, db, cache_results=False)
-        
+        indicators = calculate_technical_indicators(
+            stock.stock_code, db, cache_results=False
+        )
+
         if not indicators:
             # Basic response without indicators
             return {
@@ -472,7 +498,7 @@ async def get_stock_detail(
                     "symbol": stock.stock_code,
                     "name": stock.company_name,
                     "category": "株式",
-                    "sector": None
+                    "sector": None,
                 },
                 "price": {
                     "current": float(stock.current_price),
@@ -481,7 +507,7 @@ async def get_stock_detail(
                     "dayHigh": None,
                     "dayLow": None,
                     "volume": int(stock.volume),
-                    "marketCap": float(stock.market_cap) if stock.market_cap else None
+                    "marketCap": float(stock.market_cap) if stock.market_cap else None,
                 },
                 "recommendation": {
                     "symbol": stock.stock_code,
@@ -492,20 +518,17 @@ async def get_stock_detail(
                     "stopLoss": None,
                     "timeHorizon": "medium_term",
                     "riskLevel": "medium",
-                    "validUntil": (datetime.now() + timedelta(days=7)).isoformat()
+                    "validUntil": (datetime.now() + timedelta(days=7)).isoformat(),
                 },
-                "prediction": {
-                    "shortTerm": None,
-                    "mediumTerm": None
-                }
+                "prediction": {"shortTerm": None, "mediumTerm": None},
             }
-        
+
         # Generate recommendation
         rec_data = generate_recommendation(stock, indicators)
-        
+
         # Calculate predictions (simplified)
         current_price = indicators["current_price"]
-        
+
         # Short term prediction (7 days)
         if rec_data["signal"] == "buy":
             short_term_change = 0.03  # 3% increase
@@ -513,20 +536,20 @@ async def get_stock_detail(
             short_term_change = -0.03  # 3% decrease
         else:
             short_term_change = 0.01  # 1% increase
-        
+
         short_term_price = current_price * (1 + short_term_change)
-        
+
         # Medium term prediction (14 days)
         medium_term_change = short_term_change * 1.5
         medium_term_price = current_price * (1 + medium_term_change)
-        
+
         return {
             "stock": {
                 "id": stock.stock_code,
                 "symbol": stock.stock_code,
                 "name": stock.company_name,
                 "category": "株式",
-                "sector": None
+                "sector": None,
             },
             "price": {
                 "current": current_price,
@@ -535,7 +558,7 @@ async def get_stock_detail(
                 "dayHigh": None,
                 "dayLow": None,
                 "volume": int(stock.volume),
-                "marketCap": float(stock.market_cap) if stock.market_cap else None
+                "marketCap": float(stock.market_cap) if stock.market_cap else None,
             },
             "recommendation": rec_data,
             "prediction": {
@@ -544,18 +567,18 @@ async def get_stock_detail(
                     "predictedPrice": round(short_term_price, 2),
                     "confidenceLevel": rec_data["confidence"] / 10,
                     "upperBound": round(short_term_price * 1.05, 2),
-                    "lowerBound": round(short_term_price * 0.95, 2)
+                    "lowerBound": round(short_term_price * 0.95, 2),
                 },
                 "mediumTerm": {
                     "targetDate": (datetime.now() + timedelta(days=14)).isoformat(),
                     "predictedPrice": round(medium_term_price, 2),
                     "confidenceLevel": (rec_data["confidence"] / 10) * 0.8,
                     "upperBound": round(medium_term_price * 1.08, 2),
-                    "lowerBound": round(medium_term_price * 0.92, 2)
-                }
-            }
+                    "lowerBound": round(medium_term_price * 0.92, 2),
+                },
+            },
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:

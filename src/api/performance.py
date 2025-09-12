@@ -5,11 +5,12 @@ Provides real-time performance metrics and monitoring data
 for the application dashboard.
 """
 
-from fastapi import APIRouter, HTTPException, status
-from typing import Dict, Any, List
+from typing import Any, Dict
 
-from ..utils.performance_monitor import performance_monitor
+from fastapi import APIRouter, HTTPException, status
+
 from ..config import get_settings
+from ..utils.performance_monitor import performance_monitor
 
 router = APIRouter(prefix="/performance", tags=["performance"])
 
@@ -18,9 +19,9 @@ router = APIRouter(prefix="/performance", tags=["performance"])
 async def get_performance_metrics():
     """
     Get comprehensive performance metrics.
-    
+
     Returns:
-        dict: Performance metrics including response times, request rates, 
+        dict: Performance metrics including response times, request rates,
               status codes, and endpoint statistics
     """
     try:
@@ -28,7 +29,7 @@ async def get_performance_metrics():
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve performance metrics: {str(e)}"
+            detail=f"Failed to retrieve performance metrics: {str(e)}",
         )
 
 
@@ -36,31 +37,41 @@ async def get_performance_metrics():
 async def get_performance_summary():
     """
     Get summarized performance metrics for dashboard overview.
-    
+
     Returns:
         dict: Key performance indicators
     """
     try:
         metrics = performance_monitor.export_metrics()
-        
+
         # Calculate error rate
-        status_dist = metrics.get('status_code_distribution', {})
+        status_dist = metrics.get("status_code_distribution", {})
         total_requests = sum(status_dist.values())
-        error_requests = sum(count for code, count in status_dist.items() if code >= 400)
-        error_rate = (error_requests / total_requests * 100) if total_requests > 0 else 0
-        
+        error_requests = sum(
+            count for code, count in status_dist.items() if code >= 400
+        )
+        error_rate = (
+            (error_requests / total_requests * 100) if total_requests > 0 else 0
+        )
+
         return {
-            "total_requests": metrics.get('total_requests', 0),
-            "average_response_time": round(metrics.get('average_response_time', 0) * 1000, 2),  # ms
-            "requests_per_second": round(metrics.get('request_rate_per_second', 0), 2),
+            "total_requests": metrics.get("total_requests", 0),
+            "average_response_time": round(
+                metrics.get("average_response_time", 0) * 1000, 2
+            ),  # ms
+            "requests_per_second": round(metrics.get("request_rate_per_second", 0), 2),
             "error_rate": round(error_rate, 2),
-            "slow_requests_count": metrics.get('slow_requests_count', 0),
-            "top_slow_endpoint": metrics.get('top_slow_endpoints', [{}])[0] if metrics.get('top_slow_endpoints') else None
+            "slow_requests_count": metrics.get("slow_requests_count", 0),
+            "top_slow_endpoint": (
+                metrics.get("top_slow_endpoints", [{}])[0]
+                if metrics.get("top_slow_endpoints")
+                else None
+            ),
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve performance summary: {str(e)}"
+            detail=f"Failed to retrieve performance summary: {str(e)}",
         )
 
 
@@ -68,7 +79,7 @@ async def get_performance_summary():
 async def get_endpoint_metrics():
     """
     Get detailed metrics for each endpoint.
-    
+
     Returns:
         dict: Endpoint-specific performance statistics
     """
@@ -77,7 +88,7 @@ async def get_endpoint_metrics():
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve endpoint metrics: {str(e)}"
+            detail=f"Failed to retrieve endpoint metrics: {str(e)}",
         )
 
 
@@ -85,10 +96,10 @@ async def get_endpoint_metrics():
 async def get_slow_requests(limit: int = 50):
     """
     Get recent slow requests.
-    
+
     Args:
         limit: Maximum number of slow requests to return (default: 50)
-        
+
     Returns:
         list: Recent slow requests with details
     """
@@ -102,14 +113,14 @@ async def get_slow_requests(limit: int = 50):
                 "process_time": round(req.process_time * 1000, 2),  # ms
                 "status_code": req.status_code,
                 "user_agent": req.user_agent[:100],  # Truncate for security
-                "client_ip": req.client_ip
+                "client_ip": req.client_ip,
             }
             for req in slow_requests
         ]
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve slow requests: {str(e)}"
+            detail=f"Failed to retrieve slow requests: {str(e)}",
         )
 
 
@@ -117,30 +128,24 @@ async def get_slow_requests(limit: int = 50):
 async def get_status_code_distribution():
     """
     Get status code distribution.
-    
+
     Returns:
         dict: Status code counts and percentages
     """
     try:
         distribution = performance_monitor.get_status_code_distribution()
         total = sum(distribution.values())
-        
+
         result = {}
         for code, count in distribution.items():
             percentage = (count / total * 100) if total > 0 else 0
-            result[str(code)] = {
-                "count": count,
-                "percentage": round(percentage, 2)
-            }
-        
-        return {
-            "distribution": result,
-            "total_requests": total
-        }
+            result[str(code)] = {"count": count, "percentage": round(percentage, 2)}
+
+        return {"distribution": result, "total_requests": total}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve status code distribution: {str(e)}"
+            detail=f"Failed to retrieve status code distribution: {str(e)}",
         )
 
 
@@ -148,9 +153,9 @@ async def get_status_code_distribution():
 async def clear_performance_metrics():
     """
     Clear all performance metrics history.
-    
+
     Note: This operation is irreversible.
-    
+
     Returns:
         dict: Success confirmation
     """
@@ -160,9 +165,9 @@ async def clear_performance_metrics():
         if settings.environment != "development":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Metrics clearing is only allowed in development environment"
+                detail="Metrics clearing is only allowed in development environment",
             )
-        
+
         performance_monitor.clear_history()
         return {"message": "Performance metrics cleared successfully"}
     except HTTPException:
@@ -170,7 +175,7 @@ async def clear_performance_metrics():
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear performance metrics: {str(e)}"
+            detail=f"Failed to clear performance metrics: {str(e)}",
         )
 
 
@@ -178,14 +183,14 @@ async def clear_performance_metrics():
 async def get_performance_health():
     """
     Get performance health status.
-    
+
     Returns:
         dict: Health indicators based on performance thresholds
     """
     try:
         metrics = performance_monitor.export_metrics()
-        avg_response_time = metrics.get('average_response_time', 0)
-        
+        avg_response_time = metrics.get("average_response_time", 0)
+
         # Health status based on response time
         if avg_response_time < 0.1:  # < 100ms
             health_status = "excellent"
@@ -195,25 +200,29 @@ async def get_performance_health():
             health_status = "fair"
         else:
             health_status = "poor"
-        
+
         # Calculate uptime percentage (success rate)
-        status_dist = metrics.get('status_code_distribution', {})
+        status_dist = metrics.get("status_code_distribution", {})
         total_requests = sum(status_dist.values())
-        success_requests = sum(count for code, count in status_dist.items() if 200 <= code < 400)
-        uptime_percentage = (success_requests / total_requests * 100) if total_requests > 0 else 100
-        
+        success_requests = sum(
+            count for code, count in status_dist.items() if 200 <= code < 400
+        )
+        uptime_percentage = (
+            (success_requests / total_requests * 100) if total_requests > 0 else 100
+        )
+
         return {
             "status": health_status,
             "average_response_time_ms": round(avg_response_time * 1000, 2),
             "uptime_percentage": round(uptime_percentage, 2),
             "total_requests": total_requests,
-            "slow_requests": metrics.get('slow_requests_count', 0),
-            "timestamp": int(__import__('time').time())
+            "slow_requests": metrics.get("slow_requests_count", 0),
+            "timestamp": int(__import__("time").time()),
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve performance health: {str(e)}"
+            detail=f"Failed to retrieve performance health: {str(e)}",
         )
 
 
@@ -221,7 +230,7 @@ async def get_performance_health():
 async def get_cache_statistics():
     """
     Get comprehensive cache statistics from smart cache middleware.
-    
+
     Returns:
         dict: Cache statistics including hit rates, endpoint metrics, and backend info
     """
@@ -233,12 +242,12 @@ async def get_cache_statistics():
             "message": "Cache statistics endpoint",
             "note": "Cache stats would be available from SmartCacheMiddleware instance",
             "backend": "smart_cache",
-            "timestamp": int(__import__('time').time())
+            "timestamp": int(__import__("time").time()),
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve cache statistics: {str(e)}"
+            detail=f"Failed to retrieve cache statistics: {str(e)}",
         )
 
 
@@ -246,31 +255,31 @@ async def get_cache_statistics():
 async def clear_cache():
     """
     Clear cache data (development only).
-    
+
     Returns:
         dict: Success confirmation
     """
     try:
         from ..config import get_settings
-        
+
         settings = get_settings()
         if settings.environment != "development":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Cache clearing is only allowed in development environment"
+                detail="Cache clearing is only allowed in development environment",
             )
-        
+
         # Clear cache logic would go here
         # This would require access to the middleware instance
-        
+
         return {
             "message": "Cache cleared successfully",
-            "timestamp": int(__import__('time').time())
+            "timestamp": int(__import__("time").time()),
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear cache: {str(e)}"
+            detail=f"Failed to clear cache: {str(e)}",
         )

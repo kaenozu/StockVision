@@ -4,6 +4,7 @@ Database setup and configuration for stock tracking application.
 This module provides database engine creation, session factory setup,
 and connection pooling configuration using SQLAlchemy for SQLite.
 """
+
 import logging
 import os
 from contextlib import contextmanager
@@ -12,8 +13,8 @@ from typing import Generator, Optional
 
 from sqlalchemy import create_engine, event, pool, text
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, sessionmaker
 
 from ..models.stock import Base
 
@@ -22,10 +23,10 @@ logger = logging.getLogger(__name__)
 
 class DatabaseConfig:
     """Database configuration class."""
-    
+
     def __init__(self, db_path: Optional[str] = None):
         """Initialize database configuration.
-        
+
         Args:
             db_path: Path to the SQLite database file. If None, uses default path.
         """
@@ -35,33 +36,33 @@ class DatabaseConfig:
             data_dir = project_root / "data"
             data_dir.mkdir(exist_ok=True)
             db_path = data_dir / "stock_tracking.db"
-        
+
         self.db_path = Path(db_path)
         self.database_url = f"sqlite:///{self.db_path}"
 
 
 class DatabaseManager:
     """Database manager for handling SQLite database operations."""
-    
+
     def __init__(self, config: Optional[DatabaseConfig] = None):
         """Initialize database manager.
-        
+
         Args:
             config: Database configuration. If None, uses default configuration.
         """
         self.config = config or DatabaseConfig()
         self._engine: Optional[Engine] = None
         self._session_factory: Optional[sessionmaker] = None
-        
+
     def create_engine(self) -> Engine:
         """Create SQLAlchemy engine with optimized settings for SQLite.
-        
+
         Returns:
             SQLAlchemy Engine instance.
         """
         if self._engine is not None:
             return self._engine
-            
+
         # SQLite接続設定（パフォーマンス最適化）
         engine_kwargs = {
             "echo": os.getenv("DATABASE_DEBUG", "false").lower() == "true",
@@ -74,10 +75,10 @@ class DatabaseManager:
                 "isolation_level": None,  # autocommit mode
             },
         }
-        
+
         try:
             self._engine = create_engine(self.config.database_url, **engine_kwargs)
-            
+
             # SQLite最適化設定のイベントハンドラ（パフォーマンス最適化）
             @event.listens_for(self._engine, "connect")
             def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -102,37 +103,37 @@ class DatabaseManager:
                 # 自動バキューム設定
                 cursor.execute("PRAGMA auto_vacuum=INCREMENTAL")
                 cursor.close()
-                
+
             logger.info(f"Database engine created: {self.config.database_url}")
             return self._engine
-            
+
         except SQLAlchemyError as e:
             logger.error(f"Failed to create database engine: {e}")
             raise
-    
+
     def get_session_factory(self) -> sessionmaker:
         """Get session factory for creating database sessions.
-        
+
         Returns:
             SQLAlchemy sessionmaker instance.
         """
         if self._session_factory is not None:
             return self._session_factory
-            
+
         engine = self.create_engine()
         self._session_factory = sessionmaker(
             bind=engine,
             autocommit=False,
             autoflush=False,
-            expire_on_commit=False  # セッションコミット後もオブジェクトを使用可能に
+            expire_on_commit=False,  # セッションコミット後もオブジェクトを使用可能に
         )
-        
+
         logger.info("Session factory created")
         return self._session_factory
-    
+
     def init_db(self) -> None:
         """Initialize database by creating all tables.
-        
+
         Raises:
             SQLAlchemyError: If database initialization fails.
         """
@@ -140,16 +141,16 @@ class DatabaseManager:
             engine = self.create_engine()
             Base.metadata.create_all(bind=engine)
             logger.info("Database tables created successfully")
-            
+
         except SQLAlchemyError as e:
             logger.error(f"Failed to initialize database: {e}")
             raise
-    
+
     def drop_all_tables(self) -> None:
         """Drop all tables in the database.
-        
+
         Warning: This will delete all data!
-        
+
         Raises:
             SQLAlchemyError: If dropping tables fails.
         """
@@ -157,14 +158,14 @@ class DatabaseManager:
             engine = self.create_engine()
             Base.metadata.drop_all(bind=engine)
             logger.warning("All database tables dropped")
-            
+
         except SQLAlchemyError as e:
             logger.error(f"Failed to drop tables: {e}")
             raise
-    
+
     def get_session(self) -> Session:
         """Create a new database session.
-        
+
         Returns:
             SQLAlchemy Session instance.
         """
@@ -172,14 +173,14 @@ class DatabaseManager:
         session = session_factory()
         logger.debug("New database session created")
         return session
-    
+
     @contextmanager
     def session_scope(self) -> Generator[Session, None, None]:
         """Provide a transactional scope around database operations.
-        
+
         Yields:
             SQLAlchemy Session instance.
-            
+
         Example:
             with db_manager.session_scope() as session:
                 stock = session.query(Stock).first()
@@ -197,7 +198,7 @@ class DatabaseManager:
         finally:
             session.close()
             logger.debug("Database session closed")
-    
+
     def close(self) -> None:
         """Close database engine and cleanup resources."""
         if self._engine is not None:
@@ -213,7 +214,7 @@ _db_manager: Optional[DatabaseManager] = None
 
 def get_database_manager() -> DatabaseManager:
     """Get the global database manager instance.
-    
+
     Returns:
         DatabaseManager instance.
     """
@@ -225,43 +226,44 @@ def get_database_manager() -> DatabaseManager:
 
 def check_database_exists(config: Optional[DatabaseConfig] = None) -> bool:
     """Check if database file exists and has the required tables.
-    
+
     Args:
         config: Database configuration. If None, uses default configuration.
-        
+
     Returns:
         True if database exists and is properly initialized, False otherwise.
     """
     try:
         config = config or DatabaseConfig()
-        
+
         # データベースファイルの存在確認
         if not config.db_path.exists():
             return False
-        
+
         # テーブルの存在確認（軽量チェック）
         from sqlalchemy import create_engine, inspect
+
         engine = create_engine(config.database_url)
         inspector = inspect(engine)
-        
+
         # 必要なテーブルが存在するかチェック
-        required_tables = ['stocks', 'watchlist', 'price_history']
+        required_tables = ["stocks", "watchlist", "price_history"]
         existing_tables = inspector.get_table_names()
-        
+
         for table in required_tables:
             if table not in existing_tables:
                 return False
-        
+
         engine.dispose()
         return True
-        
+
     except Exception:
         return False
 
 
 def init_db(config: Optional[DatabaseConfig] = None) -> None:
     """Initialize the database with tables.
-    
+
     Args:
         config: Database configuration. If None, uses default configuration.
     """
@@ -272,7 +274,7 @@ def init_db(config: Optional[DatabaseConfig] = None) -> None:
 
 def get_session() -> Session:
     """Get a new database session.
-    
+
     Returns:
         SQLAlchemy Session instance.
     """
@@ -283,7 +285,7 @@ def get_session() -> Session:
 @contextmanager
 def get_session_scope() -> Generator[Session, None, None]:
     """Get a transactional database session scope.
-    
+
     Yields:
         SQLAlchemy Session instance.
     """
@@ -303,7 +305,7 @@ def close_database() -> None:
 # データベース接続の健全性チェック関数
 def check_database_health() -> bool:
     """Check if database connection is healthy.
-    
+
     Returns:
         True if database is accessible, False otherwise.
     """
@@ -320,38 +322,38 @@ def check_database_health() -> bool:
 # データベース統計情報取得関数
 def get_database_stats() -> dict:
     """Get database statistics and information.
-    
+
     Returns:
         Dictionary containing database statistics.
     """
     stats = {}
-    
+
     try:
         with get_session_scope() as session:
             # テーブルごとのレコード数を取得
+            from ..models.price_history import PriceHistory
             from ..models.stock import Stock
             from ..models.watchlist import Watchlist
-            from ..models.price_history import PriceHistory
-            
-            stats['stocks_count'] = session.query(Stock).count()
-            stats['watchlist_count'] = session.query(Watchlist).count()
-            stats['price_history_count'] = session.query(PriceHistory).count()
-            
+
+            stats["stocks_count"] = session.query(Stock).count()
+            stats["watchlist_count"] = session.query(Watchlist).count()
+            stats["price_history_count"] = session.query(PriceHistory).count()
+
             # データベースファイルサイズ
             db_manager = get_database_manager()
             if db_manager.config.db_path.exists():
-                stats['database_size_mb'] = round(
+                stats["database_size_mb"] = round(
                     db_manager.config.db_path.stat().st_size / (1024 * 1024), 2
                 )
             else:
-                stats['database_size_mb'] = 0
-            
-            stats['database_path'] = str(db_manager.config.db_path)
-            stats['healthy'] = True
-            
+                stats["database_size_mb"] = 0
+
+            stats["database_path"] = str(db_manager.config.db_path)
+            stats["healthy"] = True
+
     except Exception as e:
         logger.error(f"Failed to get database stats: {e}")
-        stats['error'] = str(e)
-        stats['healthy'] = False
-    
+        stats["error"] = str(e)
+        stats["healthy"] = False
+
     return stats

@@ -1,8 +1,8 @@
+import os
+
 """
 API related constants for the StockVision application.
 """
-
-import os
 
 # API Endpoints
 API_PREFIX = "/api"
@@ -13,7 +13,7 @@ STOCK_CURRENT_ENDPOINT = f"{STOCKS_BASE}/{{stock_code}}/current"
 STOCK_HISTORY_ENDPOINT = f"{STOCKS_BASE}/{{stock_code}}/history"
 STOCK_INFO_ENDPOINT = f"{STOCKS_BASE}/{{stock_code}}/info"
 
-# Feature API endpoints  
+# Feature API endpoints
 RECOMMENDED_STOCKS_ENDPOINT = "/recommended-stocks"
 TRADING_RECOMMENDATIONS_ENDPOINT = "/trading-recommendations"
 PRICE_PREDICTIONS_ENDPOINT = "/price-predictions"
@@ -32,7 +32,6 @@ HEALTH_ENDPOINT = "/health"
 STATUS_ENDPOINT = "/status"
 
 # Server configuration
-import os
 
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8000
@@ -48,7 +47,9 @@ API_PORT = int(os.getenv("API_PORT", str(DEFAULT_PORT)))
 # CORS origins
 # 環境変数から本番用オリジンを読み込み（カンマ区切り）
 PROD_ORIGINS_STR = os.getenv("PROD_CORS_ORIGINS", "")
-PROD_ORIGINS = [origin.strip() for origin in PROD_ORIGINS_STR.split(",") if origin.strip()]
+PROD_ORIGINS = [
+    origin.strip() for origin in PROD_ORIGINS_STR.split(",") if origin.strip()
+]
 
 # 開発時のデフォルト許可オリジン
 DEV_CORS_ORIGINS = [

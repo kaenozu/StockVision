@@ -2,8 +2,9 @@
 FastAPI API smoke tests to verify basic endpoints respond and shapes match expectations.
 These tests avoid external dependencies by relying on mock data (USE_REAL_YAHOO_API=false).
 """
+
 import os
-import pytest
+
 from fastapi.testclient import TestClient
 
 # Set environment before any imports
@@ -13,7 +14,6 @@ os.environ["DATABASE_URL"] = "sqlite:///test.db"
 os.environ["MIDDLEWARE_RESPONSE_COMPRESSION_ENABLED"] = "false"
 
 from src.main import app  # noqa: E402
-
 
 client = TestClient(app)
 

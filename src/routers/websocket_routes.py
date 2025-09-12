@@ -3,20 +3,20 @@ WebSocket API Routes
 Real-time data streaming endpoints
 """
 
-import uuid
-import json
 import logging
-from typing import Dict, Any
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
+import uuid
+from typing import Any, Dict
+
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
-from ..websocket.websocket_manager import websocket_manager
 from ..streaming.realtime_data_service import realtime_service
-from ..auth.auth_middleware import get_current_user_optional
+from ..websocket.websocket_manager import websocket_manager
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
+
 
 @router.on_event("startup")
 async def startup_websocket():
@@ -24,17 +24,19 @@ async def startup_websocket():
     await websocket_manager.start()
     await realtime_service.start()
 
-@router.on_event("shutdown") 
+
+@router.on_event("shutdown")
 async def shutdown_websocket():
     """Stop WebSocket services on shutdown"""
     await websocket_manager.stop()
     await realtime_service.stop()
 
+
 @router.websocket("/stream")
 async def websocket_stream(websocket: WebSocket):
     """
     Main WebSocket endpoint for real-time data streaming
-    
+
     Expected message format:
     {
         "type": "subscribe|unsubscribe|ping",
@@ -47,38 +49,36 @@ async def websocket_stream(websocket: WebSocket):
     }
     """
     client_id = str(uuid.uuid4())
-    
+
     try:
         # Connect client
         success = await websocket_manager.connect_client(websocket, client_id)
         if not success:
             await websocket.close(code=1011, reason="Connection failed")
             return
-            
+
         logger.info(f"WebSocket client {client_id} connected")
-        
+
         # Listen for messages
         while True:
             try:
                 data = await websocket.receive_text()
                 await websocket_manager.handle_client_message(client_id, data)
-                
+
             except WebSocketDisconnect:
                 logger.info(f"WebSocket client {client_id} disconnected")
                 break
             except Exception as e:
                 logger.error(f"Error handling WebSocket message: {e}")
                 await websocket_manager.send_to_client(
-                    client_id,
-                    {"error": str(e)},
-                    "system",
-                    "error"
+                    client_id, {"error": str(e)}, "system", "error"
                 )
-                
+
     except Exception as e:
         logger.error(f"WebSocket connection error: {e}")
     finally:
         await websocket_manager.disconnect_client(client_id)
+
 
 @router.websocket("/stock/{symbol}")
 async def websocket_stock_stream(websocket: WebSocket, symbol: str):
@@ -88,42 +88,41 @@ async def websocket_stock_stream(websocket: WebSocket, symbol: str):
     """
     client_id = str(uuid.uuid4())
     symbol = symbol.upper()
-    
+
     try:
         # Connect client
         success = await websocket_manager.connect_client(websocket, client_id)
         if not success:
             await websocket.close(code=1011, reason="Connection failed")
             return
-            
+
         # Auto-subscribe to the symbol
         await websocket_manager.subscribe_client(
-            client_id, 
-            [f"price:{symbol}", f"news:{symbol}"],
-            {"symbols": [symbol]}
+            client_id, [f"price:{symbol}", f"news:{symbol}"], {"symbols": [symbol]}
         )
-        
+
         # Subscribe symbol to real-time service
         await realtime_service.subscribe_symbol(symbol)
-        
+
         logger.info(f"WebSocket client {client_id} connected to {symbol}")
-        
+
         # Keep connection alive
         while True:
             try:
                 data = await websocket.receive_text()
                 await websocket_manager.handle_client_message(client_id, data)
-                
+
             except WebSocketDisconnect:
                 logger.info(f"WebSocket client {client_id} disconnected from {symbol}")
                 break
             except Exception as e:
                 logger.error(f"Error in stock WebSocket: {e}")
-                
+
     except Exception as e:
         logger.error(f"Stock WebSocket connection error: {e}")
     finally:
         await websocket_manager.disconnect_client(client_id)
+
 
 @router.get("/test")
 async def websocket_test_page():
@@ -321,28 +320,28 @@ async def websocket_test_page():
     """
     return HTMLResponse(content=html_content)
 
+
 @router.get("/stats")
 async def websocket_stats():
     """Get WebSocket connection statistics"""
     try:
         ws_stats = websocket_manager.get_connection_stats()
         service_stats = realtime_service.get_service_stats()
-        
+
         return {
             "websocket": ws_stats,
             "realtime_service": service_stats,
-            "timestamp": "2024-01-01T00:00:00Z"  # Would be current time
+            "timestamp": "2024-01-01T00:00:00Z",  # Would be current time
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to get WebSocket stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to get statistics")
 
+
 @router.post("/broadcast")
 async def broadcast_message(
-    channel: str,
-    message: Dict[str, Any],
-    message_type: str = "broadcast"
+    channel: str, message: Dict[str, Any], message_type: str = "broadcast"
 ):
     """
     Broadcast message to all subscribers of a channel
@@ -350,89 +349,86 @@ async def broadcast_message(
     """
     try:
         count = await websocket_manager.broadcast_to_channel(
-            channel, 
-            message, 
-            message_type
+            channel, message, message_type
         )
-        
-        return {
-            "success": True,
-            "channel": channel,
-            "subscribers_notified": count
-        }
-        
+
+        return {"success": True, "channel": channel, "subscribers_notified": count}
+
     except Exception as e:
         logger.error(f"Failed to broadcast message: {e}")
         raise HTTPException(status_code=500, detail="Broadcast failed")
+
 
 @router.post("/symbols/subscribe")
 async def subscribe_symbol(symbol: str):
     """Subscribe to real-time data for a symbol"""
     try:
         success = await realtime_service.subscribe_symbol(symbol.upper())
-        
+
         if success:
             return {
                 "success": True,
                 "symbol": symbol.upper(),
-                "message": f"Subscribed to {symbol}"
+                "message": f"Subscribed to {symbol}",
             }
         else:
             raise HTTPException(status_code=400, detail="Failed to subscribe to symbol")
-            
+
     except Exception as e:
         logger.error(f"Failed to subscribe to symbol {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.delete("/symbols/{symbol}")
 async def unsubscribe_symbol(symbol: str):
     """Unsubscribe from real-time data for a symbol"""
     try:
         success = await realtime_service.unsubscribe_symbol(symbol.upper())
-        
+
         if success:
             return {
                 "success": True,
                 "symbol": symbol.upper(),
-                "message": f"Unsubscribed from {symbol}"
+                "message": f"Unsubscribed from {symbol}",
             }
         else:
-            raise HTTPException(status_code=400, detail="Failed to unsubscribe from symbol")
-            
+            raise HTTPException(
+                status_code=400, detail="Failed to unsubscribe from symbol"
+            )
+
     except Exception as e:
         logger.error(f"Failed to unsubscribe from symbol {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/symbols")
 async def get_subscribed_symbols():
     """Get list of currently subscribed symbols"""
     try:
         symbols = await realtime_service.get_subscribed_symbols()
-        
-        return {
-            "symbols": symbols,
-            "count": len(symbols)
-        }
-        
+
+        return {"symbols": symbols, "count": len(symbols)}
+
     except Exception as e:
         logger.error(f"Failed to get subscribed symbols: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/symbols/{symbol}/price")
 async def get_current_price(symbol: str):
     """Get current cached price for a symbol"""
     try:
         price_data = await realtime_service.get_current_price(symbol.upper())
-        
+
         if price_data:
             return {
                 "symbol": symbol.upper(),
                 "price_data": price_data.__dict__,
-                "cached": True
+                "cached": True,
             }
         else:
             raise HTTPException(status_code=404, detail="Price data not found")
-            
+
     except Exception as e:
         logger.error(f"Failed to get current price for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
