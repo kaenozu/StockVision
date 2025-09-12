@@ -22,20 +22,16 @@ exclude =
     logs/
 
 # Error codes to ignore
-ignore = 
-    E203,  # Whitespace before ':' (conflicts with black)
-    E501,  # Line too long (handled by black)
-    W503,  # Line break before binary operator (conflicts with black)
-    F401,  # Module imported but unused (sometimes needed for __init__.py)
+ignore = E203,W503,F401
 
 # Maximum complexity
-max-complexity = 10
+# max-complexity = 10
 
 # Docstring conventions
-docstring-convention = google
+# docstring-convention = google
 
 # Import order
-import-order-style = google
+# import-order-style = google
 
 # Per-file ignores
 per-file-ignores =
